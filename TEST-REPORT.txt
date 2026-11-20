@@ -11,6 +11,11 @@ account and SSID isolation, unread state, duplicate suppression, retry expiry,
 ACK races, and a complete loopback APRS-IS exchange using the shared transport.
 No test in this run transmitted to the public APRS network.
 
+PASS: Android OsmAnd-shared compileDebugKotlinAndroid with the same submodule.
+All 23 APRS JVM tests also pass within the Android repository. After relocation,
+the first incremental test output omitted two classes; forcing a fresh test
+compilation restored all five suites (23 tests, zero failures/errors).
+
 PASS: packaged EXE launches with its bundled runtime; local demo connects.
 Native renderer reports a Vulkan frame on maplibre-windows-map-renderer at
 889 x 743. Style reaches idle. At the demo station coordinate, native rendered
