@@ -1,0 +1,68 @@
+Visual ports and connections — source implementation, not rendered or tested
+
+Open Ports from the main toolbar. The workspace opens maximized and contains:
+- A scrollable diagram of device ports and GPS, APRS-IS, map/messages, station
+  beacon and object services. Color and arrow direction identify each route.
+- A selected-port inspector with connection details and direct routing switches.
+- A guided Add port flow: choose a profile, select a serial device or TCP endpoint,
+  then review the default connections. Device discovery enumerates available COM
+  devices without opening them. Manual entry remains available.
+- An Object routes matrix with Internet, all eligible RF ports, individual RF
+  destinations and a per-object path override.
+- A Radio limits page for heard-station, hop, duplicate and memory settings.
+
+Select a port to emphasize its wires; Show all wires displays the wider layout.
+The service cards provide direct connection buttons. In the inspector, Wire
+digipeater outputs enters a click-to-connect mode: click a destination port to
+add/remove that output, then Done wiring. Same-port repetition is a visible loop.
+The rule editor has separate alias/path fields and WIDE1/WIDE2 preset buttons.
+Receive-only profiles cannot become RF output targets. Raw-frame output is
+required for digipeater paths. Incompatible profile changes must be resolved
+before Apply. Profile changes explicitly restore profile command/routing defaults
+while retaining the name and connection details for review.
+
+Solid wires mean eligible under the draft configuration; dashed wires mean a
+configured route is blocked by a switch or missing rules. Actual connection
+state and RX/TX counters are separate. Neither a solid wire nor a successful
+device write proves over-the-air reception. A renamed/edited port still shows
+the saved connection's live status until Apply; new ports show not running.
+
+Editing transaction
+Nothing opens, closes or transmits merely because a draft wire was edited.
+Apply saves TOML and reloads the configured ports using the existing lifecycle;
+this currently reconnects the configured devices. Undo/Redo work within a draft.
+Closing or reloading with pending edits offers to discard or keep editing.
+The main Settings editor and the workspace reject stale saves if another window
+changed the configuration. Applying is blocked for duplicate COM ownership,
+missing device details, invalid port references or an unresolved GPS replacement.
+
+Rename updates GPS, object and digipeater references. Removing the final explicit
+destination disables that route; it never changes to all ports or silently falls
+back to a self-repeat. Removing the active GPS requires an explicit replacement
+or selection of fixed position. Duplicates start disabled to avoid double-opening
+the same device. Legacy serial/TCP/GPSd position settings can be imported into a
+named NMEA port in the diagram, retaining their connection parameters.
+
+Defaults and APRSIS32 evidence
+The comparison used APRSIS32 version 2024/09/05 17:14 on the local source share.
+No proprietary source was copied into this project.
+- Config.cpp RFPort registrations: enabled, transmit, RF-to-IS, IS-to-RF,
+  beaconing, messages and bulletin/object permissions default true.
+- NMEA and receive-only protocol adjustments disable inappropriate RF output.
+- Config.h: LOCAL_MAX_HOPS=2, RECENTLY_HEARD_MINUTES=30,
+  DUPLICATE_DETECT_SECONDS=30. These values remain the defaults here.
+- APRSIS32's registered RF paths and transform lists are empty. The user explicitly
+  chose helpful prefilled APRSIS64 defaults instead: WIDE1-1,WIDE2-1 for beacons,
+  WIDE1-1 for messages and WIDE1-1= for a fill-in digipeater. Repeating defaults
+  off until its switch is enabled. Blank/custom paths remain fully supported.
+- New completed setup defaults enabled. Saved templates with no actual device
+  stay disabled. Existing settings are preserved; profile-dependent defaults
+  fill missing TOML fields without overwriting supplied fields.
+- Serial baud, reconnect/command pacing, queue budgets and transmit-rate limits
+  are APRSIS64 implementation settings, not claims of exact APRSIS32 equivalence.
+
+This UI and the underlying new port implementations still require compilation,
+interaction review and real-device validation. APRSIS32's proven behavior guides
+the defaults; it does not make a new implementation hardware-tested. Prepared
+regression cases cover reference repair, route deletion, Undo/Redo, stale edits,
+GPS replacement, and selecting individual outputs without broadening routes.

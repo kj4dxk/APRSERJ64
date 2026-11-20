@@ -1,6 +1,6 @@
 APRSIS64 named ports — source implementation, not yet built or hardware-tested
 
-Settings > Ports creates serial or TCP connections. Every port has its own name,
+The main Ports workspace creates serial or TCP connections. Every port has its own name,
 protocol, device/endpoint, baud, channel, transmit controls, paths, IGate directions,
 digipeater transforms, rate limits and open/close commands. These are persisted as
 [[ports]] in settings.toml; global heard/dedup limits live in [radio]. No device is

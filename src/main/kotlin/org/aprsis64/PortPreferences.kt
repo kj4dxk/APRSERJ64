@@ -4,14 +4,16 @@ package org.aprsis64
 import java.util.Properties
 import kotlinx.serialization.json.*
 import net.osmand.shared.aprs.*
+import org.tomlj.TomlTable
 
 object PortPreferences {
     val protocols=listOf("NMEA","Simply(KISS)","KISS","AGW","KWD700(KISS)","KWD700(RO+GPS)","KWD710(APRS)","KWD710(Pkt)","CONVerse","TEXT","FTM350v1.3(RO)")
     val readOnly=setOf("NMEA","KWD700(RO+GPS)","FTM350v1.3(RO)")
+    val nmeaProtocols=setOf("NMEA","TEXT","CONVerse","KWD700(RO+GPS)","KWD710(APRS)","KWD710(Pkt)","FTM350v1.3(RO)")
     private val b=SettingKind.BOOLEAN; private val i=SettingKind.INTEGER
     val fields=listOf(
         BeaconField("name","Port name","New port"),
-        BeaconField("enabled","Enabled","false",b),
+        BeaconField("enabled","Enabled","true",b),
         BeaconField("protocol","Protocol","Simply(KISS)",choices=protocols),
         BeaconField("transport","Connection","serial",choices=listOf("serial","tcp")),
         BeaconField("device","Serial device (e.g. COM3)",""),
@@ -57,9 +59,13 @@ object PortPreferences {
     )
     fun defaults(protocol: String="Simply(KISS)")=Properties().apply {
         fields.forEach {setProperty(it.key,it.default)};setProperty("protocol",protocol)
-        if(protocol in readOnly) setProperty("transmit","false")
+        if(protocol in readOnly) {setProperty("transmit","false");setProperty("is_to_rf","false")}
+        if(protocol !in listOf("Simply(KISS)","KISS","KWD700(KISS)","AGW","TEXT")) setProperty("digipeater","false")
         if(protocol=="AGW") setProperty("transport","tcp")
-        if(protocol=="NMEA") {setProperty("baud","4800");setProperty("provides_nmea","true")}
+        if(protocol=="NMEA") {
+            setProperty("baud","4800");setProperty("provides_nmea","true")
+            listOf("rf_to_is","is_to_rf","beacon","messages","objects").forEach {setProperty(it,"false")}
+        }
         if(protocol in listOf("KWD700(RO+GPS)","KWD710(APRS)")) setProperty("provides_nmea","true")
         val commands=when(protocol) {
             "KISS"->listOf("\r|cmd:","XFLOW OFF\r|cmd:","KISS ON\r|cmd:","RESTART\r")
@@ -69,6 +75,12 @@ object PortPreferences {
             else->emptyList()
         }
         setProperty("open_commands",JsonArray(commands.map {JsonPrimitive(it)}).toString())
+    }
+    fun load(table: TomlTable): Properties {
+        val protocol=table.getString("protocol") ?: "Simply(KISS)"
+        require(protocol in protocols)
+        val seed=defaults(protocol)
+        return Properties().also {BeaconPreferences.loadFields(it,table,fields.map {field->field.copy(default=seed.getProperty(field.key))})}
     }
     fun rules(values: Properties)=RadioRules(values.getProperty("radio.heard_seconds").toInt(),values.getProperty("radio.maximum_hops").toInt(),
         values.getProperty("radio.duplicate_seconds").toInt(),values.getProperty("radio.internet_seconds").toInt(),values.getProperty("radio.maximum_entries").toInt())
@@ -110,6 +122,7 @@ class PortConfig(val values: Properties) {
             else {require(text("endpoint").contains(':'));AprsEndpoint.parse(text("endpoint"))}
         }
         require(protocol!="AGW" || text("transport")=="tcp")
+        require(!flag("provides_nmea") || protocol in PortPreferences.nmeaProtocols) {"This protocol cannot carry standalone NMEA sentences"}
         require(!flag("digipeater") || protocol in listOf("Simply(KISS)","KISS","KWD700(KISS)","AGW","TEXT")) {"Digipeating requires a raw-frame TNC"}
         require(number("baud") in 1200..921600 && number("channel") in 0..(if(protocol=="AGW") 255 else 15))
         require(number("command_timeout_ms") in 100..30000 && number("command_delay_ms") in 0..5000)

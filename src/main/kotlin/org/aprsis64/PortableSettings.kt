@@ -63,7 +63,7 @@ class SettingsStore(private val root: Path) {
         (0 until array.size()).map { index -> Properties().also { BeaconPreferences.loadFields(it,array.getTable(index),BeaconPreferences.entityFields) } }
     } ?: emptyList()
     var ports: List<Properties> = document?.getArray("ports")?.let {array ->
-        (0 until array.size()).map {index->Properties().also {BeaconPreferences.loadFields(it,array.getTable(index),PortPreferences.fields)}}
+        (0 until array.size()).map {index->PortPreferences.load(array.getTable(index))}
     } ?: emptyList()
     var servers: List<ServerPreset> = document?.getArray("aprs.servers")?.let { array ->
         (0 until array.size()).map { index -> val entry=array.getTable(index)

@@ -84,6 +84,7 @@ fun main(args: Array<String>) {
     var settings by remember { mutableStateOf(false) }
     var about by remember { mutableStateOf(false) }
     var preferences by remember { mutableStateOf(false) }
+    var portWorkspace by remember {mutableStateOf(false)}
     var rows by remember { mutableStateOf<List<ChatRow>>(emptyList()) }
     LaunchedEffect(account,revision,selected) {
         rows=model.database.rows(account)
@@ -100,6 +101,7 @@ fun main(args: Array<String>) {
             Spacer(Modifier.width(14.dp))
             OutlinedButton(onClick={ settings=true }) { Text("Connection") }
             TextButton(onClick={preferences=true}) {Text("Settings")}
+            TextButton(onClick={portWorkspace=true}) {Text("Ports")}
             Button(onClick={model.transmitBeacon()},enabled=beacon.enabled && account.isNotBlank()) {Text("Transmit")}
             Spacer(Modifier.width(8.dp))
             if(connection==AprsConnectionState.STOPPED) Button(onClick={ model.localDemo() }) { Text("Local demo") }
@@ -131,6 +133,7 @@ fun main(args: Array<String>) {
     }
     if(settings) ConnectionDialog(model) {settings=false}
     if(preferences) PreferencesDialog(model) {preferences=false}
+    if(portWorkspace) PortWorkspaceWindow(model) {portWorkspace=false}
     if(about) AlertDialog(onDismissRequest={about=false},title={Text("APRSIS64 0.2.0")},text={
         Text("Copyright 2026 APRSIS64 contributors.\nAGPL-3.0. No warranty.\n\nContains GPLv3 shared components. Third-party license notices are included in the app folder.")
     },confirmButton={TextButton(onClick={Desktop.getDesktop().browse(URI(model.settings.getProperty("services.source_url")))}) {Text("Source & license")}},dismissButton={TextButton(onClick={about=false}) {Text("Close")}})

@@ -18,11 +18,9 @@ import kotlinx.serialization.json.*
     val objects=remember {mutableStateListOf<MutableMap<String,String>>().apply {
         model.entities.forEach {props -> add(mutableStateMapOf<String,String>().apply {props.stringPropertyNames().forEach {put(it,props.getProperty(it))}})}
     }}
-    val ports=remember {mutableStateListOf<MutableMap<String,String>>().apply {
-        model.ports.forEach {props->add(mutableStateMapOf<String,String>().apply {props.stringPropertyNames().forEach {put(it,props.getProperty(it))}})}
-    }}
-    val newPort=remember {mutableStateMapOf("protocol" to "Simply(KISS)")}
-    var portIndex by remember {mutableStateOf(0)}
+    val baselineSettings=remember {model.settings.entriesMap()}
+    val baselinePorts=remember {model.ports.map {it.entriesMap()}}
+    val baselineObjects=remember {model.entities.map {it.entriesMap()}}
     var selected by remember {mutableStateOf("Beacon")}
     var entity by remember {mutableStateOf(0)}
     var failure by remember {mutableStateOf("")}
@@ -30,23 +28,13 @@ import kotlinx.serialization.json.*
     DialogWindow(onCloseRequest=dismiss,title="Settings",state=rememberDialogState(width=780.dp,height=790.dp)) {
         MaterialTheme(colors=darkColors()) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
             Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
-                listOf("Beacon","Position","Status","Objects","Ports","Radio","Map","Services").forEach {tab ->
+                listOf("Beacon","Position","Status","Objects","Map","Services").forEach {tab ->
                     TextButton(onClick={selected=tab}) {Text(if(selected==tab) "[$tab]" else tab)}
                 }
             }
             if(failure.isNotEmpty()) Text(failure,color=MaterialTheme.colors.error)
-            key(selected,entity,portIndex) {Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                if(selected=="Ports") {
-                    SettingField(PortPreferences.fields.first {it.key=="protocol"},newPort)
-                    Row {
-                        Button(onClick={val props=PortPreferences.defaults(newPort.getValue("protocol"))
-                            props.setProperty("name","Port ${ports.size+1}")
-                            ports.add(mutableStateMapOf<String,String>().apply {props.stringPropertyNames().forEach {put(it,props.getProperty(it))}});portIndex=ports.lastIndex},enabled=ports.size<32) {Text("New port")}
-                        TextButton(onClick={if(ports.isNotEmpty()) {ports.removeAt(portIndex);portIndex=(portIndex-1).coerceAtLeast(0)}},enabled=ports.isNotEmpty()) {Text("Remove port")}
-                    }
-                    ports.forEachIndexed {index,p->TextButton(onClick={portIndex=index}) {Text(p["name"].orEmpty())}}
-                    ports.getOrNull(portIndex)?.let {p->PortPreferences.fields.forEach {SettingField(it,p)}}
-                } else if(selected=="Objects") {
+            key(selected,entity) {Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                if(selected=="Objects") {
                     Row {
                         Button(onClick={objects.add(mutableStateMapOf<String,String>().apply {BeaconPreferences.entityFields.forEach {put(it.key,it.default)}});entity=objects.lastIndex},enabled=objects.size<32) {Text("New")}
                         Spacer(Modifier.width(12.dp))
@@ -70,7 +58,9 @@ import kotlinx.serialization.json.*
                     try {
                         val props=properties(values); val entityProps=objects.map {properties(it)}
                         BeaconConfiguration(props,entityProps); ServicePreferences.validate(props)
-                        if(model.savePreferences(props,entityProps,ports.map {properties(it)})) dismiss() else failure="Check port settings, GPS port name and folder write access."
+                        if(model.settings.entriesMap()!=baselineSettings || model.ports.map {it.entriesMap()}!=baselinePorts || model.entities.map {it.entriesMap()}!=baselineObjects)
+                            failure="Settings changed in another window. Close and reopen this editor before saving."
+                        else if(model.savePreferences(props,entityProps)) dismiss() else failure="Check settings and folder write access."
                     } catch(_: Exception) {failure="Check the selected options, numbers, coordinates and object names."}
                 }) {Text("Save")}
             }

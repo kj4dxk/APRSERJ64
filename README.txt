@@ -135,7 +135,15 @@ Close the app before editing TOML. Cache budget changes require restart.
 [map]'s initial view/feed center. Confirm the fixed location for your station.
 [beacon].enabled defaults true; a verified login and usable position are required.
 RADIO PORTS
-Settings > Ports and Radio configure serial/TCP NMEA, KISS, AGW and text/command
+The main Ports button opens the visual workspace for serial/TCP NMEA, KISS, AGW and text/command
 TNC profiles. All per-port options live in [[ports]] in settings.toml. Static
 objects can target APRS-IS, selected RF ports, or both. See RADIO-PORTS.txt for
 profile coverage, defaults, setup, routing behavior and pending validation.
+
+VISUAL PORT WORKSPACE
+The Ports button opens an expansive graph with live status, an inspector, a
+guided setup flow, object route matrix and Radio limits. Click a source port
+and its destination controls to rewire; digipeater outputs can be selected on
+the diagram. Changes are staged with Undo/Redo until Apply changes. See
+PORT-WORKSPACE.txt for behavior and the APRSIS32/defaults comparison.
+The workspace is source-only and has not been built, rendered or tested yet.

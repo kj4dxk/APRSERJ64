@@ -16,3 +16,12 @@ Configuration policy
   editable in TOML. Hardware profiles are unverified until tested on the device.
 - Never send Internet q constructs as RF paths. Keep IGate loop prevention and
   duplicate suppression in the shared core. Keep local demo isolated from RF.
+
+- User clarified that ready-to-use defaults take priority over copying blank
+  APRSIS32 RF paths: seed WIDE1-1,WIDE2-1 beacon paths, WIDE1-1 message paths and
+  the WIDE1-1= fill-in rule. Digipeating activates through its explicit switch.
+- New completed port setup defaults enabled. Unconfigured saved templates stay
+  disabled. Never overwrite an existing user's paths, rules or enable choices.
+- Keep port wiring edits transactional: maintain references across renames, never
+  broaden routes when deleting their last target, and distinguish live status
+  from an unapplied draft. Persist all functional choices in settings.toml.

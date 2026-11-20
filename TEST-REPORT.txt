@@ -1,3 +1,10 @@
+Visual port workspace source — 2026-11-20
+NOT COMPILED, RENDERED OR TESTED, retaining the user's instruction. No application
+restart, device discovery, serial/TCP access or transmission was performed.
+Static source review only. Prepared draft transaction/rename/remove/rewire tests
+for a later run. Defaults compared with APRSIS32 Config.cpp and Config.h.
+User explicitly retained prefilled RF paths and the WIDE1 fill-in preset.
+
 Named radio ports source — 2026-11-20
 NOT COMPILED OR TESTED, retaining the user's instruction. No devices opened, app
 restart, build, RF transmission or APRS-IS beacon. Prepared codec, digipeater,
