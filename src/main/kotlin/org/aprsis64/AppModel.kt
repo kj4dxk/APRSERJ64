@@ -36,6 +36,11 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
     val portPresets get() = store.portPresets
     val settingsRevision=MutableStateFlow(0L)
     val beaconState=MutableStateFlow(BeaconState(settings.getProperty("beacon.enabled").toBoolean()))
+    val offline=OfflineMaps(directory,scope) {settings.getProperty(it)}
+    val weatherAlerts=WeatherAlerts({settings.getProperty(it)},scope)
+    val activity=ActivityAlerts {settings.getProperty(it)}
+    private val kioskReplies=java.util.concurrent.ConcurrentHashMap<String,Long>()
+    val archive=StationArchive(directory,scope) {settings.getProperty(it)}
     val monitor=PacketMonitor(directory,scope)
     val beaconCenter=MutableStateFlow<AprsFix?>(null)
     init { account.value = settings.getProperty("callsign","");startPorts() }
@@ -44,7 +49,9 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         beaconObserver?.cancel();broadcaster?.close();broadcaster=null
         radioObserver?.cancel();radio?.close()
         monitor.configure(settings,demo.value)
-        val current=RadioPorts(account.value,Properties().apply {putAll(settings)},if(demo.value) emptyList() else store.ports,scope,monitor::record)
+        weatherAlerts.configure(demo.value)
+        activity.configure()
+        val current=RadioPorts(account.value,Properties().apply {putAll(settings)},if(demo.value) emptyList() else store.ports,scope,::recordTraffic)
         radio=current;current.attach(client)
         if(AprsProtocol.validCallsign(account.value)) chat=ChatSession(account.value,current,database,scope) {error.value=it}
         radioObserver=scope.launch {
@@ -58,7 +65,8 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
             val address = AprsEndpoint.parse(endpoint)
             val config = AprsIsConfig(call.trim().uppercase(),password.trim().ifBlank { "-1" },address.host,address.port,
                 latitude,longitude,radiusKm=settings.getProperty("radiusKm").toInt(),application="APRSIS64",
-                filterMode=settings.getProperty("operating.filter_mode"),customFilter=settings.getProperty("operating.custom_filter"))
+                filterMode=settings.getProperty("operating.filter_mode"),customFilter=settings.getProperty("operating.custom_filter"),
+                fallbackServers=if(settings.getProperty("connectivity.failover").toBoolean()) servers.take(16).map {AprsEndpoint(it.host,it.port)} else emptyList())
             settings.setProperty("callsign", config.callsign); settings.setProperty("endpoint",endpoint)
             settings.setProperty("passcode", config.passcode)
             settings.setProperty("autoConnect", autoConnect.toString())
@@ -87,7 +95,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         val connection = AprsIsClient(); client = connection
         if(radio?.call==config.callsign && !demo.value) radio?.attach(connection) else startPorts()
         observing = scope.launch {
-            launch { connection.state.collect { state.value=it; println("APRS_CONNECTION ${config.callsign} $it ${config.host}:${config.port}") } }
+            launch { connection.state.collect { state.value=it; println("APRS_CONNECTION ${config.callsign} $it ${connection.activeEndpoint.value?.host}:${connection.activeEndpoint.value?.port}") } }
             launch { connection.stations.collect { internetStations.value=it; if(it.size == 1 || it.size % 50 == 0) println("APRS_STATIONS ${it.size}") } }
         }
         connection.start(config)
@@ -122,7 +130,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         val previousEntities=store.entities
         val previousPorts=store.ports
         try {
-            BeaconConfiguration(values,entities); ServicePreferences.validate(values); OperatingPreferences.validate(values)
+            BeaconConfiguration(values,entities); ServicePreferences.validate(values); OperatingPreferences.validate(values); FeaturePreferences.validate(values)
             PortPreferences.validateAll(values,ports,entities)
             settings.clear(); settings.putAll(values); store.entities=entities;store.ports=ports
             store.save(); settingsRevision.value++
@@ -131,12 +139,47 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
                     AprsEndpoint.parse(settings.getProperty("endpoint")).host,AprsEndpoint.parse(settings.getProperty("endpoint")).port,
                     settings.getProperty("latitude").toDouble(),settings.getProperty("longitude").toDouble(),
                     radiusKm=settings.getProperty("radiusKm").toInt(),application="APRSIS64",
-                    filterMode=settings.getProperty("operating.filter_mode"),customFilter=settings.getProperty("operating.custom_filter"))
+                    filterMode=settings.getProperty("operating.filter_mode"),customFilter=settings.getProperty("operating.custom_filter"),
+                fallbackServers=if(settings.getProperty("connectivity.failover").toBoolean()) servers.take(16).map {AprsEndpoint(it.host,it.port)} else emptyList())
                 disconnect();startPorts();start(config)
             } else startPorts()
             beaconState.value=beaconState.value.copy(enabled=settings.getProperty("beacon.enabled").toBoolean())
             error.value=""; return true
         } catch(_: Exception) {settings.clear();settings.putAll(previous);store.entities=previousEntities;store.ports=previousPorts;error.value="Check the settings values and folder write access.";return false}
+    }
+    private fun recordTraffic(port:String,direction:String,line:String) {
+        val packet=line.trimEnd();monitor.record(port,direction,packet)
+        if(direction=="RX" || port=="APRS-IS") archive.offer(packet)
+        if(direction=="RX") {
+            activity.incoming(packet,account.value)
+            val message=AprsMessages.parse(packet)
+            if(message!=null && message.recipient==account.value && message.acknowledgement==null && settings.getProperty("kiosk.enabled").toBoolean() && !demo.value) {
+                val entries=names(settings.getProperty("kiosk.entries")).associate {it.substringBefore('=') to it.substringAfter('=')}
+                val query=message.text.trim().uppercase()
+                val reply=if(query=="INFO") entries.keys.joinToString(" ").take(67) else entries[query]
+                if(!reply.isNullOrBlank()) {
+                    val now=System.currentTimeMillis();val last=kioskReplies[message.sender] ?: 0
+                    if(now-last>=settings.getProperty("kiosk.minimum_seconds").toLong()*1000) {
+                        if(kioskReplies.size>1000)kioskReplies.clear()
+                        kioskReplies[message.sender]=now
+                        scope.launch {runCatching {send(message.sender,reply)}}
+                    }
+                }
+            }
+        }
+    }
+    private val groupRefresh=scope.launch {
+        while(isActive) {
+            delay(settings.getProperty("groups.keepalive_minutes").toLong()*60000)
+            if(!demo.value && state.value==AprsConnectionState.VERIFIED && settings.getProperty("groups.keepalive").toBoolean())
+                names(settings.getProperty("groups.names")).forEach {group->runCatching {send(settings.getProperty("groups.server"),AprsServices.group("K",group))}}
+        }
+    }
+    suspend fun sendBulletin(slot:String,group:String,text:String):Boolean =
+        radio?.broadcast(AprsServices.bulletin(account.value,slot,group,text)) ?: false
+    fun updateFeature(key:String,value:String):Boolean {
+        val values=Properties().apply {putAll(settings);setProperty(key,value)}
+        return savePreferences(values,entities)
     }
     fun transmitBeacon() {broadcaster?.transmit()}
     fun transmitStatus() {broadcaster?.transmitStatus()}
@@ -155,7 +198,8 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         disconnect()
         broadcaster?.close();radioObserver?.cancel()
         runBlocking {try {withTimeoutOrNull(3000) {radio?.shutdown()}} finally {radio?.close()}}
-        monitor.close()
+        monitor.close();offline.close();weatherAlerts.close();activity.close()
+        runBlocking {archive.finish()}
         runBlocking { scope.coroutineContext[Job]?.cancelAndJoin() }
         database.close()
     }

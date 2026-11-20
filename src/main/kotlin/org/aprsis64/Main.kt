@@ -33,6 +33,9 @@ import org.maplibre.compose.expressions.dsl.const
 import org.maplibre.compose.interaction.ClickResult
 import org.maplibre.compose.interaction.MapInteractions
 import org.maplibre.compose.layers.CircleLayer
+import org.maplibre.compose.layers.SymbolLayer
+import org.maplibre.compose.layers.LineLayer
+import org.maplibre.compose.expressions.dsl.image
 import org.maplibre.compose.map.*
 import org.maplibre.compose.sources.GeoJsonData
 import org.maplibre.compose.sources.rememberGeoJsonSource
@@ -56,7 +59,7 @@ fun main(args: Array<String>) {
         cacheFile = kotlinx.io.files.Path(home.resolve("cache/tiles.db").toString())
         maximumCacheSizeBytes = model.settings.getProperty("map.cache_megabytes").toLong() * 1024 * 1024
     }
-    println("APRSIS64 0.4.0 | Java ${System.getProperty("java.version")} | Vulkan / Direct3D12 | home=$home")
+    println("APRSIS64 0.5.0 | Java ${System.getProperty("java.version")} | Vulkan / Direct3D12 | home=$home")
     if(demoMode) model.localDemo()
     else model.connectSaved()
     application {
@@ -82,6 +85,17 @@ fun main(args: Array<String>) {
     val portStatuses by model.portStatuses.collectAsState()
     val beaconCenter by model.beaconCenter.collectAsState()
     var selected by remember { mutableStateOf<String?>(null) }
+    var tools by remember {mutableStateOf(false)}
+    val tracking=remember {mutableStateListOf<String>().apply {addAll(names(model.settings.getProperty("display.tracking_calls")))}}
+    var search by remember {mutableStateOf(model.settings.getProperty("display.search"))}
+    var kind by remember {mutableStateOf(model.settings.getProperty("display.kind"))}
+    var sort by remember {mutableStateOf(model.settings.getProperty("display.sort"))}
+    val notices by model.activity.notices.collectAsState()
+    val filtered=stations.filter {station->
+        station.callsign.contains(search,true) && System.currentTimeMillis()-station.heardAtMillis<=model.settings.getProperty("display.maximum_age_minutes").toLong()*60000 &&
+        when(kind) {"weather"->station.symbol=='_';"moving"->Regex("^\\d{3}/(\\d{3})").find(station.comment)?.groupValues?.get(1)?.toIntOrNull()?.let {it>0}==true;"objects"->station.callsign in model.archive.objects.value;else->true}
+    }.let {list->when(sort) {"recent"->list.sortedByDescending {it.heardAtMillis};"distance"->list.sortedBy {AdaptiveBeaconPolicy.distance(AprsFix(model.settings.getProperty("position.latitude").toDouble(),model.settings.getProperty("position.longitude").toDouble(),0),AprsFix(it.latitude,it.longitude,0))};else->list.sortedBy {it.callsign}}}
+
     var settings by remember { mutableStateOf(false) }
     var about by remember { mutableStateOf(false) }
     var preferences by remember { mutableStateOf(false) }
@@ -105,6 +119,7 @@ fun main(args: Array<String>) {
             TextButton(onClick={preferences=true}) {Text("Settings")}
             TextButton(onClick={portWorkspace=true}) {Text("Ports")}
             TextButton(onClick={packetMonitor=true}) {Text("Packets")}
+            TextButton(onClick={tools=true}) {Text("Tools")}
             Button(onClick={model.transmitBeacon()},enabled=beacon.enabled && account.isNotBlank()) {Text("Transmit")}
             Spacer(Modifier.width(8.dp))
             if(connection==AprsConnectionState.STOPPED) Button(onClick={ model.localDemo() }) { Text("Local demo") }
@@ -112,11 +127,21 @@ fun main(args: Array<String>) {
             TextButton(onClick={about=true}) {Text("About")}
         }
         if(error.isNotBlank()) Text(error,Modifier.fillMaxWidth().background(Color(0xFF6B332B)).padding(10.dp))
+        if(notices.isNotEmpty()) Row(Modifier.fillMaxWidth().background(Panel).padding(horizontal=12.dp)) {
+            Text(notices.last().text,Modifier.weight(1f),fontSize=12.sp)
+            TextButton(onClick={tools=true}) {Text("View alerts")};TextButton(onClick={model.activity.dismiss()}){Text("Dismiss")}
+        }
         Row(Modifier.weight(1f)) {
             Column(Modifier.width(225.dp).fillMaxHeight().background(Panel).padding(14.dp)) {
                 Text("STATIONS",color=Muted,fontSize=12.sp)
-                Text("${stations.size}",Modifier.padding(vertical=10.dp),fontSize=20.sp)
-                LazyColumn(Modifier.weight(1f)) { items(stations,key={it.callsign}) { station ->
+                OutlinedTextField(search,{search=it},label={Text("Find station")},singleLine=true,modifier=Modifier.fillMaxWidth())
+                TextButton(onClick={kind=listOf("all","weather","moving","objects").let {it[(it.indexOf(kind)+1)%it.size]}}){Text("Type: $kind")}
+                TextButton(onClick={sort=listOf("callsign","recent","distance").let {it[(it.indexOf(sort)+1)%it.size]}}){Text("Sort: $sort")}
+                TextButton(onClick={val p=java.util.Properties().apply {putAll(model.settings);setProperty("display.search",search);setProperty("display.kind",kind);setProperty("display.sort",sort);setProperty("display.tracking_calls",encodedNames(tracking.toList()))};model.savePreferences(p,model.entities)}){Text("Save view defaults")}
+                Text("${filtered.size} / ${stations.size}",Modifier.padding(vertical=6.dp),fontSize=16.sp)
+                if(selected!=null) TextButton(onClick={if(selected !in tracking && tracking.size<8)tracking.add(selected!!)}){Text("Open tracking window")}
+
+                LazyColumn(Modifier.weight(1f)) { items(filtered,key={it.callsign}) { station ->
                     Column(Modifier.fillMaxWidth().clickable { selected=station.callsign }.padding(vertical=10.dp)) {
                         Text(station.callsign,color=if(selected==station.callsign) Accent else Color.White,fontWeight=FontWeight.Bold)
                         Text("%.3f, %.3f".format(station.latitude,station.longitude),fontSize=11.sp,color=Muted)
@@ -130,15 +155,17 @@ fun main(args: Array<String>) {
             val own=beacon.position?.takeIf {account.isNotBlank()}?.let {p -> AprsStation(account,p.fix.latitude,p.fix.longitude,
                 model.settings.getProperty("beacon.symbol_table").single(),model.settings.getProperty("beacon.symbol").single(),"",p.fix.timeMillis)}
             val localStations=listOfNotNull(own)+beacon.entities
-            key(settingsRevision) {MapPanel(localStations+stations.filter {remote->localStations.none {it.callsign==remote.callsign}},selected,model,beaconCenter,Modifier.weight(1f).fillMaxHeight()) { selected=it }}
+            key(settingsRevision) {MapPanel(localStations+filtered.filter {remote->localStations.none {it.callsign==remote.callsign}},selected,model,beaconCenter,Modifier.weight(1f).fillMaxHeight()) { selected=it }}
             ChatPanel(account,selected,{selected=it},rows,model,Modifier.width(350.dp).fillMaxHeight())
         }
     }
+    tracking.toList().forEach {call->key(call) {TrackingWindow(model,call) {tracking.remove(call)}}}
+    if(tools) OperatingToolsWindow(model,selected) {tools=false}
     if(settings) ConnectionDialog(model) {settings=false}
     if(preferences) PreferencesDialog(model) {preferences=false}
     if(packetMonitor) PacketMonitorWindow(model) {packetMonitor=false}
     if(portWorkspace) PortWorkspaceWindow(model) {portWorkspace=false}
-    if(about) AlertDialog(onDismissRequest={about=false},title={Text("APRSIS64 0.4.0")},text={
+    if(about) AlertDialog(onDismissRequest={about=false},title={Text("APRSIS64 0.5.0")},text={
         Text("Copyright 2026 APRSIS64 contributors.\nAGPL-3.0. No warranty.\n\nContains GPLv3 shared components. Third-party license notices are included in the app folder.")
     },confirmButton={TextButton(onClick={Desktop.getDesktop().browse(URI(model.settings.getProperty("services.source_url")))}) {Text("Source & license")}},dismissButton={TextButton(onClick={about=false}) {Text("Close")}})
 }
@@ -151,14 +178,31 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     } } }
 }.toString()
 
-@Composable private fun MapPanel(stations: List<AprsStation>, selected: String?, model: AppModel, beaconCenter: AprsFix?, modifier: Modifier, select: (String)->Unit) {
+@Composable internal fun MapPanel(stations: List<AprsStation>, selected: String?, model: AppModel, beaconCenter: AprsFix?, modifier: Modifier, forceFollow:Boolean=false, select: (String)->Unit) {
     val data = remember(stations) { GeoJsonData.JsonString(stationJson(stations)) }
-    val style = remember { BaseStyle.Json(ServicePreferences.style(model.settings)) }
+    val style = remember { BaseStyle.Json(ServicePreferences.style(mapSettings(model))) }
+    val historyRevision by model.archive.revision.collectAsState()
+    var trail by remember(selected) {mutableStateOf<List<AprsFix>>(emptyList())}
+    var follow by remember {mutableStateOf(forceFollow || model.settings.getProperty("display.follow").toBoolean())}
+    var gotoLat by remember {mutableStateOf("")};var gotoLon by remember {mutableStateOf("")}
+    var navigationError by remember {mutableStateOf("")}
+    val scope=rememberCoroutineScope()
+    LaunchedEffect(selected,historyRevision) {trail=selected?.let {model.archive.track(it)} ?: emptyList()}
+
     val initial=remember {Position(model.settings.getProperty("longitude").toDouble(),model.settings.getProperty("latitude").toDouble())}
     val state=rememberMapState(baseStyle=style,initialCameraPosition=CameraPosition(center=initial,zoom=model.settings.getProperty("map.initial_zoom").toDouble())) {
+        if(model.settings.getProperty("display.trails").toBoolean() && trail.size>1) {
+            val trailSource=rememberGeoJsonSource(GeoJsonData.JsonString(trailJson(trail)))
+            LineLayer(id="station-trail",source=trailSource,color=const(Color(0xFFB33E20)),width=const(3.dp))
+        }
         val source=rememberGeoJsonSource(data)
         CircleLayer(id="aprs-stations",source=source,radius=const(7.dp),color=const(Color(0xFF006D65)),strokeWidth=const(2.dp),strokeColor=const(Color.White),hitPadding=8.dp,
             onClick={features -> features.firstOrNull()?.properties?.get("callsign")?.jsonPrimitive?.content?.let(select); ClickResult.Consume})
+        if(model.settings.getProperty("display.symbols").toBoolean()) stations.groupBy {"${it.symbolTable.code}-${it.symbol.code}"}.forEach {(id,group)->key(id) {
+            val symbols=rememberGeoJsonSource(GeoJsonData.JsonString(stationJson(group)))
+            SymbolLayer(id="symbol-$id",source=symbols,iconImage=image(StationSymbols.bitmap(group.first().symbolTable,group.first().symbol)),iconAllowOverlap=const(true),
+                onClick={features->features.firstOrNull()?.properties?.get("callsign")?.jsonPrimitive?.content?.let(select);ClickResult.Consume})
+        }}
     }
     var mapError by remember {mutableStateOf("")}
     LaunchedEffect(state) {
@@ -184,10 +228,27 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
             state.animateCamera(CameraUpdate(center=Position(it.longitude,it.latitude),bearing=0.0,pitch=0.0))
         }
     }
+    val followed=stations.firstOrNull {it.callsign==selected}
+    LaunchedEffect(follow,followed?.latitude,followed?.longitude) {if(follow && followed!=null) state.animateCamera(CameraUpdate(center=Position(followed.longitude,followed.latitude),bearing=0.0,pitch=0.0))}
     LaunchedEffect(beaconCenter) {beaconCenter?.let {state.animateCamera(CameraUpdate(center=Position(it.longitude,it.latitude),bearing=0.0,pitch=0.0))}}
     Box(modifier) {
         MaplibreMap(state=state,interactions=MapInteractions {camera {rotate {enabled=false}; pitch {enabled=false}}},
             cameraConstraints=CameraConstraints {maxPitch=0.0; minZoom=model.settings.getProperty("map.minimum_zoom").toDouble(); maxZoom=model.settings.getProperty("map.maximum_zoom").toDouble()},renderOptions=RenderOptions {maximumFps=model.settings.getProperty("map.maximum_fps").toInt()}, overlay={})
+        Column(Modifier.align(Alignment.TopStart).padding(6.dp).background(Panel.copy(alpha=0.94f)).padding(6.dp)) {
+            Row {
+                TextButton(onClick={scope.launch {state.animateCamera(CameraUpdate(zoom=(state.cameraPosition.zoom+1).coerceAtMost(model.settings.getProperty("map.maximum_zoom").toDouble())))}}){Text("+")}
+                TextButton(onClick={scope.launch {state.animateCamera(CameraUpdate(zoom=(state.cameraPosition.zoom-1).coerceAtLeast(model.settings.getProperty("map.minimum_zoom").toDouble())))}}){Text("−")}
+                TextButton(onClick={scope.launch {state.animateCamera(CameraUpdate(center=initial,bearing=0.0,pitch=0.0))}}){Text("Home")}
+                TextButton(onClick={follow=!follow}){Text(if(follow) "Following" else "Follow")}
+            }
+            Row {
+                OutlinedTextField(gotoLat,{gotoLat=it},Modifier.width(100.dp),label={Text("Latitude")},singleLine=true)
+                OutlinedTextField(gotoLon,{gotoLon=it},Modifier.width(110.dp),label={Text("Longitude")},singleLine=true)
+                TextButton(onClick={runCatching {AprsFix(gotoLat.toDouble(),gotoLon.toDouble(),0)}.onSuccess {p->follow=false;navigationError="";scope.launch {state.animateCamera(CameraUpdate(center=Position(p.longitude,p.latitude),bearing=0.0,pitch=0.0))}}.onFailure {navigationError="Check coordinates"}}){Text("Go")}
+            }
+            if(followed!=null) Text(navigationSummary(model,followed),fontSize=11.sp)
+            if(navigationError.isNotBlank())Text(navigationError,fontSize=11.sp)
+        }
         Text(model.settings.getProperty("map.attribution"),Modifier.align(Alignment.BottomEnd).padding(6.dp).background(Color.White.copy(alpha=0.88f))
             .clickable {Desktop.getDesktop().browse(URI(model.settings.getProperty("map.attribution_url")))}.padding(5.dp),color=Color(0xFF263740),fontSize=11.sp)
         if(mapError.isNotEmpty()) Text(mapError,Modifier.align(Alignment.TopStart).padding(12.dp).background(Panel).padding(10.dp),color=Accent,fontSize=12.sp)

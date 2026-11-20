@@ -1,0 +1,71 @@
+APRSIS64 0.5.0 - coverage of the requested top 30 categories
+2026-11-20
+
+Ranks 1-15 retain the implementation documented in TOP-15-FEATURES.txt.
+This release adds functional workflows for ranks 16-30 below. Category coverage
+is not complete APRSIS32 behavioral parity; limitations are listed explicitly.
+
+16. Weather station data
+    Decode standard APRS wind, gust, temperature, humidity, pressure and rain.
+    View received weather in Tools; observations persist in SQLite. Unsupported
+    vendor extensions are not interpreted and missing fields remain unknown.
+17. Station symbols and overlays
+    APRS primary/alternate symbol sheets, alphanumeric overlays and visual picker.
+    APRSISMO assets retain AGPL attribution. Native map icons support selection.
+18. Position sharing, GPX and exports
+    Persistent bounded tracks, GPX 1.1 and CSV export, and selected-position sharing
+    through ordinary APRS messages. Exports are stored beside the executable.
+19. Weather alerts, radar and overlays
+    Optional configurable NWS-compatible GeoJSON alerts at the configured position.
+    Optional XYZ radar overlay with opacity control. Radar requires a provider URL;
+    no animated radar or CAP polygon renderer. Both services default off.
+20. Map and application controls
+    Zoom, home, coordinates, follow control, symbol picker and editable feature
+    defaults. Existing graphical Ports, packet monitor and chat tools remain.
+21. QRU and information kiosks
+    QRU INFO/group queries with radius; responses appear through ordinary APRS
+    reception. Optional own-callsign text kiosk with configured topics, INFO list
+    and per-sender rate limit. Not a complete QRU object-distribution server.
+22. Station lists and display filters
+    Search, age and all/weather/moving/object filters, callsign/recent/distance
+    sorting and persisted view defaults. Object classification uses received data.
+23. APRS-IS connectivity and servers
+    Existing editable presets, filters and reconnect plus optional ordered fallback
+    through configured servers. Failover defaults off; active endpoint is logged.
+24. Map display and navigation
+    North-up maps, coordinate Go and direct distance/bearing to a station.
+    Selected trails split at the dateline. This is not turn-by-turn routing.
+25. Telemetry and graphs
+    Classic T# analog/digital samples; PARM, UNIT, EQNS and BITS definitions.
+    Timestamped analog graphs with polynomial conversion and persistent history.
+    Compressed/vendor telemetry extensions are not covered.
+26. Offline maps and prefetching
+    Explicit bounded region/zoom downloads, progress/cancel, tile and disk budgets,
+    per-provider cache namespaces and local-only base-map mode. No MBTiles import,
+    automatic bulk download or offline network overlays. Provider rules still apply.
+27. Station tracking and following
+    Bounded persistent position history, selected trails, follow and track exports.
+28. MultiTrack windows and views
+    Up to eight separate native map windows following selected callsigns.
+    Save view defaults persists the tracking calls. Each retains north-up behavior.
+29. Announcements, groups and ANSRVR
+    Join, leave, query, list and CQ via configurable group server. Optional keepalive,
+    saved requested group names and received/transmitted standard APRS bulletins.
+    Server replies are authoritative for membership; bulletins are manually sent.
+30. Alerts, sounds and notifications
+    Deduplicated incoming-message and watched-station notices with cooldowns.
+    Optional sounds and desktop tray notifications, both off by default.
+
+Portable defaults, user credentials, pdeffenb maps, beacon-on startup, radio port
+presets and per-folder multi-instance behavior are retained. Feature defaults,
+service addresses and available APRS-IS servers are editable in settings.toml.
+New history lives in data/stations.sqlite; chats remain in data/chats.sqlite.
+
+Protocol references used:
+https://www.aprs.org/doc/APRS101.PDF
+https://argentdata.com/support/telemetry/
+https://aprsisce.wikidot.com/doc:ansrvr
+https://privat.bahnhof.se/wb758759/documents/APRS-Queries.pdf
+https://www.weather.gov/documentation/services-web-api
+
+Validation and outstanding UI/hardware checks: TEST-REPORT.txt.

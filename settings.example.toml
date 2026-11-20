@@ -297,6 +297,56 @@ feed_enabled = false
 feed_port = 14581
 satellite_aliases = ["RS0ISS","NA1SS","ARISS","APRSAT"]
 
+[connectivity]
+failover = false
+
+[display]
+search = ""
+kind = "all"
+sort = "callsign"
+maximum_age_minutes = 30
+symbols = true
+trails = true
+tracking_calls = []
+follow = false
+
+[history]
+enabled = true
+maximum_points = 100000
+track_points = 1000
+
+[offline]
+enabled = false
+maximum_tiles = 1000
+maximum_megabytes = 1024
+
+[weather]
+enabled = false
+alerts_url = "https://api.weather.gov/alerts/active?point={lat},{lon}"
+refresh_seconds = 300
+radar_enabled = false
+radar_url = ""
+radar_opacity = 0.6
+
+[groups]
+server = "ANSRVR"
+names = []
+keepalive = false
+keepalive_minutes = 120
+
+[kiosk]
+server = "QRU"
+enabled = false
+entries = []
+minimum_seconds = 60
+
+[alerts]
+messages = true
+watch_calls = []
+desktop = false
+sound = false
+minimum_seconds = 30
+
 [[port_presets]]
 name = "Dire Wolf KISS"
 notes = "Start Dire Wolf with KISSPORT 8001. Select your sound card and PTT in Dire Wolf."

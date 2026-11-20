@@ -84,14 +84,17 @@ class SettingsStore(private val root: Path) {
         ServicePreferences.load(values,document)
         BeaconPreferences.loadFields(values,document,PortPreferences.global)
         BeaconPreferences.loadFields(values,document,OperatingPreferences.fields)
+        BeaconPreferences.loadFields(values,document,FeaturePreferences.fields)
+        FeaturePreferences.validate(values)
         OperatingPreferences.validate(values)
         PortPreferences.validateAll(values,ports,entities)
         ServicePreferences.validate(values)
         BeaconConfiguration(values,entities)
         if(!Files.exists(path) || document?.get("aprs.servers")==null || document?.get("port_presets")==null ||
-            (BeaconPreferences.fields+ServicePreferences.fields+PortPreferences.global+OperatingPreferences.fields).any {document?.get(it.key)==null}) save()
+            (BeaconPreferences.fields+ServicePreferences.fields+PortPreferences.global+OperatingPreferences.fields+FeaturePreferences.fields).any {document?.get(it.key)==null}) save()
     }
     fun save() {
+        FeaturePreferences.validate(values)
         OperatingPreferences.validate(values)
         PortPreferences.validateAll(values,ports,entities)
         BeaconConfiguration(values,entities)
@@ -127,7 +130,7 @@ class SettingsStore(private val root: Path) {
         }
         require(portPresets.size<=64);portPresets.forEach {PortConfig(it)}
         val completeContents=(if(portPresets.isEmpty()) "port_presets = []\n" else "")+contents+
-            BeaconPreferences.write(values,OperatingPreferences.fields)+portPresets.joinToString("") {
+            BeaconPreferences.write(values,OperatingPreferences.fields)+BeaconPreferences.write(values,FeaturePreferences.fields)+portPresets.joinToString("") {
                 "\n[[port_presets]]\n"+BeaconPreferences.write(it,PortPreferences.fields,sections=false)
             }
         val temp = Files.createTempFile(root, ".settings-", ".tmp")

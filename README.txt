@@ -1,6 +1,6 @@
 APRSIS64 — portable Windows APRS map, chat and beaconing
 
-RELEASE 0.4.0: Windows/shared-core build and 61 tests pass. Portable map/demo
+RELEASE 0.5.0: Windows/shared-core build and 69 tests pass. Portable map/demo
 startup verified. Physical radio and full visual UI validation remain outstanding.
 See TEST-REPORT.txt.
 
@@ -20,6 +20,9 @@ It always works relative to the EXE, even if a shortcut starts elsewhere.
 The program creates these items beside APRSIS64.exe:
   settings.toml         Account, server list, maps, services, GPS and beacon settings
   data/chats.sqlite     Persistent chat history and outgoing queue
+  data/stations.sqlite  Track, weather and telemetry history
+  cache/offline/        Explicitly prefetched base tiles by provider
+  exports/              GPX tracks and CSV position exports
   cache/tiles.db        Downloaded map resources (512 MiB ambient cache limit)
   cache/tmp/            Native-library extraction and temporary runtime files
   logs/                 Current and previous launch diagnostics
@@ -53,7 +56,6 @@ and keeps the original file intact. Once TOML exists, it takes precedence. Inval
 TOML is rejected rather than overwritten with defaults. Close the app before hand
 editing settings. Application saves rewrite the known settings in the format above;
 custom comments and unknown fields are not retained when saving.
-The existing 0.2.0 EXE still uses properties until a new build is requested.
 FIRST CONNECTION
 Open Connection, enter your callsign including SSID and APRS-IS passcode, choose
 a preset or Custom server, then Connect. Passcode is saved in settings.toml.
@@ -154,3 +156,15 @@ See TOP-15-FEATURES.txt for each ranked category, setup instructions, evidence
 and explicit limits. New controls: Ports > Add port presets; Settings > Operating
 for server filters/local feed; Settings > Beacon for SmartBeaconing; Packets for
 traffic inspection, satellite filtering and export; Connection > SSID chooser.
+
+TOP 30 FEATURE WORKFLOWS (0.5.0)
+See TOP-30-FEATURES.txt for coverage and limitations of all ranked categories.
+Open Tools for weather, telemetry graphs, track exports, offline tile downloads,
+ANSRVR groups, QRU queries, bulletins and activity alerts. Settings contains their
+editable defaults, URLs, retention limits, notification and service controls.
+Use station filters and Save view defaults to retain filters and tracking calls.
+Up to eight separate tracking windows can follow stations; maps remain north-up.
+Multiple program instances are supported in separate writable folders.
+Weather alerts, radar, sounds, desktop notifications and server failover default
+off. Radar requires a provider URL. Offline mode uses explicitly downloaded base
+tiles and disables network overlays. Prefetch only areas your provider permits.

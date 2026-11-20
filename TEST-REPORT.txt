@@ -1,3 +1,26 @@
+APRSIS64 0.5.0 feature integration - 2026-11-20
+PASS: test :core:test packagePortable. 69 tests: 41 shared core, 28 Windows.
+New tests cover weather/telemetry/bulletin parsing, service message encoding,
+persistent observations and tracks, GPX escaping/export, telemetry definitions,
+local tile prefetch with cached reads after provider shutdown, tile-count limits,
+alert deduplication, GeoJSON alerts, APRS-IS endpoint failover, settings roundtrip,
+all primary/alternate symbols, alphanumeric overlays and dateline trail splitting.
+Portable demo verified on loopback, sent a local beacon, loaded the map style,
+rendered its first Vulkan frame at 889x741 and reached map idle.
+Visual capture failed twice: window capture timed out: timed out waiting on channel.
+Full visual interaction, physical radios, live QRU/ANSRVR service responses,
+optional radar provider and Windows notification appearance remain unverified.
+Runtime includes a nonfatal LWJGL sun.misc.Unsafe deprecation warning.
+See TOP-30-FEATURES.txt for scope and remaining parity limitations.
+
+Desktop deployment: preserved every existing settings value, retained a 0.4.0
+EXE/settings backup, and verified the installed EXE hash against this build.
+Live startup logged VERIFIED at rotate.aprs2.net:14580 as KJ4DXK-13 and
+BEACON_TX Initial, then rendered a Vulkan frame and reached map idle.
+This confirms the local transmit path, not independent network-wide reception.
+
+Earlier verification follows:
+
 APRSIS64 0.4.0 feature integration — 2026-11-20
 PASS: test :core:test packagePortable. 61 tests: 38 shared core, 23 Windows.
 New coverage: custom/moving/range filters and actual login wire output, preset
