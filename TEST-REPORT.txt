@@ -1,3 +1,10 @@
+Beaconing and configurable services source — 2026-11-20
+NOT COMPILED OR TESTED, at the user's request. No new EXE, restart, or public
+beacon transmission. New regression tests are source only and have not run.
+Static review only: runtime map URLs, service links and server menu use TOML;
+first-run resources match APRSISOSM. Desktop TOML populated, credentials local.
+Earlier PASS results below do not validate these changes.
+
 TOML source change — 2026-11-20
 Settings now use settings.toml with legacy properties import. Not compiled or tested,
 as requested. Reports below apply to earlier builds, not this source change.

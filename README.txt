@@ -1,4 +1,7 @@
-APRSIS64 — portable Windows APRS map and chat
+APRSIS64 — portable Windows APRS map, chat and beaconing
+
+SOURCE STATUS: TOML, configurable services and beaconing are not yet built or
+tested. The existing 0.2.0 EXE predates these changes. See TEST-REPORT.txt.
 
 Source: https://github.com/kj4dxk/APRSIS64
 Shared core: https://github.com/kj4dxk/aprs-core (pinned git submodule)
@@ -14,7 +17,7 @@ application dependencies are embedded in the EXE and extracted on first launch.
 It always works relative to the EXE, even if a shortcut starts elsewhere.
 
 The program creates these items beside APRSIS64.exe:
-  settings.toml         Callsign/SSID, passcode, server, filter and startup setting
+  settings.toml         Account, server list, maps, services, GPS and beacon settings
   data/chats.sqlite     Persistent chat history and outgoing queue
   cache/tiles.db        Downloaded map resources (512 MiB ambient cache limit)
   cache/tmp/            Native-library extraction and temporary runtime files
@@ -29,7 +32,7 @@ Old app/<payload-id> runtime folders may be removed manually when no longer need
 
 
 SETTINGS FORMAT
-settings.toml is UTF-8 TOML, with [aprs] and [map] sections. Strings use quotes,
+settings.toml is UTF-8 TOML. See settings.example.toml for the complete schema. Strings use quotes,
 numbers do not, and booleans are true or false. Indentation is optional.
 Example (no personal credentials):
 
@@ -57,7 +60,11 @@ Connect on startup is enabled by default; Disconnect disables automatic startup
 connection until enabled again. The distributed EXE contains no personal credentials.
 Local settings, data and caches are excluded from the source repository.
 
-The exact 12 presets and order come from APRSISOSM's aprs_servers.json:
+The initial 12 presets and order come from APRSISOSM's aprs_servers.json.
+The runtime menu reads [[aprs.servers]] in settings.toml. Add, remove or reorder
+those blocks and restart; edits are preserved, including an empty server list.
+[aprs].server and port select the active endpoint independently of the menu.
+Initial presets:
 rotate.aprs2.net (default), noam.aprs2.net, euro.aprs2.net, asia.aprs2.net,
 aunz.aprs2.net, soam.aprs2.net, rotate.aprs.net, germany.aprs2.net,
 japan.aprs2.net, nordic.aprs2.net, swiss.aprs2.net, china.aprs2.net.
@@ -81,9 +88,10 @@ ACK is delivery acknowledgement, not a read receipt. APRS messages are public.
 The Local demo button or --demo argument uses a loopback-only test server.
 
 CURRENT SCOPE
-Map and chat, not full APRSIS32 parity. Markers are circles. No Mic-E/ambiguous
-positions, beacon transmission, RF, GPS, routing UI, objects editor, weather,
-telemetry, satellite passes or offline region download manager yet. Cached tiles
+Source adds adaptive and fixed beaconing, serial/TCP/GPSd NMEA positions, status,
+objects/items and companion station reports. See BEACONING.txt for coverage and
+limitations. This is not full APRSIS32 parity. Markers are circles. No RF, routing
+UI, weather/telemetry integrations, satellite passes or offline download manager. Cached tiles
 are reused as MapLibre's HTTP cache permits; there is no bulk tile pre-download.
 Chats currently load complete history rather than pages.
 
@@ -108,3 +116,20 @@ license notices are bundled. See TEST-REPORT.txt for test evidence and limitatio
 For source development, -Daprsis64.home can set a test folder; the portable launcher
 sets APRSIS64_HOME automatically. -Daprsis64.probe=true enables a rendered-feature
 query diagnostic in development launches. Diagnostic output never prints passcodes.
+
+CONFIGURABLE SERVICES
+[map].tile_url defaults to the APRSISOSM pdeffenb raster/light template. Online
+maps are on; overlay and underlay are off. Their URLs, opacity, tile size, zoom
+limits, initial zoom, cache budget, frame limit and attribution are configurable.
+North-up is enforced without a setting, as requested. There are no cloud backup,
+analytics, paid-feature links, weather or Wikipedia modules in this Windows app.
+[services] contains the pdeffenb base, routing, search, map page, setup and monitor
+URLs, plus the source/license link. Routing/search are reserved configuration for
+future features, not implemented navigation or search. Each URL is independent;
+changing base_url alone does not rewrite the other URLs.
+Resources seed missing settings only. Runtime map/connection UI reads the user's
+settings. Existing values and preset lists survive upgrades that fill new keys.
+Close the app before editing TOML. Cache budget changes require restart.
+[position] contains GPS endpoints and fixed station coordinates separately from
+[map]'s initial view/feed center. Confirm the fixed location for your station.
+[beacon].enabled defaults true; a verified login and usable position are required.

@@ -1,0 +1,150 @@
+# APRSIS64 portable settings. Edit while the application is closed.
+# This example contains no account credentials.
+[aprs]
+callsign = ""
+passcode = ""
+server = "rotate.aprs2.net"
+port = 14580
+connect_on_startup = true
+radius_km = 100
+[map]
+latitude = 28.536725
+longitude = -81.242932
+source_name = "pdeffenb"
+tile_url = "http://pdeffenb.homeip.net:82/raster/light/{z}/{x}/{y}.png"
+attribution = "© OpenStreetMap contributors"
+attribution_url = "https://www.openstreetmap.org/copyright"
+tile_size = 256
+minimum_zoom = 0
+maximum_zoom = 18
+initial_zoom = 12.0
+cache_megabytes = 512
+maximum_fps = 30
+online_enabled = true
+base_opacity = 1.0
+overlay_enabled = false
+overlay_url = ""
+overlay_opacity = 0.5
+underlay_enabled = false
+underlay_url = ""
+
+[services]
+base_url = "http://pdeffenb.homeip.net:82"
+routing_url = "http://pdeffenb.homeip.net:82/osmand/route/v1/"
+search_url = "http://pdeffenb.homeip.net:82/api/search"
+map_page_url = "http://pdeffenb.homeip.net:82/raster.html"
+setup_url = "http://pdeffenb.homeip.net:82/osmand-setup.html"
+monitor_url = "http://pdeffenb.homeip.net:82/monitor.html"
+source_url = "https://github.com/kj4dxk/APRSIS64"
+
+
+[[aprs.servers]]
+name = "Main aprs2.net rotate — rotate.aprs2.net"
+host = "rotate.aprs2.net"
+port = 14580
+
+[[aprs.servers]]
+name = "North America — noam.aprs2.net"
+host = "noam.aprs2.net"
+port = 14580
+
+[[aprs.servers]]
+name = "Europe — euro.aprs2.net"
+host = "euro.aprs2.net"
+port = 14580
+
+[[aprs.servers]]
+name = "Asia — asia.aprs2.net"
+host = "asia.aprs2.net"
+port = 14580
+
+[[aprs.servers]]
+name = "Australia and New Zealand — aunz.aprs2.net"
+host = "aunz.aprs2.net"
+port = 14580
+
+[[aprs.servers]]
+name = "South America — soam.aprs2.net"
+host = "soam.aprs2.net"
+port = 14580
+
+[[aprs.servers]]
+name = "Core — rotate.aprs.net"
+host = "rotate.aprs.net"
+port = 14580
+
+[[aprs.servers]]
+name = "Germany — germany.aprs2.net"
+host = "germany.aprs2.net"
+port = 14580
+
+[[aprs.servers]]
+name = "Japan — japan.aprs2.net"
+host = "japan.aprs2.net"
+port = 14580
+
+[[aprs.servers]]
+name = "Nordic countries — nordic.aprs2.net"
+host = "nordic.aprs2.net"
+port = 14580
+
+[[aprs.servers]]
+name = "Switzerland — swiss.aprs2.net"
+host = "swiss.aprs2.net"
+port = 14580
+
+[[aprs.servers]]
+name = "China — china.aprs2.net"
+host = "china.aprs2.net"
+port = 14580
+
+[beacon]
+enabled = true
+minimum_seconds = 10
+maximum_seconds = 1800
+time_only = false
+start_stop = true
+heading_degrees = 30
+forecast_error_meters = 160.9344
+distance_meters = 1609.344
+moving_knots = 0.5
+on_reconnect = true
+on_gps_change = true
+recenter_after_transmit = false
+symbol_table = "/"
+symbol = "-"
+timestamp = "hms"
+compressed = false
+course_speed = true
+altitude = true
+precision = 0
+messaging = true
+include_reason = false
+status_tag = ""
+comments = ["APRSIS64"]
+comment_enabled = true
+comment_interval_seconds = 0
+rotate_comments = false
+selected_comment = 0
+
+[position]
+source = "fixed"
+latitude = 28.536725
+longitude = -81.242932
+altitude_meters = 0
+gps_endpoint = "127.0.0.1:10110"
+gpsd_endpoint = "127.0.0.1:2947"
+serial_port = ""
+serial_baud = 4800
+maximum_age_seconds = 30
+maximum_accuracy_meters = 100
+
+[status]
+enabled = false
+interval_seconds = 1800
+timestamp = true
+grid = false
+text = "APRSIS64"
+
+[odometer]
+report_on_exit = false

@@ -1,0 +1,43 @@
+Beaconing source coverage — not compiled or tested
+
+Behavior reviewed against APRSIS32 source version 2024/09/05 17:14.
+Implementation is independent; no APRSIS32 source is distributed here.
+This is APRS-IS-only coverage, not a claim of complete APRSIS32 parity.
+
+Implemented in source:
+- Enabled by default. Fixed coordinates default to the selected initial location.
+- Manual, initial, reconnect, periodic and GPS acquired/lost position reports.
+- Adaptive minimum/maximum timing, time-only, start/stop, heading, distance,
+  projected distance and projected position error triggers.
+- Fixed, serial NMEA, TCP NMEA and GPSd NMEA position sources. Checksums, fix age,
+  validity and accuracy gates; no queued stale positions on reconnection.
+- Symbol/overlay, timestamps, uncompressed/compressed positions, course/speed,
+  altitude, ambiguity and DAO precision. Compression falls back to plain when
+  needed to retain both course/speed and altitude.
+- Comments, selected or rotating comments and comment timing; optional reason
+  and APRSIS32-style text status tags. Tags do not implement Mic-E encoding.
+- Optional map recentering after transmission.
+- Periodic/manual status, optional timestamp or grid.
+- Odometer report/reset and optional exit report. Current distance accumulates
+  between transmitted fixes, not every GPS fix, so curves can be undercounted.
+- Fixed/following objects, items and companion station identities with their
+  own timing. Object/item kills repeat three times, 30 seconds apart per session.
+  Disable Alive and save to send kills before removing an entity from settings.
+  Kill progress is not persisted across restarts. Station identities cannot be
+  killed with object/item packets.
+- Local station and configured entities displayed without requiring an IS echo.
+
+Defaults: minimum 10 seconds, maximum 30 minutes, start/stop enabled, heading
+30 degrees, forecast error 160.9344 meters, distance 1609.344 meters, moving
+threshold 0.5 knots. Optional status and odometer-on-exit default off.
+All user-facing preferences are written to settings.toml; [[objects]] entries
+hold object/item/companion configuration. See the Settings editor for fields.
+
+Not implemented: RF/TNC beacon paths, RF-only gating and RF-DX status, Windows CE
+cellular location, weather-device packets, telemetry generators and satellite
+automation. Mic-E packet encoding and full APRSIS32 pressure/odometer equivalence
+remain outside the current implementation. Transmission success means a socket
+write succeeded; independent network observation is still needed to prove relay.
+
+Validation pending: protocol tests, settings migration/round trips, GPS device
+checks, UI review, and an explicitly authorized build/live-network check.

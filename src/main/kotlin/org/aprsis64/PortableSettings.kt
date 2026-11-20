@@ -21,9 +21,11 @@ object PortableHome {
 
 class SettingsStore(private val root: Path) {
     private val path = root.resolve("settings.toml")
+    private val document = if(Files.exists(path)) Toml.parse(path).also {
+        require(!it.hasErrors()) { "Invalid settings.toml; check TOML syntax." }
+    } else null
     val values = Properties().apply {
-        if (Files.exists(path)) {
-            val document = Toml.parse(path)
+        if (document != null) {
             // Do not include file contents or parser error excerpts: they may contain the passcode.
             require(!document.hasErrors()) { "Invalid settings.toml; check TOML syntax." }
             fun text(key: String, default: String): String {
@@ -46,6 +48,9 @@ class SettingsStore(private val root: Path) {
             val connect = document.get("aprs.connect_on_startup") ?: true
             require(connect is Boolean) { "aprs.connect_on_startup must be true or false." }
             setProperty("autoConnect", connect.toString())
+            val radius=document.get("aprs.radius_km") ?: 100L
+            require(radius is Long && radius in 1L..500L)
+            setProperty("radiusKm",radius.toString())
             setProperty("latitude", coordinate("map.latitude", 28.536725, -90.0..90.0))
             setProperty("longitude", coordinate("map.longitude", -81.242932, -180.0..180.0))
         } else {
@@ -54,13 +59,31 @@ class SettingsStore(private val root: Path) {
             if(Files.exists(legacy)) Files.newInputStream(legacy).use { load(it) }
         }
     }
+    var entities: List<Properties> = document?.getArray("objects")?.let { array ->
+        (0 until array.size()).map { index -> Properties().also { BeaconPreferences.loadFields(it,array.getTable(index),BeaconPreferences.entityFields) } }
+    } ?: emptyList()
+    var servers: List<ServerPreset> = document?.getArray("aprs.servers")?.let { array ->
+        (0 until array.size()).map { index -> val entry=array.getTable(index)
+            val port=requireNotNull(entry.getLong("port")).also {require(it in 1L..65535L)}.toInt()
+            ServerPreset(requireNotNull(entry.getString("name")),requireNotNull(entry.getString("host")),port).also {
+                require(it.name.isNotBlank()); AprsEndpoint.parse(it.host,it.port)
+            }
+        }
+    } ?: AprsServers.presets
     init {
         val defaults = mapOf("callsign" to "", "passcode" to "", "endpoint" to AprsServers.defaultEndpoint,
-            "latitude" to "28.536725", "longitude" to "-81.242932", "autoConnect" to "true")
+            "latitude" to "28.536725", "longitude" to "-81.242932", "autoConnect" to "true", "radiusKm" to "100")
         defaults.forEach { (key, value) -> if(!values.containsKey(key)) values.setProperty(key, value) }
-        if(!Files.exists(path)) save()
+        BeaconPreferences.load(values,document)
+        ServicePreferences.load(values,document)
+        ServicePreferences.validate(values)
+        BeaconConfiguration(values,entities)
+        if(!Files.exists(path) || document?.get("aprs.servers")==null ||
+            (BeaconPreferences.fields+ServicePreferences.fields).any {document?.get(it.key)==null}) save()
     }
     fun save() {
+        BeaconConfiguration(values,entities)
+        ServicePreferences.validate(values)
         Files.createDirectories(root)
         val address = AprsEndpoint.parse(values.getProperty("endpoint"))
         val latitude = values.getProperty("latitude").toDouble()
@@ -77,11 +100,17 @@ class SettingsStore(private val root: Path) {
             server = ${quoted(address.host)}
             port = ${address.port}
             connect_on_startup = $connect
+            radius_km = ${values.getProperty("radiusKm").toInt().also {require(it in 1..500)}}
+            ${if(servers.isEmpty()) "servers = []" else ""}
 
             [map]
             latitude = $latitude
             longitude = $longitude
-        """.trimIndent() + "\n"
+        """.trimIndent() + "\n" + ServicePreferences.writeMap(values) + ServicePreferences.writeServices(values) +
+            servers.joinToString("") { "\n[[aprs.servers]]\nname = ${quoted(it.name)}\nhost = ${quoted(it.host)}\nport = ${it.port}\n" } +
+            BeaconPreferences.writeMain(values) + entities.joinToString("") {
+            "\n[[objects]]\n"+BeaconPreferences.write(it,BeaconPreferences.entityFields,sections=false)
+        }
         val temp = Files.createTempFile(root, ".settings-", ".tmp")
         try {
             Files.writeString(temp, contents)
@@ -92,7 +121,7 @@ class SettingsStore(private val root: Path) {
 }
 
 data class ServerPreset(val name: String, val host: String, val port: Int) {
-    val endpoint: String get() = "$host:$port"
+    val endpoint: String get() = if(':' in host && !host.startsWith('[')) "[$host]:$port" else "$host:$port"
 }
 
 object AprsServers {

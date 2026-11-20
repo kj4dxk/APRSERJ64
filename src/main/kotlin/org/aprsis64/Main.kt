@@ -47,11 +47,14 @@ private val Muted = Color(0xFFA2B4BE)
 fun main(args: Array<String>) {
     val home = PortableHome.resolve()
     PortableHome.prepare(home)
+    val model = try {AppModel(home)} catch(_: Exception) {
+        javax.swing.JOptionPane.showMessageDialog(null,"Unable to load settings.toml in $home. Check the settings syntax and values. Your file has not been reset.","APRSIS64",javax.swing.JOptionPane.ERROR_MESSAGE)
+        return
+    }
     DefaultMapRuntime.configure {
         cacheFile = kotlinx.io.files.Path(home.resolve("cache/tiles.db").toString())
-        maximumCacheSizeBytes = 512L * 1024 * 1024
+        maximumCacheSizeBytes = model.settings.getProperty("map.cache_megabytes").toLong() * 1024 * 1024
     }
-    val model = AppModel(home)
     println("APRSIS64 0.2.0 | Java ${System.getProperty("java.version")} | Vulkan / Direct3D12 | home=$home")
     if("--demo" in args || System.getProperty("aprsis64.demo") == "true") model.localDemo()
     else model.connectSaved()
@@ -73,9 +76,13 @@ fun main(args: Array<String>) {
     val demo by model.demo.collectAsState()
     val error by model.error.collectAsState()
     val revision by model.database.revision.collectAsState()
+    val settingsRevision by model.settingsRevision.collectAsState()
+    val beacon by model.beaconState.collectAsState()
+    val beaconCenter by model.beaconCenter.collectAsState()
     var selected by remember { mutableStateOf<String?>(null) }
     var settings by remember { mutableStateOf(false) }
     var about by remember { mutableStateOf(false) }
+    var preferences by remember { mutableStateOf(false) }
     var rows by remember { mutableStateOf<List<ChatRow>>(emptyList()) }
     LaunchedEffect(account,revision,selected) {
         rows=model.database.rows(account)
@@ -91,6 +98,8 @@ fun main(args: Array<String>) {
             Text(connection.name,color=if(connection==AprsConnectionState.VERIFIED) Accent else Muted)
             Spacer(Modifier.width(14.dp))
             OutlinedButton(onClick={ settings=true }) { Text("Connection") }
+            TextButton(onClick={preferences=true}) {Text("Settings")}
+            Button(onClick={model.transmitBeacon()},enabled=connection==AprsConnectionState.VERIFIED && beacon.enabled) {Text("Transmit")}
             Spacer(Modifier.width(8.dp))
             if(connection==AprsConnectionState.STOPPED) Button(onClick={ model.localDemo() }) { Text("Local demo") }
             else OutlinedButton(onClick={ model.disconnect(remember=true) }) { Text("Disconnect") }
@@ -107,15 +116,22 @@ fun main(args: Array<String>) {
                         Text("%.3f, %.3f".format(station.latitude,station.longitude),fontSize=11.sp,color=Muted)
                     }; Divider(color=Color(0xFF2B3D46))
                 } }
+                Text(if(beacon.enabled) "Beacon: ${beacon.source}" else "Beacon: Off",fontSize=12.sp,color=Accent)
+                Text(beacon.detail,fontSize=11.sp,color=Muted)
+                beacon.sentAt?.let {Text("Last sent "+DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(it)),fontSize=11.sp,color=Muted)}
             }
-            MapPanel(stations,selected,Modifier.weight(1f).fillMaxHeight()) { selected=it }
+            val own=beacon.position?.takeIf {account.isNotBlank()}?.let {p -> AprsStation(account,p.fix.latitude,p.fix.longitude,
+                model.settings.getProperty("beacon.symbol_table").single(),model.settings.getProperty("beacon.symbol").single(),"",p.fix.timeMillis)}
+            val localStations=listOfNotNull(own)+beacon.entities
+            key(settingsRevision) {MapPanel(localStations+stations.filter {remote->localStations.none {it.callsign==remote.callsign}},selected,model,beaconCenter,Modifier.weight(1f).fillMaxHeight()) { selected=it }}
             ChatPanel(account,selected,{selected=it},rows,model,Modifier.width(350.dp).fillMaxHeight())
         }
     }
     if(settings) ConnectionDialog(model) {settings=false}
+    if(preferences) PreferencesDialog(model) {preferences=false}
     if(about) AlertDialog(onDismissRequest={about=false},title={Text("APRSIS64 0.2.0")},text={
         Text("Copyright 2026 APRSIS64 contributors.\nAGPL-3.0. No warranty.\n\nContains GPLv3 shared components. Third-party license notices are included in the app folder.")
-    },confirmButton={TextButton(onClick={Desktop.getDesktop().browse(URI("https://github.com/kj4dxk/APRSIS64"))}) {Text("Source & license")}},dismissButton={TextButton(onClick={about=false}) {Text("Close")}})
+    },confirmButton={TextButton(onClick={Desktop.getDesktop().browse(URI(model.settings.getProperty("services.source_url")))}) {Text("Source & license")}},dismissButton={TextButton(onClick={about=false}) {Text("Close")}})
 }
 
 private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
@@ -126,10 +142,11 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     } } }
 }.toString()
 
-@Composable private fun MapPanel(stations: List<AprsStation>, selected: String?, modifier: Modifier, select: (String)->Unit) {
+@Composable private fun MapPanel(stations: List<AprsStation>, selected: String?, model: AppModel, beaconCenter: AprsFix?, modifier: Modifier, select: (String)->Unit) {
     val data = remember(stations) { GeoJsonData.JsonString(stationJson(stations)) }
-    val style = remember { BaseStyle.Json("""{"version":8,"name":"pdeffenb","sources":{"pdeffenb":{"type":"raster","tiles":["http://pdeffenb.homeip.net:82/raster/light/{z}/{x}/{y}.png"],"tileSize":256,"maxzoom":18,"attribution":"© OpenStreetMap contributors · pdeffenb"}},"layers":[{"id":"background","type":"background","paint":{"background-color":"#d9e3df"}},{"id":"pdeffenb","type":"raster","source":"pdeffenb"}]}""") }
-    val state=rememberMapState(baseStyle=style,initialCameraPosition=CameraPosition(center=Position(-81.242932,28.536725),zoom=12.0)) {
+    val style = remember { BaseStyle.Json(ServicePreferences.style(model.settings)) }
+    val initial=remember {Position(model.settings.getProperty("longitude").toDouble(),model.settings.getProperty("latitude").toDouble())}
+    val state=rememberMapState(baseStyle=style,initialCameraPosition=CameraPosition(center=initial,zoom=model.settings.getProperty("map.initial_zoom").toDouble())) {
         val source=rememberGeoJsonSource(data)
         CircleLayer(id="aprs-stations",source=source,radius=const(7.dp),color=const(Color(0xFF006D65)),strokeWidth=const(2.dp),strokeColor=const(Color.White),hitPadding=8.dp,
             onClick={features -> features.firstOrNull()?.properties?.get("callsign")?.jsonPrimitive?.content?.let(select); ClickResult.Consume})
@@ -138,7 +155,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     LaunchedEffect(state) {
         if(System.getProperty("aprsis64.probe") == "true") {
             delay(15_000)
-            val point=state.screenLocationFromPosition(Position(-81.242932,28.536725))
+            val point=state.screenLocationFromPosition(initial)
             if(point != null) {
                 val hits=state.queryRenderedFeatures(point,layerIds=setOf("aprs-stations"))
                 println("MAP_PROBE bearing=${state.cameraPosition.bearing} zoom=${state.cameraPosition.zoom} hits=${hits.map { it.properties?.get("callsign") }}")
@@ -158,11 +175,12 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
             state.animateCamera(CameraUpdate(center=Position(it.longitude,it.latitude),bearing=0.0,pitch=0.0))
         }
     }
+    LaunchedEffect(beaconCenter) {beaconCenter?.let {state.animateCamera(CameraUpdate(center=Position(it.longitude,it.latitude),bearing=0.0,pitch=0.0))}}
     Box(modifier) {
         MaplibreMap(state=state,interactions=MapInteractions {camera {rotate {enabled=false}; pitch {enabled=false}}},
-            cameraConstraints=CameraConstraints {maxPitch=0.0; maxZoom=18.0},renderOptions=RenderOptions {maximumFps=30}, overlay={})
-        Text("© OpenStreetMap contributors",Modifier.align(Alignment.BottomEnd).padding(6.dp).background(Color.White.copy(alpha=0.88f))
-            .clickable {Desktop.getDesktop().browse(URI("https://www.openstreetmap.org/copyright"))}.padding(5.dp),color=Color(0xFF263740),fontSize=11.sp)
+            cameraConstraints=CameraConstraints {maxPitch=0.0; minZoom=model.settings.getProperty("map.minimum_zoom").toDouble(); maxZoom=model.settings.getProperty("map.maximum_zoom").toDouble()},renderOptions=RenderOptions {maximumFps=model.settings.getProperty("map.maximum_fps").toInt()}, overlay={})
+        Text(model.settings.getProperty("map.attribution"),Modifier.align(Alignment.BottomEnd).padding(6.dp).background(Color.White.copy(alpha=0.88f))
+            .clickable {Desktop.getDesktop().browse(URI(model.settings.getProperty("map.attribution_url")))}.padding(5.dp),color=Color(0xFF263740),fontSize=11.sp)
         if(mapError.isNotEmpty()) Text(mapError,Modifier.align(Alignment.TopStart).padding(12.dp).background(Panel).padding(10.dp),color=Accent,fontSize=12.sp)
     }
 }
@@ -206,7 +224,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
                 Text("${draft.length}/67",color=Muted,fontSize=10.sp)
                 Spacer(Modifier.weight(1f))
                 Button(onClick={sending=true; scope.launch {try {model.send(peer,draft); draft=""} catch(_:Exception){model.error.value="Unable to save this message."} finally {sending=false}}},
-                    enabled=!sending&&AprsMessages.validText(draft)&&AprsProtocol.validCallsign(account)&&account!=peer) {Text("Send")}
+                    enabled=!sending&&AprsMessages.validText(draft)&&AprsProtocol.validCallsign(account)&&AprsProtocol.validCallsign(peer)&&account!=peer) {Text("Send")}
             }
         }
     }
@@ -215,8 +233,9 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
 @Composable private fun ConnectionDialog(model: AppModel, dismiss: ()->Unit) {
     var call by remember {mutableStateOf(model.settings.getProperty("callsign",""))}
     var pass by remember {mutableStateOf(model.settings.getProperty("passcode",""))}
-    var host by remember {mutableStateOf(model.settings.getProperty("endpoint",AprsServers.defaultEndpoint))}
-    var preset by remember {mutableStateOf(AprsServers.presets.indexOfFirst {it.endpoint==host})}
+    var host by remember {mutableStateOf(model.settings.getProperty("endpoint"))}
+    val presets=model.servers
+    var preset by remember {mutableStateOf(presets.indexOfFirst {it.endpoint==host})}
     var menu by remember {mutableStateOf(false)}
     var autoConnect by remember {mutableStateOf(model.settings.getProperty("autoConnect","true").toBoolean())}
     var lat by remember {mutableStateOf(model.settings.getProperty("latitude","28.536725"))}
@@ -227,9 +246,9 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
             OutlinedTextField(call,{call=it.uppercase()},label={Text("Callsign-SSID")},singleLine=true,modifier=Modifier.fillMaxWidth())
             OutlinedTextField(pass,{pass=it},label={Text("Passcode (blank = receive only)")},visualTransformation=PasswordVisualTransformation(),singleLine=true,modifier=Modifier.fillMaxWidth())
             Box {
-                OutlinedButton(onClick={menu=true},modifier=Modifier.fillMaxWidth()) {Text(if(preset>=0) AprsServers.presets[preset].name else "Custom server")}
+                OutlinedButton(onClick={menu=true},modifier=Modifier.fillMaxWidth()) {Text(if(preset>=0) presets[preset].name else "Custom server")}
                 DropdownMenu(expanded=menu,onDismissRequest={menu=false}) {
-                    AprsServers.presets.forEachIndexed { index, server -> DropdownMenuItem(onClick={preset=index; host=server.endpoint; menu=false}) {Text(server.name)} }
+                    presets.forEachIndexed { index, server -> DropdownMenuItem(onClick={preset=index; host=server.endpoint; menu=false}) {Text(server.name)} }
                     DropdownMenuItem(onClick={preset=-1; menu=false}) {Text("Custom server")}
                 }
             }
