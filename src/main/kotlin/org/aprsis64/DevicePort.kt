@@ -140,7 +140,7 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
         }
     }
     suspend fun shutdown() {
-        val closing=scope.launch(Dispatchers.IO) {writes.withLock {if(output!=null) config.list("close_commands").forEach {command(it)}}
+        val closing=scope.launch(Dispatchers.IO) {writes.withLock {if(output!=null) config.list("close_commands").forEach {command(it)}}}
         try {withTimeoutOrNull(2000) {closing.join()}}
         finally {close()}
     }

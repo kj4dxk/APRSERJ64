@@ -5,7 +5,7 @@ plugins {
     id("org.jetbrains.compose") version "1.12.1"
 }
 group = "org.aprsfoundation.community"
-version = "0.2.0"
+version = "0.3.0"
 repositories { google(); mavenCentral() }
 kotlin { jvmToolchain(25) }
 dependencies {
@@ -18,6 +18,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
     implementation("org.xerial:sqlite-jdbc:3.50.3.0")
     implementation("org.tomlj:tomlj:1.1.1")
+    compileOnly("org.checkerframework:checker-qual:3.43.0")
     implementation("com.fazecast:jSerialComm:2.11.0")
     testImplementation(kotlin("test-junit"))
 }
@@ -28,41 +29,47 @@ compose.desktop {
         jvmArgs += listOf("--enable-native-access=ALL-UNNAMED", "-Xmx768m")
         nativeDistributions {
             packageName = "APRSIS64"
-            packageVersion = "0.2.0"
+            packageVersion = "0.3.0"
             description = "APRS map and persistent chat prototype"
             vendor = "APRSIS64 contributors"
-            appResourcesRootDir.set(layout.buildDirectory.dir("appResources"))
+            appResourcesRootDir.set(layout.buildDirectory.dir("portableResources"))
             modules("java.sql", "java.net.http", "jdk.unsupported", "jdk.crypto.ec")
         }
     }
 }
 
-val collectNotices by tasks.registering {
-    val output = layout.buildDirectory.dir("appResources/common")
+val collectNotices = tasks.register("collectNotices") {
+    val output = layout.buildDirectory.dir("portableResources/common")
     inputs.files(configurations.runtimeClasspath)
     inputs.files("LICENSE", "THIRD-PARTY.txt")
     outputs.dir(output)
     doLast {
         val target = output.get().asFile.apply { mkdirs() }
         listOf("LICENSE", "THIRD-PARTY.txt").forEach { file(it).copyTo(target.resolve(it), overwrite=true) }
-        configurations.runtimeClasspath.get().files.filter { it.extension == "jar" }.forEach { jar ->
+        val noticeIndex = StringBuilder()
+        configurations.runtimeClasspath.get().files.filter { it.extension == "jar" }.sortedBy { it.name }.forEachIndexed { jarIndex, jar ->
             ZipFile(jar).use { zip ->
                 zip.entries().asSequence().filter { entry ->
                     !entry.isDirectory && entry.size in 1..1_000_000 &&
                         entry.name.substringAfterLast('/').matches(Regex("(?i)(license|notice|copying|copyright)([.\\-_].*)?"))
-                }.forEach { entry ->
-                    val dest=target.resolve("dependency-notices/${jar.nameWithoutExtension}/${entry.name.replace('/','_')}")
+                }.forEachIndexed { entryIndex, entry ->
+                    val relative="notices/$jarIndex/$entryIndex.txt"
+                    noticeIndex.append("$relative: ${jar.name} / ${entry.name}\n")
+                    val dest=target.resolve(relative)
                     dest.parentFile.mkdirs()
                     zip.getInputStream(entry).use { input -> dest.outputStream().use { input.copyTo(it) } }
                 }
             }
         }
+        target.resolve("notice-index.txt").writeText(noticeIndex.toString())
     }
 }
 tasks.matching { it.name == "prepareAppResources" }.configureEach { dependsOn(collectNotices) }
 tasks.matching { it.name == "createDistributable" }.configureEach {
     // Compose's app-image up-to-date check otherwise misses notice-only edits.
     inputs.files("LICENSE", "THIRD-PARTY.txt")
+    inputs.dir(layout.buildDirectory.dir("portableResources/common"))
+    dependsOn(collectNotices)
 }
 tasks.withType<Test>().configureEach { jvmArgs("--enable-native-access=ALL-UNNAMED") }
 

@@ -65,6 +65,7 @@ internal static class Launcher {
                 }
             }
         } catch (Exception ex) {
+            try { File.WriteAllText(Path.Combine(root, "logs", "startup-error.log"), ex.ToString()); } catch { }
             MessageBox.Show("Unable to run APRSIS64 in this folder. Choose a writable folder and try again.\n\n" + ex.Message, "APRSIS64");
             return 1;
         }

@@ -1,101 +1,35 @@
-Visual port workspace source — 2026-11-20
-NOT COMPILED, RENDERED OR TESTED, retaining the user's instruction. No application
-restart, device discovery, serial/TCP access or transmission was performed.
-Static source review only. Prepared draft transaction/rename/remove/rewire tests
-for a later run. Defaults compared with APRSIS32 Config.cpp and Config.h.
-User explicitly retained prefilled RF paths and the WIDE1 fill-in preset.
+APRSIS64 0.3.0 combined verification — 2026-11-20
 
-Named radio ports source — 2026-11-20
-NOT COMPILED OR TESTED, retaining the user's instruction. No devices opened, app
-restart, build, RF transmission or APRS-IS beacon. Prepared codec, digipeater,
-IGate and settings regression cases for a later authorized run. Hardware profile
-compatibility is unverified. Historical PASS results do not cover this change.
+PASS: Gradle test :core:test and packagePortable on this Windows PC.
+52 tests, zero failures/errors: 34 shared-core tests and 18 Windows tests.
+Coverage includes beacon policy/encoding, AX.25/KISS/AGW codecs, IGate and
+repeat-routing rules, TOML persistence/defaults, port draft transactions and
+reference repair, SQLite history, retries, deduplication and acknowledgements.
 
-Beaconing and configurable services source — 2026-11-20
-NOT COMPILED OR TESTED, at the user's request. No new EXE, restart, or public
-beacon transmission. New regression tests are source only and have not run.
-Static review only: runtime map URLs, service links and server menu use TOML;
-first-run resources match APRSISOSM. Desktop TOML populated, credentials local.
-Earlier PASS results below do not validate these changes.
+New integration checks use actual loopback TCP sockets for KISS and AGW receive
+and transmit, split frames, rate limiting, NMEA input and read-only enforcement.
+A combined AppModel test verifies local demo station reception, chat ACKs,
+deduplication and history after database reopen. It also verifies that enabled
+saved RF ports are never opened during demo startup and remain enabled on disk.
 
-TOML source change — 2026-11-20
-Settings now use settings.toml with legacy properties import. Not compiled or tested,
-as requested. Reports below apply to earlier builds, not this source change.
-APRSIS64 0.2.0 portable verification — 2026-11-20
+Fixed compilation blockers: missing shutdown coroutine brace and TomlJ annotation
+classpath dependency. Fixed demo initialization to isolate hardware before any
+ports start. Shortened packaged license-notice paths after the deeply nested
+portable-folder launch failed during extraction; retained all notices and an index.
+Added startup exception logging and corrected resource packaging invalidation.
 
-PASS: test and packagePortable; 28 tests (23 shared core, 5 Windows), zero failures.
-New tests verify the exact 12 Android server presets, saved passcode, automatic
-reconnection after reopening settings, and remembered manual disconnect.
+PASS: portable EXE launched from a directory with spaces, with a different working
+directory. Embedded Java 25.0.5 starts, portable TOML/data/cache/log folders appear.
+The local APRS-IS session verifies N0CALL-12 and the enabled beacon engine sends
+its initial position to 127.0.0.1 only. MapLibre loads the configured pdeffenb style,
+renders its first Vulkan frame at 889x789 and reaches idle; tiles.db is populated.
 
-PASS: single EXE copied into an otherwise empty folder containing spaces, launched
-with C:\Windows as working directory. Extracted its Java runtime and app locally,
-created settings.properties, data/chats.sqlite, cache/tiles.db, cache/tmp and logs.
-Local demo verified through the shared APRS transport; native Vulkan map rendered.
+LIMITS: computer-use capture timed out; full visual port-workspace interaction
+review remains unverified. No physical serial GPS/TNC, radio or public APRS-IS
+transmission was exercised in this run. TCP simulators do not prove hardware
+command compatibility or over-the-air delivery. Android was not rebuilt.
+Remaining nonfatal dependency warnings include Compose material accessor
+deprecation, LWJGL Unsafe usage and absence of an SLF4J provider.
 
-PASS: closed the app, moved the entire folder, relaunched from C:\Windows. Native
-map rendered again; existing local chat database and tile cache remained in place.
-Map cache grew to approximately 370 KiB from visible pdeffenb map resources.
-No installer or separate Java runtime was used by the tested portable EXE.
-
-PASS: user's local Desktop copy connected to rotate.aprs2.net:14580, received a
-VERIFIED APRS-IS login, and received live station positions. Credentials are only
-in that local settings.properties file, not source or the embedded distribution.
-No position beacon or test chat was sent to the public APRS network in this check.
-
-UI: removed preview subtitle, north-up label, development banners, map status
-notes, demo stress control and optional MapLibre logo. OSM attribution remains as
-a small clickable credit. Computer Use could inspect the window's title and close
-it with Alt+F4, but image capture and its recovery attempt both returned:
-"window capture timed out: timed out waiting on channel".
-Full visual review and manual click-to-chat review remain unverified.
-
-The v0.1.0 report below records the earlier core/graphics tests, not the current
-packaging behavior. The MSI has been superseded by the single portable EXE.
-
---- Historical v0.1.0 verification ---
-APRSIS64 0.1.0 prototype verification — 2026-11-20
-
-Machine: Windows, Intel Iris Xe Graphics, driver 32.0.101.7079.
-Runtime: Temurin JDK 25.0.5; shared core targets Java 17.
-MapLibre Compose 0.20.0, Compose 1.12.1, Kotlin 2.4.20, Gradle 9.6.0.
-
-PASS: Gradle test createDistributable packageMsi.
-26 tests, zero failures/errors: 23 shared protocol/transport tests and three
-SQLite/session integration tests. Tests exercise persistence across reopen,
-account and SSID isolation, unread state, duplicate suppression, retry expiry,
-ACK races, and a complete loopback APRS-IS exchange using the shared transport.
-No test in this run transmitted to the public APRS network.
-
-PASS: Android OsmAnd-shared compileDebugKotlinAndroid with the same submodule.
-All 23 APRS JVM tests also pass within the Android repository. After relocation,
-the first incremental test output omitted two classes; forcing a fresh test
-compilation restored all five suites (23 tests, zero failures/errors).
-
-PASS: packaged EXE launches with its bundled runtime; local demo connects.
-Native renderer reports a Vulkan frame on maplibre-windows-map-renderer at
-889 x 743. Style reaches idle. At the demo station coordinate, native rendered
-feature query returns N1CALL-7 at zoom 12, bearing 0. Repeated after final build.
-
-OpenGL producer was rejected on this GPU: WGL could not import a Direct3D12
-texture, GL error 0x500. Switching the producer to Vulkan resolved that error;
-Compose retains its normal Direct3D12 presentation. Do not force Skiko OpenGL.
-
-PASS: pdeffenb raster/light/12/1123/1708.png returned HTTP 200, image/png,
-17,747 bytes from this PC. This tests service availability independently of UI.
-
-Short idle sample with local demo: 0.203 CPU seconds over 13.05 wall seconds
-(1.56 percent of one logical CPU), approximately 424 MiB working set.
-This is a brief smoke measurement, not a load benchmark. The optional 10,000
-station generator is available but has not been benchmarked in this report.
-
-LIMITS: desktop screenshot capture timed out, including its recovery attempt.
-Native frame/hit-test evidence is available, but a complete visual UI review and
-manual end-to-end click/send test remain unverified. The SQLite/session tests
-cover the messaging path below the UI. MSI creation passed; installation itself
-has not been tested. Phone APK was not rebuilt for this Windows prototype.
-
-Nonfatal upstream warnings remain: LWJGL sun.misc.Unsafe deprecation, missing
-SLF4J logging provider, and Gradle future-version deprecations. No renderer crash
-or map-source failure appeared in the final smoke-test logs.
-
-See README.txt for supported behavior and omitted APRSIS32 features.
+Portable Windows release only; no installer. Source and shared-core pin are on
+GitHub. Personal settings, passcode and chat database are excluded from source.

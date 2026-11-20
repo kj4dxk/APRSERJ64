@@ -1,7 +1,8 @@
 APRSIS64 — portable Windows APRS map, chat and beaconing
 
-SOURCE STATUS: TOML, configurable services, beaconing and radio ports are not yet built or
-tested. The existing 0.2.0 EXE predates these changes. See TEST-REPORT.txt.
+RELEASE 0.3.0: Windows/shared-core build and 52 tests pass. Portable map/demo
+startup verified. Physical radio and full visual UI validation remain outstanding.
+See TEST-REPORT.txt.
 
 Source: https://github.com/kj4dxk/APRSIS64
 Shared core: https://github.com/kj4dxk/aprs-core (pinned git submodule)

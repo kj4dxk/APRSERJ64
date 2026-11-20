@@ -9,14 +9,14 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import net.osmand.shared.aprs.*
 
-class AppModel(val directory: Path) : AutoCloseable {
+class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
     private val scope = CoroutineScope(SupervisorJob()+Dispatchers.Default)
     val database = ChatDatabase(directory.resolve("data/chats.sqlite"))
     val account = MutableStateFlow("")
     val state = MutableStateFlow(AprsConnectionState.STOPPED)
     val stations = MutableStateFlow<List<AprsStation>>(emptyList())
     val error = MutableStateFlow("")
-    val demo = MutableStateFlow(false)
+    val demo = MutableStateFlow(demoMode)
     private var client: AprsIsClient? = null
     private var chat: ChatSession? = null
     private var observing: Job? = null

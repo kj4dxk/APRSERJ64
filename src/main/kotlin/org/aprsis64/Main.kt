@@ -47,7 +47,8 @@ private val Muted = Color(0xFFA2B4BE)
 fun main(args: Array<String>) {
     val home = PortableHome.resolve()
     PortableHome.prepare(home)
-    val model = try {AppModel(home)} catch(_: Exception) {
+    val demoMode = "--demo" in args || System.getProperty("aprsis64.demo") == "true"
+    val model = try {AppModel(home, demoMode)} catch(_: Exception) {
         javax.swing.JOptionPane.showMessageDialog(null,"Unable to load settings.toml in $home. Check the settings syntax and values. Your file has not been reset.","APRSIS64",javax.swing.JOptionPane.ERROR_MESSAGE)
         return
     }
@@ -55,8 +56,8 @@ fun main(args: Array<String>) {
         cacheFile = kotlinx.io.files.Path(home.resolve("cache/tiles.db").toString())
         maximumCacheSizeBytes = model.settings.getProperty("map.cache_megabytes").toLong() * 1024 * 1024
     }
-    println("APRSIS64 0.2.0 | Java ${System.getProperty("java.version")} | Vulkan / Direct3D12 | home=$home")
-    if("--demo" in args || System.getProperty("aprsis64.demo") == "true") model.localDemo()
+    println("APRSIS64 0.3.0 | Java ${System.getProperty("java.version")} | Vulkan / Direct3D12 | home=$home")
+    if(demoMode) model.localDemo()
     else model.connectSaved()
     application {
         Window(onCloseRequest={ model.close(); exitApplication() }, title="APRSIS64",
@@ -134,7 +135,7 @@ fun main(args: Array<String>) {
     if(settings) ConnectionDialog(model) {settings=false}
     if(preferences) PreferencesDialog(model) {preferences=false}
     if(portWorkspace) PortWorkspaceWindow(model) {portWorkspace=false}
-    if(about) AlertDialog(onDismissRequest={about=false},title={Text("APRSIS64 0.2.0")},text={
+    if(about) AlertDialog(onDismissRequest={about=false},title={Text("APRSIS64 0.3.0")},text={
         Text("Copyright 2026 APRSIS64 contributors.\nAGPL-3.0. No warranty.\n\nContains GPLv3 shared components. Third-party license notices are included in the app folder.")
     },confirmButton={TextButton(onClick={Desktop.getDesktop().browse(URI(model.settings.getProperty("services.source_url")))}) {Text("Source & license")}},dismissButton={TextButton(onClick={about=false}) {Text("Close")}})
 }

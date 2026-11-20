@@ -1,4 +1,4 @@
-Visual ports and connections — source implementation, not rendered or tested
+Visual ports and connections — 0.3.0 compiled; draft tests pass; visual interaction review pending
 
 Open Ports from the main toolbar. The workspace opens maximized and contains:
 - A scrollable diagram of device ports and GPS, APRS-IS, map/messages, station
@@ -61,8 +61,8 @@ No proprietary source was copied into this project.
 - Serial baud, reconnect/command pacing, queue budgets and transmit-rate limits
   are APRSIS64 implementation settings, not claims of exact APRSIS32 equivalence.
 
-This UI and the underlying new port implementations still require compilation,
+This UI compiles and the underlying TCP port integration tests pass. Visual
 interaction review and real-device validation. APRSIS32's proven behavior guides
 the defaults; it does not make a new implementation hardware-tested. Prepared
-regression cases cover reference repair, route deletion, Undo/Redo, stale edits,
+regression cases now pass and cover reference repair, route deletion, Undo/Redo, stale edits,
 GPS replacement, and selecting individual outputs without broadening routes.

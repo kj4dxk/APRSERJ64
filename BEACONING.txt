@@ -1,4 +1,4 @@
-Beaconing source coverage — not compiled or tested
+Beaconing coverage — 0.3.0 built and regression-tested; see TEST-REPORT.txt
 
 Behavior reviewed against APRSIS32 source version 2024/09/05 17:14.
 Implementation is independent; no APRSIS32 source is distributed here.

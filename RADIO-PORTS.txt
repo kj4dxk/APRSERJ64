@@ -1,4 +1,4 @@
-APRSIS64 named ports — source implementation, not yet built or hardware-tested
+APRSIS64 named ports — 0.3.0 built and TCP-tested; physical hardware unverified
 
 The main Ports workspace creates serial or TCP connections. Every port has its own name,
 protocol, device/endpoint, baud, channel, transmit controls, paths, IGate directions,
@@ -89,6 +89,4 @@ can be dropped. Close commands run on app shutdown; immediate settings reload or
 connection failure closes the handle without a guaranteed command exchange.
 
 Validation status
-Codec/routing and settings regression cases are prepared but NOT RUN. No compile,
-app restart, radio access or transmission was performed. Each hardware profile
-still needs a controlled device check. No APRSIS32 source was copied or distributed.
+Codec/routing, settings and TCP KISS/AGW/NMEA integration tests pass in 0.3.0. Each physical hardware profile still needs a controlled device check. See TEST-REPORT.txt. No APRSIS32 source was copied or distributed.
