@@ -20,6 +20,9 @@ OpenGL producer was rejected on this GPU: WGL could not import a Direct3D12
 texture, GL error 0x500. Switching the producer to Vulkan resolved that error;
 Compose retains its normal Direct3D12 presentation. Do not force Skiko OpenGL.
 
+PASS: pdeffenb raster/light/12/1123/1708.png returned HTTP 200, image/png,
+17,747 bytes from this PC. This tests service availability independently of UI.
+
 Short idle sample with local demo: 0.203 CPU seconds over 13.05 wall seconds
 (1.56 percent of one logical CPU), approximately 424 MiB working set.
 This is a brief smoke measurement, not a load benchmark. The optional 10,000
