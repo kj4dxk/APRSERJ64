@@ -1,0 +1,38 @@
+APRSIS64 0.1.0 prototype verification — 2026-11-20
+
+Machine: Windows, Intel Iris Xe Graphics, driver 32.0.101.7079.
+Runtime: Temurin JDK 25.0.5; shared core targets Java 17.
+MapLibre Compose 0.20.0, Compose 1.12.1, Kotlin 2.4.20, Gradle 9.6.0.
+
+PASS: Gradle test createDistributable packageMsi.
+26 tests, zero failures/errors: 23 shared protocol/transport tests and three
+SQLite/session integration tests. Tests exercise persistence across reopen,
+account and SSID isolation, unread state, duplicate suppression, retry expiry,
+ACK races, and a complete loopback APRS-IS exchange using the shared transport.
+No test in this run transmitted to the public APRS network.
+
+PASS: packaged EXE launches with its bundled runtime; local demo connects.
+Native renderer reports a Vulkan frame on maplibre-windows-map-renderer at
+889 x 743. Style reaches idle. At the demo station coordinate, native rendered
+feature query returns N1CALL-7 at zoom 12, bearing 0. Repeated after final build.
+
+OpenGL producer was rejected on this GPU: WGL could not import a Direct3D12
+texture, GL error 0x500. Switching the producer to Vulkan resolved that error;
+Compose retains its normal Direct3D12 presentation. Do not force Skiko OpenGL.
+
+Short idle sample with local demo: 0.203 CPU seconds over 13.05 wall seconds
+(1.56 percent of one logical CPU), approximately 424 MiB working set.
+This is a brief smoke measurement, not a load benchmark. The optional 10,000
+station generator is available but has not been benchmarked in this report.
+
+LIMITS: desktop screenshot capture timed out, including its recovery attempt.
+Native frame/hit-test evidence is available, but a complete visual UI review and
+manual end-to-end click/send test remain unverified. The SQLite/session tests
+cover the messaging path below the UI. MSI creation passed; installation itself
+has not been tested. Phone APK was not rebuilt for this Windows prototype.
+
+Nonfatal upstream warnings remain: LWJGL sun.misc.Unsafe deprecation, missing
+SLF4J logging provider, and Gradle future-version deprecations. No renderer crash
+or map-source failure appeared in the final smoke-test logs.
+
+See README.txt for supported behavior and omitted APRSIS32 features.

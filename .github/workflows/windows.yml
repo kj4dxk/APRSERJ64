@@ -1,0 +1,26 @@
+name: Windows prototype
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Test and package
+        shell: pwsh
+        run: ./gradlew.bat test createDistributable packageMsi --console=plain
+      - uses: actions/upload-artifact@v4
+        with:
+          name: APRSIS64-windows
+          path: |
+            build/compose/binaries/main/msi/*.msi
+            build/reports/tests/

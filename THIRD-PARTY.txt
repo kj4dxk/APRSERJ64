@@ -1,0 +1,27 @@
+APRSIS64 source and new application code: AGPL-3.0, see LICENSE.
+APRSFoundation/APRSISMO license reference:
+https://github.com/APRSFoundation/APRSISMO/blob/main/LICENSE
+
+Shared core: https://github.com/kj4dxk/aprs-core
+Extracted components retain GPLv3-or-later terms; see shared/aprs-core/ORIGIN-LICENSE.txt.
+New core additions are AGPL-3.0. No OsmAnd artwork is distributed here.
+
+MapLibre Native and MapLibre Compose: BSD licenses.
+https://github.com/maplibre/maplibre-native
+https://github.com/maplibre/maplibre-compose
+Compose Multiplatform, Kotlin, coroutines, Ktor and serialization: Apache-2.0.
+https://github.com/JetBrains/compose-multiplatform
+https://github.com/JetBrains/kotlin
+https://github.com/Kotlin/kotlinx.coroutines
+https://github.com/ktorio/ktor
+https://github.com/Kotlin/kotlinx.serialization
+SQLite JDBC: Apache-2.0/BSD notices in the dependency; SQLite: public domain.
+https://github.com/xerial/sqlite-jdbc
+LWJGL: BSD license. https://github.com/LWJGL/lwjgl3
+Bundled OpenJDK: GPLv2 with Classpath Exception; see runtime/legal in distribution.
+
+Map data: OpenStreetMap contributors, ODbL, https://www.openstreetmap.org/copyright
+Tiles are served by the configured pdeffenb service. Map attribution is displayed.
+
+Dependency JARs retain their bundled META-INF license/notice files. The packaging
+task also collects available license/notice texts into resources/dependency-notices.
