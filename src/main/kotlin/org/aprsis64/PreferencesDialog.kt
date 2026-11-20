@@ -27,13 +27,13 @@ import kotlinx.serialization.json.*
     fun properties(values: Map<String,String>)=Properties().apply {values.forEach {(key,value)->setProperty(key,value)}}
     DialogWindow(onCloseRequest=dismiss,title="Settings",state=rememberDialogState(width=780.dp,height=790.dp)) {
         MaterialTheme(colors=darkColors()) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
-            Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
+            FlowRow(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
                 listOf("Beacon","Position","Status","Objects","Map","Services","Operating","Display","History","Offline","Weather","Groups","Kiosk","Alerts","Connectivity").forEach {tab ->
                     TextButton(onClick={selected=tab}) {Text(if(selected==tab) "[$tab]" else tab)}
                 }
             }
             if(failure.isNotEmpty()) Text(failure,color=MaterialTheme.colors.error)
-            key(selected,entity) {Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            key(selected,entity) {ScrollableForm(Modifier.weight(1f).fillMaxWidth()) {
                 if(selected=="Objects") {
                     Row {
                         Button(onClick={objects.add(mutableStateMapOf<String,String>().apply {BeaconPreferences.entityFields.forEach {put(it.key,it.default)}});entity=objects.lastIndex},enabled=objects.size<32) {Text("New")}

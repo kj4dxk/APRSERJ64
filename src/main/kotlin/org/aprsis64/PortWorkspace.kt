@@ -43,6 +43,7 @@ private val DigiColor=Color(0xFFD3A7FF)
     var failure by remember {mutableStateOf("")}
     val statuses by model.portStatuses.collectAsState()
     val isState by model.state.collectAsState()
+    val demo by model.demo.collectAsState()
     val port=draft.devices.firstOrNull {it.id==selected}
     val issues=draft.issues()
     LaunchedEffect(port?.id,port?.protocol) {if(port?.protocol !in rawRadioProtocols) wiring=false}
@@ -86,7 +87,7 @@ private val DigiColor=Color(0xFFD3A7FF)
                                 Text("Connect your first device",fontSize=24.sp)
                                 Text("Choose a GPS, hardware TNC, or network TNC. The setup guide fills its connections for you.",Modifier.padding(vertical=16.dp),color=WorkspaceMuted)
                                 Button(onClick={wizard=true}) {Text("Add a port")}
-                            } else WiringDiagram(draft,port,statuses,isState.name,showAll,wiring,Modifier.weight(1f),{page="Object routes"}) {target->
+                            } else WiringDiagram(draft,port,statuses,(if(demo) "${isState.name} · Local demo" else "${isState.name} · Configured: ${draft.values["endpoint"].orEmpty()}"),showAll,wiring,Modifier.weight(1f),{page="Object routes"}) {target->
                                 if(wiring && port!=null && port.protocol in rawRadioProtocols && target.canTransmit && target.protocol in rawRadioProtocols) draft.toggleDigiTarget(port,target)
                                 else if(!wiring) selected=target.id
                             }
@@ -215,7 +216,7 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
                         Text(title,fontWeight=FontWeight.Bold)
                         val detail=when(index) {
                             0->if(draft.values["position.source"]=="port") draft.values["position.port_name"].orEmpty().ifBlank {"Choose GPS"} else if(draft.values["position.source"]=="fixed") "Fixed position" else "Legacy GPS connection"
-                            1->"$isState · ${draft.values["endpoint"].orEmpty()}"
+                            1->isState
                             2->"Received stations and saved conversations"
                             3->if(draft.values["beacon.enabled"]=="true") "Beaconing enabled" else "Master beacon switch off"
                             else->"${draft.objects.size} configured · individual routes in Object routes"
@@ -271,7 +272,8 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
         scanning=true;scanError=false
         try {devices=withContext(Dispatchers.IO) {SerialPort.getCommPorts().map {it.systemPortName to it.descriptivePortName}}}
         catch(cancelled: CancellationException) {throw cancelled}
-        catch(_: Exception) {scanError=true} finally {scanning=false}
+        catch(_: Exception) {scanError=true}
+        catch(_: LinkageError) {scanError=true} finally {scanning=false}
     }}
     LaunchedEffect(Unit) {refresh()}
     if(values["protocol"]=="AGW") Text("TCP connection",color=WorkspaceMuted)

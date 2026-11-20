@@ -1,3 +1,15 @@
+APRSIS64 0.5.0 visual regression fixes - 2026-11-20
+PASS: test :core:test packagePortable. 70 tests: 41 shared core, 29 Windows.
+Completed keyboard-driven visual QA using window screenshots, including settings,
+operating tools, offline tile download, chat acknowledgements and restart history.
+Fixed native serial discovery, dark-theme contrast, hidden settings tabs, stale
+checkbox state and message composer Tab navigation. Hardened map readiness.
+Native map probe confirmed north-up and selected-station rendering after restart.
+See VISUAL-TEST-REPORT.txt for detailed scope and unverified interactions.
+
+Earlier verification follows (the capture limitation below was subsequently
+worked around with window-only capture):
+
 APRSIS64 0.5.0 feature integration - 2026-11-20
 PASS: test :core:test packagePortable. 69 tests: 41 shared core, 28 Windows.
 New tests cover weather/telemetry/bulletin parsing, service message encoding,

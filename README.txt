@@ -1,8 +1,9 @@
 APRSIS64 — portable Windows APRS map, chat and beaconing
 
-RELEASE 0.5.0: Windows/shared-core build and 69 tests pass. Portable map/demo
-startup verified. Physical radio and full visual UI validation remain outstanding.
-See TEST-REPORT.txt.
+RELEASE 0.5.0: Windows/shared-core build and 70 tests pass. Visual QA covered
+all settings categories and operating-tools tabs, map, chat, persistence and
+representative port workflows. Physical radio testing remains outstanding.
+See VISUAL-TEST-REPORT.txt and TEST-REPORT.txt for coverage and limitations.
 
 Source: https://github.com/kj4dxk/APRSIS64
 Shared core: https://github.com/kj4dxk/aprs-core (pinned git submodule)

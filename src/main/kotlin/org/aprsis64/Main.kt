@@ -8,6 +8,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.input.key.*
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,6 +53,8 @@ private val Muted = Color(0xFFA2B4BE)
 fun main(args: Array<String>) {
     val home = PortableHome.resolve()
     PortableHome.prepare(home)
+    SerialDevices.prepare(home)
+    if("--probe" in args) System.setProperty("aprsis64.probe","true")
     val demoMode = "--demo" in args || System.getProperty("aprsis64.demo") == "true"
     val model = try {AppModel(home, demoMode)} catch(_: Exception) {
         javax.swing.JOptionPane.showMessageDialog(null,"Unable to load settings.toml in $home. Check the settings syntax and values. Your file has not been reset.","APRSIS64",javax.swing.JOptionPane.ERROR_MESSAGE)
@@ -66,7 +71,7 @@ fun main(args: Array<String>) {
         Window(onCloseRequest={ model.close(); exitApplication() }, title="APRSIS64",
             state=rememberWindowState(width=1480.dp,height=900.dp)) {
             MaterialTheme(colors=darkColors(primary=Accent,background=Color(0xFF0E1B22),surface=Panel)) {
-                ProvideMapPresentationHost(host=rememberAwtComposeMapPresentationHost(window)) { App(model) }
+                Surface(Modifier.fillMaxSize()) { ProvideMapPresentationHost(host=rememberAwtComposeMapPresentationHost(window)) { App(model) } }
             }
         }
     }
@@ -190,7 +195,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     LaunchedEffect(selected,historyRevision) {trail=selected?.let {model.archive.track(it)} ?: emptyList()}
 
     val initial=remember {Position(model.settings.getProperty("longitude").toDouble(),model.settings.getProperty("latitude").toDouble())}
-    val state=rememberMapState(baseStyle=style,initialCameraPosition=CameraPosition(center=initial,zoom=model.settings.getProperty("map.initial_zoom").toDouble())) {
+    val state=rememberMapState(baseStyle=style,initialCameraPosition=CameraPosition(center=if(forceFollow) stations.firstOrNull {it.callsign==selected}?.let {Position(it.longitude,it.latitude)} ?: initial else initial,zoom=model.settings.getProperty("map.initial_zoom").toDouble())) {
         if(model.settings.getProperty("display.trails").toBoolean() && trail.size>1) {
             val trailSource=rememberGeoJsonSource(GeoJsonData.JsonString(trailJson(trail)))
             LineLayer(id="station-trail",source=trailSource,color=const(Color(0xFFB33E20)),width=const(3.dp))
@@ -204,6 +209,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
                 onClick={features->features.firstOrNull()?.properties?.get("callsign")?.jsonPrimitive?.content?.let(select);ClickResult.Consume})
         }}
     }
+    val mapReady=state.style.loadState == StyleLoadState.Ready
     var mapError by remember {mutableStateOf("")}
     LaunchedEffect(state) {
         if(System.getProperty("aprsis64.probe") == "true") {
@@ -223,14 +229,14 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
         is MapEvent.FrameRendered -> if(event.stats?.frameCount == 1L) println("MAP_FIRST_FRAME ${event.stats}")
         else -> Unit
     } } }
-    LaunchedEffect(selected) {
-        stations.firstOrNull {it.callsign==selected}?.let {
+    LaunchedEffect(selected,mapReady) {
+        if(mapReady) stations.firstOrNull {it.callsign==selected}?.let {
             state.animateCamera(CameraUpdate(center=Position(it.longitude,it.latitude),bearing=0.0,pitch=0.0))
         }
     }
     val followed=stations.firstOrNull {it.callsign==selected}
-    LaunchedEffect(follow,followed?.latitude,followed?.longitude) {if(follow && followed!=null) state.animateCamera(CameraUpdate(center=Position(followed.longitude,followed.latitude),bearing=0.0,pitch=0.0))}
-    LaunchedEffect(beaconCenter) {beaconCenter?.let {state.animateCamera(CameraUpdate(center=Position(it.longitude,it.latitude),bearing=0.0,pitch=0.0))}}
+    LaunchedEffect(mapReady,follow,followed?.latitude,followed?.longitude) {if(mapReady && follow && followed!=null) state.animateCamera(CameraUpdate(center=Position(followed.longitude,followed.latitude),bearing=0.0,pitch=0.0))}
+    LaunchedEffect(beaconCenter,mapReady) {if(mapReady) beaconCenter?.let {state.animateCamera(CameraUpdate(center=Position(it.longitude,it.latitude),bearing=0.0,pitch=0.0))}}
     Box(modifier) {
         MaplibreMap(state=state,interactions=MapInteractions {camera {rotate {enabled=false}; pitch {enabled=false}}},
             cameraConstraints=CameraConstraints {maxPitch=0.0; minZoom=model.settings.getProperty("map.minimum_zoom").toDouble(); maxZoom=model.settings.getProperty("map.maximum_zoom").toDouble()},renderOptions=RenderOptions {maximumFps=model.settings.getProperty("map.maximum_fps").toInt()}, overlay={})
@@ -260,6 +266,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     var recipient by remember {mutableStateOf("")}
     var draft by remember(account,peer) {mutableStateOf("")}
     var sending by remember {mutableStateOf(false)}
+    val focusManager=LocalFocusManager.current
     val history=all.filter {it.peer==peer}
     val list=rememberLazyListState()
     LaunchedEffect(history.size) {if(history.isNotEmpty()) list.animateScrollToItem(history.lastIndex)}
@@ -290,7 +297,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
                     Text(DateTimeFormatter.ofPattern("MMM d HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(row.time))+" · "+row.status.replace('_',' '),fontSize=9.sp,color=Muted)
                 } }
             }
-            OutlinedTextField(draft,{draft=it},Modifier.fillMaxWidth().padding(top=8.dp),label={Text("Message")},maxLines=3)
+            OutlinedTextField(draft,{draft=it},Modifier.fillMaxWidth().onPreviewKeyEvent {event->if(event.type==KeyEventType.KeyDown && event.key==Key.Tab) {focusManager.moveFocus(if(event.isShiftPressed) FocusDirection.Previous else FocusDirection.Next);true} else false}.padding(top=8.dp),label={Text("Message")},maxLines=3)
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                 Text("${draft.length}/67",color=Muted,fontSize=10.sp)
                 Spacer(Modifier.weight(1f))

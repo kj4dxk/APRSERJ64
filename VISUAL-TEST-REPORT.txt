@@ -1,0 +1,75 @@
+APRSIS64 0.5.0 - Visual QA and regression fixes - 2026-11-20
+
+METHOD
+Ran the portable Windows app on this PC in an isolated folder with --demo.
+Used actual keyboard interactions and fresh window-only screenshots after each
+action. Tested the main window at 1480x900 and maximized 1936x1056, settings at
+780px width, tools at 1000x800 and tracking at 900x700. Native screenshot helper
+failed; supplied window capture script provided an effective read-only workaround.
+Local evidence: outputs/visual-qa-0.5.0/ (excluded from source control).
+Loopback demo traffic was isolated from RF and external message destinations.
+
+OBSERVED WORKFLOWS
+- Main pdeffenb map, station symbols, unread conversations and north-up rendering.
+- Connection dialog: identity, preset, server, filter and startup controls.
+- Opened every settings category: Beacon, Position, Status, Objects, Map,
+  Services, Operating, Display, History, Offline, Weather, Groups, Kiosk, Alerts,
+  Connectivity. Checked wrapped tab visibility and scrollbar; unchanged Save
+  returned successfully. Not every field or validation combination was exercised.
+- Ports: workspace and discovery; Dire Wolf KISS wizard through all three steps;
+  draft graph update; unsaved-changes prompt and discard without applying hardware.
+- Packet monitor: RX/TX rows, callsign filtering, pause control and TNC2 export.
+- All eight operating-tools pages: Weather, Telemetry, Tracks, Offline, Groups,
+  QRU, Bulletins and Alerts. Weather fields populated from demo packets; telemetry
+  labels, units and graph rendered from PARM/UNIT/T# data; bulletin appeared.
+- GPX and CSV export completed through the UI. Position share was queued and
+  received by the local demo endpoint. Alert dismissal cleared the notice list.
+- Offline preview counted eight tiles; download reached 8/8. Cached map rendered;
+  areas outside downloaded coverage were blank as expected. Zoom controls worked.
+  Final regression verified that disabling offline mode immediately unchecks it.
+- Per-callsign chat: entered and sent a message; ACKNOWLEDGED status and demo reply
+  appeared. After a full process restart, outgoing status and reply persisted.
+- Tracking window opened, saved view persisted and window reopened after restart.
+  Native rendered-feature probe found the selected station and reported bearing 0.
+- Separate live and demo instances coexisted; no machine-wide instance lock.
+
+FIXES DRIVEN BY QA
+1. Root surfaces now supply legible dark-theme content colors for chat and labels.
+2. Settings/tools tab headers wrap and forms have visible vertical scrollbars.
+3. jSerialComm's Windows ARM-first native loading failed on this x64 PC, producing
+   an oversized error dialog. Extract the matching bundled DLL into portable cache
+   and select its path before native initialization. Discovery also handles native
+   linkage failures gracefully. Actual native enumeration now passes a new test.
+4. Operating-tools settings use an observable revision snapshot: checkboxes now
+   reflect saves immediately instead of retaining stale displayed values.
+5. Tab/Shift+Tab navigate out of the message composer instead of inserting a tab
+   that invalidates the APRS message. Verified count remains unchanged.
+6. Shortened an overflowing recipient label, spaced paired fields, simplified
+   export text and identified demo endpoints correctly in the port graph.
+7. Map selection/follow effects wait for ready style state; tracking uses the
+   selected station for its initial camera when available. Added --probe diagnostics.
+8. Expanded local demo fixtures for weather, telemetry definitions and bulletins.
+
+AUTOMATED VALIDATION
+test :core:test packagePortable succeeded: 70 tests, zero failures/errors
+(29 Windows, 41 shared core). Portable EXE rebuilt with the visual fixes.
+Nonfatal LWJGL sun.misc.Unsafe deprecation warning remains.
+
+DEPLOYMENT
+Updated Desktop/APRSIS64/APRSIS64.exe after backing up the previous EXE and TOML.
+Verified build/deployed SHA-256 equality and all parsed TOML values unchanged.
+Restarted normally: VERIFIED as KJ4DXK-13 on rotate.aprs2.net:14580, initial
+BEACON_TX logged, live stations and pdeffenb map visible in desktop-final.png.
+This is local transmit evidence, not independent network-wide reception proof.
+
+LIMITATIONS
+This is a thorough screen sweep and representative workflow regression, not an
+exhaustive certification of every feature or input. Mouse/touch station selection,
+dragging and rewiring were not exercised because automation coordinate geometry
+was unavailable. Keyboard selection and native map hit queries were tested.
+No physical serial GPS/TNC/radio, live RF digipeating/IGate, external QRU/ANSRVR
+responses, radar provider, tray notification appearance, every symbol choice,
+every wizard preset or every invalid-input case was visually tested. Empty object
+settings were inspected; creating/editing all object forms was not covered.
+Existing automated protocol/routing tests do not substitute for hardware testing.
+Local ACK/reply tests establish the application workflow, not external delivery.

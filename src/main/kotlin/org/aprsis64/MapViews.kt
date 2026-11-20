@@ -38,8 +38,8 @@ internal fun navigationSummary(model:AppModel,station:AprsStation):String {
 @Composable fun TrackingWindow(model:AppModel,call:String,dismiss:()->Unit) {
  val stations by model.stations.collectAsState();val revision by model.settingsRevision.collectAsState()
  Window(onCloseRequest=dismiss,title="$call — APRSIS64",state=rememberWindowState(width=900.dp,height=700.dp)) {
-  MaterialTheme(colors=darkColors()) {ProvideMapPresentationHost(host=rememberAwtComposeMapPresentationHost(window)) {
+  MaterialTheme(colors=darkColors()) {androidx.compose.material.Surface {ProvideMapPresentationHost(host=rememberAwtComposeMapPresentationHost(window)) {
    key(revision) {MapPanel(stations,call,model,null,Modifier.fillMaxSize(),forceFollow=true) {}}
-  }}
+  }}}
  }
 }
