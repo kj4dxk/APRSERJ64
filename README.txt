@@ -1,6 +1,6 @@
 APRSIS64 — portable Windows APRS map, chat and beaconing
 
-SOURCE STATUS: TOML, configurable services and beaconing are not yet built or
+SOURCE STATUS: TOML, configurable services, beaconing and radio ports are not yet built or
 tested. The existing 0.2.0 EXE predates these changes. See TEST-REPORT.txt.
 
 Source: https://github.com/kj4dxk/APRSIS64
@@ -90,7 +90,8 @@ The Local demo button or --demo argument uses a loopback-only test server.
 CURRENT SCOPE
 Source adds adaptive and fixed beaconing, serial/TCP/GPSd NMEA positions, status,
 objects/items and companion station reports. See BEACONING.txt for coverage and
-limitations. This is not full APRSIS32 parity. Markers are circles. No RF, routing
+limitations. Named RF/GPS ports, digipeating and IGating are described in RADIO-PORTS.txt.
+This is not full APRSIS32 parity. Markers are circles. No routing
 UI, weather/telemetry integrations, satellite passes or offline download manager. Cached tiles
 are reused as MapLibre's HTTP cache permits; there is no bulk tile pre-download.
 Chats currently load complete history rather than pages.
@@ -133,3 +134,8 @@ Close the app before editing TOML. Cache budget changes require restart.
 [position] contains GPS endpoints and fixed station coordinates separately from
 [map]'s initial view/feed center. Confirm the fixed location for your station.
 [beacon].enabled defaults true; a verified login and usable position are required.
+RADIO PORTS
+Settings > Ports and Radio configure serial/TCP NMEA, KISS, AGW and text/command
+TNC profiles. All per-port options live in [[ports]] in settings.toml. Static
+objects can target APRS-IS, selected RF ports, or both. See RADIO-PORTS.txt for
+profile coverage, defaults, setup, routing behavior and pending validation.

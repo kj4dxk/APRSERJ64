@@ -1,3 +1,9 @@
+Named radio ports source — 2026-11-20
+NOT COMPILED OR TESTED, retaining the user's instruction. No devices opened, app
+restart, build, RF transmission or APRS-IS beacon. Prepared codec, digipeater,
+IGate and settings regression cases for a later authorized run. Hardware profile
+compatibility is unverified. Historical PASS results do not cover this change.
+
 Beaconing and configurable services source — 2026-11-20
 NOT COMPILED OR TESTED, at the user's request. No new EXE, restart, or public
 beacon transmission. New regression tests are source only and have not run.

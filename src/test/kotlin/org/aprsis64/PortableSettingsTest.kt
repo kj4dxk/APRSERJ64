@@ -7,6 +7,27 @@ import kotlinx.coroutines.*
 import net.osmand.shared.aprs.AprsConnectionState
 
 class PortableSettingsTest {
+    @Test fun namedPortsAndStaticObjectRoutesRoundTrip() {
+        val folder=Files.createTempDirectory("APRSIS64 ports ")
+        val store=SettingsStore(folder)
+        store.ports=listOf(
+            PortPreferences.defaults("NMEA").apply {setProperty("name","GPS");setProperty("device","COM88")},
+            PortPreferences.defaults("Simply(KISS)").apply {setProperty("name","VHF");setProperty("device","COM89");setProperty("digi_transforms","[\"WIDE1-1=\",\"WIDE2-2=WIDE2-1\"]")})
+        store.values.setProperty("position.source","port");store.values.setProperty("position.port_name","GPS")
+        store.entities=listOf(java.util.Properties().apply {
+            BeaconPreferences.entityFields.forEach {setProperty(it.key,it.default)}
+            setProperty("name","TESTOBJ");setProperty("ports","[\"VHF\"]");setProperty("internet","false")
+        })
+        store.save()
+        val restored=SettingsStore(folder)
+        assertEquals(listOf("GPS","VHF"),restored.ports.map {it.getProperty("name")})
+        assertEquals("COM88",restored.ports.first().getProperty("device"))
+        assertEquals("GPS",restored.values.getProperty("position.port_name"))
+        assertEquals("false",restored.entities.single().getProperty("internet"))
+        assertEquals("[\"VHF\"]",restored.entities.single().getProperty("ports"))
+        restored.ports.forEach {it.setProperty("enabled","true");it.setProperty("device","COM88")}
+        assertFailsWith<IllegalArgumentException> {restored.save()}
+    }
     // Prepared for the next authorized test run; no network is used here.
     @Test fun customServicesAndServerListSurviveSave() {
         val folder=Files.createTempDirectory("APRSIS64 custom settings ")

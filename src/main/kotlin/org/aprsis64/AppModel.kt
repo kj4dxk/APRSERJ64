@@ -23,15 +23,33 @@ class AppModel(val directory: Path) : AutoCloseable {
     private var server: DemoServer? = null
     private var broadcaster: BeaconController? = null
     private var beaconObserver: Job? = null
+    private var radio: RadioPorts?=null
+    private var radioObserver: Job?=null
+    private val internetStations=MutableStateFlow<List<AprsStation>>(emptyList())
+    val portStatuses=MutableStateFlow<List<PortStatus>>(emptyList())
     @Volatile private var stress = false
     private val store = SettingsStore(directory)
     val settings = store.values
     val servers get() = store.servers
     val entities get() = store.entities
+    val ports get() = store.ports
     val settingsRevision=MutableStateFlow(0L)
     val beaconState=MutableStateFlow(BeaconState(settings.getProperty("beacon.enabled").toBoolean()))
     val beaconCenter=MutableStateFlow<AprsFix?>(null)
-    init { account.value = settings.getProperty("callsign","") }
+    init { account.value = settings.getProperty("callsign","");startPorts() }
+    private fun startPorts() {
+        chat?.close();chat=null
+        beaconObserver?.cancel();broadcaster?.close();broadcaster=null
+        radioObserver?.cancel();radio?.close()
+        val current=RadioPorts(account.value,Properties().apply {putAll(settings)},if(demo.value) emptyList() else store.ports,scope)
+        radio=current;current.attach(client)
+        if(AprsProtocol.validCallsign(account.value)) chat=ChatSession(account.value,current,database,scope) {error.value=it}
+        radioObserver=scope.launch {
+            launch {combine(current.stations,internetStations) {rf,inet->rf+inet.filter {s->rf.none {it.callsign==s.callsign}}}.collect {if(!stress) stations.value=it}}
+            launch {current.statuses.collect {portStatuses.value=it}}
+        }
+        if(AprsProtocol.validCallsign(account.value)) startBeacons(current,account.value)
+    }
     fun connect(call: String, password: String, endpoint: String, latitude: Double, longitude: Double, autoConnect: Boolean = true): Boolean {
         try {
             val address = AprsEndpoint.parse(endpoint)
@@ -63,11 +81,10 @@ class AppModel(val directory: Path) : AutoCloseable {
     private fun start(config: AprsIsConfig) {
         account.value = config.callsign; error.value = ""
         val connection = AprsIsClient(); client = connection
-        chat = ChatSession(config.callsign,connection,database,scope) { error.value=it }
-        startBeacons(connection,config.callsign)
+        if(radio?.call==config.callsign && !demo.value) radio?.attach(connection) else startPorts()
         observing = scope.launch {
             launch { connection.state.collect { state.value=it; println("APRS_CONNECTION ${config.callsign} $it ${config.host}:${config.port}") } }
-            launch { connection.stations.collect { if(!stress) stations.value=it; if(it.size == 1 || it.size % 50 == 0) println("APRS_STATIONS ${it.size}") } }
+            launch { connection.stations.collect { internetStations.value=it; if(it.size == 1 || it.size % 50 == 0) println("APRS_STATIONS ${it.size}") } }
         }
         connection.start(config)
     }
@@ -76,15 +93,15 @@ class AppModel(val directory: Path) : AutoCloseable {
             settings.setProperty("autoConnect", "false")
             try { store.save() } catch (_: Exception) { error.value="Unable to save settings." }
         }
-        observing?.cancel(); observing=null; chat?.close(); chat=null
-        beaconObserver?.cancel(); beaconObserver=null; broadcaster?.close(); broadcaster=null
+        observing?.cancel(); observing=null
+        radio?.attach(null)
         client?.stop(); client=null; server?.close(); server=null
-        state.value=AprsConnectionState.STOPPED; demo.value=false; stress=false; stations.value=emptyList()
-        beaconState.value=beaconState.value.copy(detail="Disconnected")
+        state.value=AprsConnectionState.STOPPED; demo.value=false; stress=false; internetStations.value=emptyList()
     }
-    private fun startBeacons(connection: AprsIsClient, call: String) {
+    private fun startBeacons(connection: RadioPorts, call: String) {
         beaconObserver?.cancel(); broadcaster?.close()
         val snapshot=Properties().apply {putAll(settings)}
+        if(demo.value) snapshot.setProperty("position.source","fixed")
         val entities=store.entities.map {Properties().apply {putAll(it)}}
         val odometer=directory.resolve("data/odometer-$call.txt")
         val distance=runCatching {Files.readString(odometer).trim().toDouble().takeIf {it.isFinite() && it>=0}}.getOrNull() ?: 0.0
@@ -96,17 +113,19 @@ class AppModel(val directory: Path) : AutoCloseable {
         broadcaster=controller
         beaconObserver=scope.launch {controller.state.collect {beaconState.value=it}}
     }
-    fun savePreferences(values: Properties, entities: List<Properties>): Boolean {
+    fun savePreferences(values: Properties, entities: List<Properties>, ports: List<Properties> = store.ports): Boolean {
         val previous=Properties().apply {putAll(settings)}
         val previousEntities=store.entities
+        val previousPorts=store.ports
         try {
             BeaconConfiguration(values,entities); ServicePreferences.validate(values)
-            settings.clear(); settings.putAll(values); store.entities=entities
+            PortPreferences.validateAll(values,ports,entities)
+            settings.clear(); settings.putAll(values); store.entities=entities;store.ports=ports
             store.save(); settingsRevision.value++
-            client?.let {startBeacons(it,account.value)}
+            startPorts()
             beaconState.value=beaconState.value.copy(enabled=settings.getProperty("beacon.enabled").toBoolean())
             error.value=""; return true
-        } catch(_: Exception) {settings.clear();settings.putAll(previous);store.entities=previousEntities;error.value="Check the settings values and folder write access.";return false}
+        } catch(_: Exception) {settings.clear();settings.putAll(previous);store.entities=previousEntities;store.ports=previousPorts;error.value="Check the settings values and folder write access.";return false}
     }
     fun transmitBeacon() {broadcaster?.transmit()}
     fun transmitStatus() {broadcaster?.transmitStatus()}
@@ -123,6 +142,8 @@ class AppModel(val directory: Path) : AutoCloseable {
     override fun close() {
         runBlocking {withTimeoutOrNull(3000) {runCatching {broadcaster?.beforeExit()}}}
         disconnect()
+        broadcaster?.close();radioObserver?.cancel()
+        runBlocking {try {withTimeoutOrNull(3000) {radio?.shutdown()}} finally {radio?.close()}}
         runBlocking { scope.coroutineContext[Job]?.cancelAndJoin() }
         database.close()
     }

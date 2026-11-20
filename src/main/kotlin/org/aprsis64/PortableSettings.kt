@@ -62,6 +62,9 @@ class SettingsStore(private val root: Path) {
     var entities: List<Properties> = document?.getArray("objects")?.let { array ->
         (0 until array.size()).map { index -> Properties().also { BeaconPreferences.loadFields(it,array.getTable(index),BeaconPreferences.entityFields) } }
     } ?: emptyList()
+    var ports: List<Properties> = document?.getArray("ports")?.let {array ->
+        (0 until array.size()).map {index->Properties().also {BeaconPreferences.loadFields(it,array.getTable(index),PortPreferences.fields)}}
+    } ?: emptyList()
     var servers: List<ServerPreset> = document?.getArray("aprs.servers")?.let { array ->
         (0 until array.size()).map { index -> val entry=array.getTable(index)
             val port=requireNotNull(entry.getLong("port")).also {require(it in 1L..65535L)}.toInt()
@@ -76,12 +79,15 @@ class SettingsStore(private val root: Path) {
         defaults.forEach { (key, value) -> if(!values.containsKey(key)) values.setProperty(key, value) }
         BeaconPreferences.load(values,document)
         ServicePreferences.load(values,document)
+        BeaconPreferences.loadFields(values,document,PortPreferences.global)
+        PortPreferences.validateAll(values,ports,entities)
         ServicePreferences.validate(values)
         BeaconConfiguration(values,entities)
         if(!Files.exists(path) || document?.get("aprs.servers")==null ||
-            (BeaconPreferences.fields+ServicePreferences.fields).any {document?.get(it.key)==null}) save()
+            (BeaconPreferences.fields+ServicePreferences.fields+PortPreferences.global).any {document?.get(it.key)==null}) save()
     }
     fun save() {
+        PortPreferences.validateAll(values,ports,entities)
         BeaconConfiguration(values,entities)
         ServicePreferences.validate(values)
         Files.createDirectories(root)
@@ -110,6 +116,8 @@ class SettingsStore(private val root: Path) {
             servers.joinToString("") { "\n[[aprs.servers]]\nname = ${quoted(it.name)}\nhost = ${quoted(it.host)}\nport = ${it.port}\n" } +
             BeaconPreferences.writeMain(values) + entities.joinToString("") {
             "\n[[objects]]\n"+BeaconPreferences.write(it,BeaconPreferences.entityFields,sections=false)
+        } + BeaconPreferences.write(values,PortPreferences.global) + ports.joinToString("") {
+            "\n[[ports]]\n"+BeaconPreferences.write(it,PortPreferences.fields,sections=false)
         }
         val temp = Files.createTempFile(root, ".settings-", ".tmp")
         try {

@@ -99,6 +99,8 @@ host = "china.aprs2.net"
 port = 14580
 
 [beacon]
+internet = true
+radio = true
 enabled = true
 minimum_seconds = 10
 maximum_seconds = 1800
@@ -128,6 +130,7 @@ rotate_comments = false
 selected_comment = 0
 
 [position]
+port_name = ""
 source = "fixed"
 latitude = 28.536725
 longitude = -81.242932
@@ -148,3 +151,154 @@ text = "APRSIS64"
 
 [odometer]
 report_on_exit = false
+
+[radio]
+heard_seconds = 1800
+maximum_hops = 2
+duplicate_seconds = 30
+internet_seconds = 1800
+maximum_entries = 4096
+
+# Configure the device/endpoint, then enable this port.
+[[ports]]
+name = "GPS"
+enabled = false
+protocol = "NMEA"
+transport = "serial"
+device = ""
+endpoint = ""
+baud = 4800
+channel = 0
+provides_nmea = true
+transmit = false
+rf_to_is = true
+no_gate_me = false
+is_to_rf = true
+beacon = true
+beacon_path = "WIDE1-1,WIDE2-1"
+message_path = "WIDE1-1"
+messages = true
+objects = true
+digipeater = false
+digi_outputs = []
+digi_transforms = ["WIDE1-1="]
+gate_calls = []
+gate_objects = []
+passall = false
+open_commands = []
+close_commands = []
+command_prompt = "cmd:"
+command_timeout_ms = 3000
+command_delay_ms = 100
+reconnect_seconds = 3
+transmit_per_minute = 20
+minimum_transmit_ms = 1000
+kiss_txdelay = -1
+kiss_persistence = -1
+kiss_slot = -1
+kiss_tail = -1
+kiss_duplex = -1
+
+# Configure the device/endpoint, then enable this port.
+[[ports]]
+name = "VHF"
+enabled = false
+protocol = "Simply(KISS)"
+transport = "serial"
+device = ""
+endpoint = ""
+baud = 9600
+channel = 0
+provides_nmea = false
+transmit = true
+rf_to_is = true
+no_gate_me = false
+is_to_rf = true
+beacon = true
+beacon_path = "WIDE1-1,WIDE2-1"
+message_path = "WIDE1-1"
+messages = true
+objects = true
+digipeater = false
+digi_outputs = []
+digi_transforms = ["WIDE1-1="]
+gate_calls = []
+gate_objects = []
+passall = false
+open_commands = []
+close_commands = []
+command_prompt = "cmd:"
+command_timeout_ms = 3000
+command_delay_ms = 100
+reconnect_seconds = 3
+transmit_per_minute = 20
+minimum_transmit_ms = 1000
+kiss_txdelay = -1
+kiss_persistence = -1
+kiss_slot = -1
+kiss_tail = -1
+kiss_duplex = -1
+
+# Configure the device/endpoint, then enable this port.
+[[ports]]
+name = "AGW"
+enabled = false
+protocol = "AGW"
+transport = "tcp"
+device = ""
+endpoint = "127.0.0.1:8000"
+baud = 9600
+channel = 0
+provides_nmea = false
+transmit = true
+rf_to_is = true
+no_gate_me = false
+is_to_rf = true
+beacon = true
+beacon_path = "WIDE1-1,WIDE2-1"
+message_path = "WIDE1-1"
+messages = true
+objects = true
+digipeater = false
+digi_outputs = []
+digi_transforms = ["WIDE1-1="]
+gate_calls = []
+gate_objects = []
+passall = false
+open_commands = []
+close_commands = []
+command_prompt = "cmd:"
+command_timeout_ms = 3000
+command_delay_ms = 100
+reconnect_seconds = 3
+transmit_per_minute = 20
+minimum_transmit_ms = 1000
+kiss_txdelay = -1
+kiss_persistence = -1
+kiss_slot = -1
+kiss_tail = -1
+kiss_duplex = -1
+
+# Static object example. Uncomment the block and configure its name/position.
+# [[objects]]
+# name = "EXAMPLE"
+# internet = true
+# radio = true
+# ports = []
+# rf_path = ""
+# kind = "object"
+# enabled = false
+# alive = true
+# source = "fixed"
+# latitude = 28.536725
+# longitude = -81.242932
+# altitude_meters = 0
+# course = 0
+# speed_knots = 0
+# symbol_table = "/"
+# comment = ""
+# minimum_seconds = 30
+# time_only = false
+# heading_degrees = 30
+# forecast_error_meters = 160.9344
+# distance_meters = 1609.344

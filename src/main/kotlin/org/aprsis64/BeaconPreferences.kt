@@ -15,7 +15,10 @@ object BeaconPreferences {
     private val b=SettingKind.BOOLEAN; private val i=SettingKind.INTEGER; private val d=SettingKind.DECIMAL
     val fields=listOf(
         BeaconField("beacon.enabled","Beaconing enabled","true",b),
-        BeaconField("position.source","Position source","fixed",choices=listOf("fixed","gps_serial","gps_tcp","gpsd")),
+        BeaconField("position.source","Position source","fixed",choices=listOf("fixed","port","gps_serial","gps_tcp","gpsd")),
+        BeaconField("position.port_name","Named NMEA port",""),
+        BeaconField("beacon.internet","Beacon to APRS-IS","true",b),
+        BeaconField("beacon.radio","Beacon to RF ports","true",b),
         BeaconField("position.latitude","Fixed latitude","28.536725",d),
         BeaconField("position.longitude","Fixed longitude","-81.242932",d),
         BeaconField("position.altitude_meters","Fixed altitude (meters)","0",d),
@@ -60,6 +63,10 @@ object BeaconPreferences {
     )
     val entityFields=listOf(
         BeaconField("name","Name / companion callsign",""),
+        BeaconField("internet","Send to APRS-IS","true",b),
+        BeaconField("radio","Send to RF ports","true",b),
+        BeaconField("ports","RF ports (empty: all eligible ports)","[]",SettingKind.STRINGS),
+        BeaconField("rf_path","Object RF path (blank: port beacon path)",""),
         BeaconField("kind","Report type","object",choices=listOf("object","item","station")),
         BeaconField("enabled","Enabled","true",b),
         BeaconField("alive","Alive (off sends a kill report)","true",b),
@@ -133,13 +140,15 @@ class BeaconConfiguration(val values: Properties, val entities: List<Properties>
         require(integer("position.maximum_age_seconds") in 1..120 && number("position.maximum_accuracy_meters") in 1.0..10000.0)
         require(integer("position.serial_baud") in 1200..921600)
         gpsEndpoint()
-        require(text("position.source") in listOf("fixed","gps_serial","gps_tcp","gpsd"))
+        require(text("position.source") in listOf("fixed","port","gps_serial","gps_tcp","gpsd"))
         require(integer("beacon.comment_interval_seconds") in 0..86400 && integer("beacon.selected_comment") >= 0)
         require(comments.size<=32 && comments.all {it.length<=120 && it.all {c->c.code in 32..126}})
         require(integer("status.interval_seconds") in 0..86400 && (integer("status.interval_seconds")==0 || integer("status.interval_seconds")>=10))
         require(text("status.text").length<=200 && text("status.text").all {it.code in 32..126})
         require(entities.size<=32 && entities.map {it.getProperty("name")}.distinct().size==entities.size)
         entities.forEach { e ->
+            val path=e.getProperty("rf_path").split(',').filter {it.isNotBlank()}
+            require(path.size<=8 && path.all {RadioPacket.address(it)})
             val name=e.getProperty("name"); val kind=e.getProperty("kind")
             require(kind in listOf("object","item","station") && e.getProperty("source") in listOf("fixed","follow"))
             if(kind=="station") require(AprsProtocol.validCallsign(name) && e.getProperty("alive").toBooleanStrict())

@@ -78,6 +78,7 @@ fun main(args: Array<String>) {
     val revision by model.database.revision.collectAsState()
     val settingsRevision by model.settingsRevision.collectAsState()
     val beacon by model.beaconState.collectAsState()
+    val portStatuses by model.portStatuses.collectAsState()
     val beaconCenter by model.beaconCenter.collectAsState()
     var selected by remember { mutableStateOf<String?>(null) }
     var settings by remember { mutableStateOf(false) }
@@ -99,10 +100,10 @@ fun main(args: Array<String>) {
             Spacer(Modifier.width(14.dp))
             OutlinedButton(onClick={ settings=true }) { Text("Connection") }
             TextButton(onClick={preferences=true}) {Text("Settings")}
-            Button(onClick={model.transmitBeacon()},enabled=connection==AprsConnectionState.VERIFIED && beacon.enabled) {Text("Transmit")}
+            Button(onClick={model.transmitBeacon()},enabled=beacon.enabled && account.isNotBlank()) {Text("Transmit")}
             Spacer(Modifier.width(8.dp))
             if(connection==AprsConnectionState.STOPPED) Button(onClick={ model.localDemo() }) { Text("Local demo") }
-            else OutlinedButton(onClick={ model.disconnect(remember=true) }) { Text("Disconnect") }
+            else OutlinedButton(onClick={ model.disconnect(remember=true) }) { Text("Disconnect IS") }
             TextButton(onClick={about=true}) {Text("About")}
         }
         if(error.isNotBlank()) Text(error,Modifier.fillMaxWidth().background(Color(0xFF6B332B)).padding(10.dp))
@@ -118,6 +119,7 @@ fun main(args: Array<String>) {
                 } }
                 Text(if(beacon.enabled) "Beacon: ${beacon.source}" else "Beacon: Off",fontSize=12.sp,color=Accent)
                 Text(beacon.detail,fontSize=11.sp,color=Muted)
+                portStatuses.forEach {p->Text("${p.name}: ${p.detail} · RX ${p.received} / TX ${p.transmitted}"+(if(p.dropped>0) " / Dropped ${p.dropped}" else ""),fontSize=11.sp,color=Muted)}
                 beacon.sentAt?.let {Text("Last sent "+DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(it)),fontSize=11.sp,color=Muted)}
             }
             val own=beacon.position?.takeIf {account.isNotBlank()}?.let {p -> AprsStation(account,p.fix.latitude,p.fix.longitude,

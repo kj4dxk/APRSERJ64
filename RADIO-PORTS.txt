@@ -1,0 +1,94 @@
+APRSIS64 named ports — source implementation, not yet built or hardware-tested
+
+Settings > Ports creates serial or TCP connections. Every port has its own name,
+protocol, device/endpoint, baud, channel, transmit controls, paths, IGate directions,
+digipeater transforms, rate limits and open/close commands. These are persisted as
+[[ports]] in settings.toml; global heard/dedup limits live in [radio]. No device is
+opened merely because a template exists: set its device/endpoint and enabled=true.
+The example and this PC's settings contain disabled GPS, VHF KISS and AGW templates.
+Only one enabled owner is permitted per serial device.
+
+Protocol coverage from APRSIS32's 2024/09/05 port catalog:
+  NMEA                 Checksummed RMC/GGA/GLL GPS; serial or TCP; receive only.
+  Simply(KISS)         Already-in-KISS TNCs, including network software TNCs.
+  KISS                 KISS framing plus editable initialization commands.
+  KWD700(KISS)         Kenwood KISS framing and editable mode-entry commands.
+  AGW                  AGWPE-compatible TCP raw AX.25 frames; selectable radio.
+  TEXT                 TNC2 text packets in/out, CR/LF delimited.
+  CONVerse             Command-mode MYCALL/UNPROTO/CONV transmit, monitor receive.
+  KWD710(Pkt)           Kenwood packet command mode and UI monitor parsing.
+  KWD710(APRS)          TC mode switching around command-mode transmission; NMEA.
+  KWD700(RO+GPS)        Text monitor/NMEA receive only.
+  FTM350v1.3(RO)        Yaesu two-line timestamped monitor receive only.
+
+New-port selection seeds editable commands; changing an existing protocol does
+not silently overwrite its commands. Radio model/firmware setup still matters.
+Commands are JSON string arrays in the editor and TOML string arrays in the file.
+Example: open_commands = ["\u0003|cmd:", "MON ON\r|cmd:"]
+The part after | is the expected response; omit it for a paced write without a
+response. \r is carriage return; \u0003 is Ctrl-C. Timeouts/delays are configurable.
+KISS parameter values of -1 leave the TNC setting untouched. PASSALL must accurately
+reflect the TNC; when true this app blocks IGating and digipeating from that port.
+AGW authentication and automatic radio model detection are not implemented.
+CWOP, local APRS servers, UDP/syslog and dummy ports are services, not TNC drivers,
+and have not been added by this change.
+
+GPS
+Choose position.source = "port" and position.port_name = "GPS" (or your name).
+A TNC that emits standalone NMEA can also set provides_nmea=true. This shares its
+connection instead of opening the same COM port twice. Legacy gps_serial/gps_tcp/
+gpsd settings remain supported. Third-party stations' GPS data never becomes your
+own GPS fix. Embedded Kenwood GPS-echo envelopes are not decoded as local fixes.
+
+Static objects
+Settings > Objects or [[objects]] creates a fixed object with coordinates, symbol,
+comment, interval, alive/kill state, independent internet/radio switches, a ports
+array and rf_path. An empty ports array selects all eligible RF ports; a blank
+rf_path uses each port's beacon_path. Fixed objects do not require a GPS fix or an
+Internet connection when an RF output is available. The master beacon switch still
+applies. Kill reports repeat three times per session; kill counters are not yet
+persisted across restarts. Successful output to any selected destination advances
+the report schedule; an offline destination catches the next scheduled report.
+
+Digipeater
+Enable digipeater on an RF input and configure exact-match digi_transforms:
+  ["WIDE1-1=", "WIDE2-2=WIDE2-1", "WIDE2-1="]
+The first unused hop is matched; the station's callsign is inserted as used.
+APRSIS32 replacement prefixes ! (omit ID insertion) and @ (discard used path) are
+recognized. Own-source/own-path loops, third-party packets, Internet paths and
+duplicate payloads are rejected. digi_outputs selects output port names; an empty
+list retransmits on the input port. No wildcard expansion is performed.
+Digipeating requires KISS, AGW or a raw TNC2 TEXT interface; command-mode radios
+cannot faithfully preserve AX.25 repeated bits and are rejected for this role.
+
+IGate
+rf_to_is sends eligible RF packets through the verified login, preserving the RF
+path and adding qAR or qAO. Queries, Internet-origin packets, NOGATE/RFONLY paths,
+PASSALL input and duplicates are blocked. Non-Internet third-party packets unwrap.
+is_to_rf gates messages to recently heard local stations and the message sender's
+next position. Hop/time limits, Internet presence, source RF presence, duplicate
+suppression and mandatory third-party encapsulation prevent loops. Internet paths
+and q constructs never become RF routing paths. Exact gate_calls / gate_objects
+lists optionally permit additional sources/objects; they are empty by default.
+This is not a full implementation of APRSIS32's arbitrary IStoRF filter language,
+telemetry/DX statistics or every historical gating extension.
+Reference: https://www.aprs-is.net/IGateDetails.aspx
+Reference: https://www.aprs-is.net/q.aspx
+
+Chat and lifecycle
+RF stations join the map and local addressed messages enter the same persistent
+chat database. Chat prefers a recently heard RF port, otherwise verified APRS-IS,
+otherwise the first available messaging RF port. ACK/retry handling uses the shared
+ChatSession; ACK follows persistence. Disconnect IS leaves RF/GPS ports running.
+The local demo opens no RF ports. Closing the app closes all hardware resources.
+Disconnected ports have no stale transmit queue. Transmit counters mean successful
+device writes, not proof of over-the-air reception. Serial readers use a bounded
+routing queue and expose Dropped counts if overloaded. Rate-limited packets are
+not queued; messages rely on retry, beacons on their schedule, and IGate packets
+can be dropped. Close commands run on app shutdown; immediate settings reload or
+connection failure closes the handle without a guaranteed command exchange.
+
+Validation status
+Codec/routing and settings regression cases are prepared but NOT RUN. No compile,
+app restart, radio access or transmission was performed. Each hardware profile
+still needs a controlled device check. No APRSIS32 source was copied or distributed.

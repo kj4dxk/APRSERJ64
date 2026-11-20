@@ -2,7 +2,7 @@ Beaconing source coverage — not compiled or tested
 
 Behavior reviewed against APRSIS32 source version 2024/09/05 17:14.
 Implementation is independent; no APRSIS32 source is distributed here.
-This is APRS-IS-only coverage, not a claim of complete APRSIS32 parity.
+Named-port RF routing is now in source; see RADIO-PORTS.txt. This is not full parity.
 
 Implemented in source:
 - Enabled by default. Fixed coordinates default to the selected initial location.
@@ -33,7 +33,8 @@ threshold 0.5 knots. Optional status and odometer-on-exit default off.
 All user-facing preferences are written to settings.toml; [[objects]] entries
 hold object/item/companion configuration. See the Settings editor for fields.
 
-Not implemented: RF/TNC beacon paths, RF-only gating and RF-DX status, Windows CE
+RF/TNC beacon paths and basic IGating/digipeating are now in source, untested.
+Not implemented: RF-DX status, Windows CE
 cellular location, weather-device packets, telemetry generators and satellite
 automation. Mic-E packet encoding and full APRSIS32 pressure/odometer equivalence
 remain outside the current implementation. Transmission success means a socket

@@ -11,3 +11,8 @@ Configuration policy
   the selected position source. Never send a cached offline queue of old positions.
 - Never commit local callsigns/passcodes, user settings, chat data, caches or logs.
 - Keep implementation notes in documentation, not the application UI.
+
+- Keep serial/TCP ports, protocol commands, paths, routing rules and rate limits
+  editable in TOML. Hardware profiles are unverified until tested on the device.
+- Never send Internet q constructs as RF paths. Keep IGate loop prevention and
+  duplicate suppression in the shared core. Keep local demo isolated from RF.
