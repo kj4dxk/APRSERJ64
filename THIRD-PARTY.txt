@@ -32,3 +32,5 @@ OpenStreetMap attribution is retained as a visible, clickable map credit:
 https://osmfoundation.org/wiki/Licence/Attribution_Guidelines
 The portable bootstrap uses the installed Windows .NET Framework; it does not
 redistribute that framework. The bundled Java runtime retains runtime/legal.
+
+TomlJ 1.1.1: Apache-2.0. https://github.com/tomlj/tomlj/tree/1.1.1

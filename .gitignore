@@ -5,6 +5,7 @@ build/
 *.iml
 *.log
 /settings.properties
+/settings.toml
 /data/
 /cache/
 /logs/

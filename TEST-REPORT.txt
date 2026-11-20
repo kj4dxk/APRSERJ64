@@ -1,3 +1,6 @@
+TOML source change — 2026-11-20
+Settings now use settings.toml with legacy properties import. Not compiled or tested,
+as requested. Reports below apply to earlier builds, not this source change.
 APRSIS64 0.2.0 portable verification — 2026-11-20
 
 PASS: test and packagePortable; 28 tests (23 shared core, 5 Windows), zero failures.

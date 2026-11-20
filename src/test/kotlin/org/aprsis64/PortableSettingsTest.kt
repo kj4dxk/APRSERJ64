@@ -21,7 +21,7 @@ class PortableSettingsTest {
                 assertTrue(model.connect("N0CALL-12", "12345", "tcp://127.0.0.1:${server.port}", 28.536725, -81.242932))
                 withTimeout(10_000) { while(model.state.value != AprsConnectionState.VERIFIED) delay(20) }
             }
-            assertTrue(Files.exists(folder.resolve("settings.properties")))
+            assertTrue(Files.exists(folder.resolve("settings.toml")))
             assertTrue(Files.exists(folder.resolve("data/chats.sqlite")))
             val restored = SettingsStore(folder).values
             assertEquals("12345", restored.getProperty("passcode"))

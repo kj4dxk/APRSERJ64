@@ -17,6 +17,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
     implementation("org.xerial:sqlite-jdbc:3.50.3.0")
+    implementation("org.tomlj:tomlj:1.1.1")
     testImplementation(kotlin("test-junit"))
 }
 compose.desktop {

@@ -14,7 +14,7 @@ application dependencies are embedded in the EXE and extracted on first launch.
 It always works relative to the EXE, even if a shortcut starts elsewhere.
 
 The program creates these items beside APRSIS64.exe:
-  settings.properties   Callsign/SSID, passcode, server, filter and startup setting
+  settings.toml         Callsign/SSID, passcode, server, filter and startup setting
   data/chats.sqlite     Persistent chat history and outgoing queue
   cache/tiles.db        Downloaded map resources (512 MiB ambient cache limit)
   cache/tmp/            Native-library extraction and temporary runtime files
@@ -27,9 +27,32 @@ unpacks a separate runtime subfolder without replacing settings, chats or tiles.
 Only one instance can run from a folder. Data does not go to AppData or the registry.
 Old app/<payload-id> runtime folders may be removed manually when no longer needed.
 
+
+SETTINGS FORMAT
+settings.toml is UTF-8 TOML, with [aprs] and [map] sections. Strings use quotes,
+numbers do not, and booleans are true or false. Indentation is optional.
+Example (no personal credentials):
+
+[aprs]
+callsign = "N0CALL-13"
+passcode = ""
+server = "rotate.aprs2.net"
+port = 14580
+connect_on_startup = true
+
+[map]
+latitude = 28.536725
+longitude = -81.242932
+
+If settings.toml is absent, the next TOML-capable build imports settings.properties
+and keeps the original file intact. Once TOML exists, it takes precedence. Invalid
+TOML is rejected rather than overwritten with defaults. Close the app before hand
+editing settings. Application saves rewrite the known settings in the format above;
+custom comments and unknown fields are not retained when saving.
+The existing 0.2.0 EXE still uses properties until a new build is requested.
 FIRST CONNECTION
 Open Connection, enter your callsign including SSID and APRS-IS passcode, choose
-a preset or Custom server, then Connect. Passcode is saved in settings.properties.
+a preset or Custom server, then Connect. Passcode is saved in settings.toml.
 Connect on startup is enabled by default; Disconnect disables automatic startup
 connection until enabled again. The distributed EXE contains no personal credentials.
 Local settings, data and caches are excluded from the source repository.
