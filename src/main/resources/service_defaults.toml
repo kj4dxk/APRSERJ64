@@ -19,6 +19,7 @@ underlay_enabled = false
 underlay_url = ""
 
 [services]
+satellite_status_url = "https://www.ariss.org/current-status-of-iss-stations.html"
 base_url = "http://pdeffenb.homeip.net:82"
 routing_url = "http://pdeffenb.homeip.net:82/osmand/route/v1/"
 search_url = "http://pdeffenb.homeip.net:82/api/search"

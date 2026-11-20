@@ -1,5 +1,4 @@
-# APRSIS64 portable settings. Edit while the application is closed.
-# This example contains no account credentials.
+# APRSIS64 portable settings
 [aprs]
 callsign = ""
 passcode = ""
@@ -7,6 +6,8 @@ server = "rotate.aprs2.net"
 port = 14580
 connect_on_startup = true
 radius_km = 100
+
+
 [map]
 latitude = 28.536725
 longitude = -81.242932
@@ -29,6 +30,7 @@ underlay_enabled = false
 underlay_url = ""
 
 [services]
+satellite_status_url = "https://www.ariss.org/current-status-of-iss-stations.html"
 base_url = "http://pdeffenb.homeip.net:82"
 routing_url = "http://pdeffenb.homeip.net:82/osmand/route/v1/"
 search_url = "http://pdeffenb.homeip.net:82/api/search"
@@ -36,7 +38,6 @@ map_page_url = "http://pdeffenb.homeip.net:82/raster.html"
 setup_url = "http://pdeffenb.homeip.net:82/osmand-setup.html"
 monitor_url = "http://pdeffenb.homeip.net:82/monitor.html"
 source_url = "https://github.com/kj4dxk/APRSIS64"
-
 
 [[aprs.servers]]
 name = "Main aprs2.net rotate — rotate.aprs2.net"
@@ -99,14 +100,20 @@ host = "china.aprs2.net"
 port = 14580
 
 [beacon]
+enabled = true
 internet = true
 radio = true
-enabled = true
+smart = false
+smart_slow_knots = 5.0
+smart_fast_knots = 60.0
+smart_fast_seconds = 120
+smart_turn_slope = 255.0
+smart_turn_seconds = 30
 minimum_seconds = 10
 maximum_seconds = 1800
 time_only = false
 start_stop = true
-heading_degrees = 30
+heading_degrees = 30.0
 forecast_error_meters = 160.9344
 distance_meters = 1609.344
 moving_knots = 0.5
@@ -129,18 +136,21 @@ comment_interval_seconds = 0
 rotate_comments = false
 selected_comment = 0
 
+[odometer]
+report_on_exit = false
+
 [position]
-port_name = ""
 source = "fixed"
+port_name = ""
 latitude = 28.536725
 longitude = -81.242932
-altitude_meters = 0
+altitude_meters = 0.0
 gps_endpoint = "127.0.0.1:10110"
 gpsd_endpoint = "127.0.0.1:2947"
 serial_port = ""
 serial_baud = 4800
 maximum_age_seconds = 30
-maximum_accuracy_meters = 100
+maximum_accuracy_meters = 100.0
 
 [status]
 enabled = false
@@ -149,9 +159,6 @@ timestamp = true
 grid = false
 text = "APRSIS64"
 
-[odometer]
-report_on_exit = false
-
 [radio]
 heard_seconds = 1800
 maximum_hops = 2
@@ -159,9 +166,10 @@ duplicate_seconds = 30
 internet_seconds = 1800
 maximum_entries = 4096
 
-# Configure the device/endpoint, then enable this port.
 [[ports]]
 name = "GPS"
+notes = ""
+frequency_mhz = ""
 enabled = false
 protocol = "NMEA"
 transport = "serial"
@@ -199,9 +207,10 @@ kiss_slot = -1
 kiss_tail = -1
 kiss_duplex = -1
 
-# Configure the device/endpoint, then enable this port.
 [[ports]]
 name = "VHF"
+notes = ""
+frequency_mhz = ""
 enabled = false
 protocol = "Simply(KISS)"
 transport = "serial"
@@ -239,9 +248,10 @@ kiss_slot = -1
 kiss_tail = -1
 kiss_duplex = -1
 
-# Configure the device/endpoint, then enable this port.
 [[ports]]
 name = "AGW"
+notes = ""
+frequency_mhz = ""
 enabled = false
 protocol = "AGW"
 transport = "tcp"
@@ -279,26 +289,256 @@ kiss_slot = -1
 kiss_tail = -1
 kiss_duplex = -1
 
-# Static object example. Uncomment the block and configure its name/position.
-# [[objects]]
-# name = "EXAMPLE"
-# internet = true
-# radio = true
-# ports = []
-# rf_path = ""
-# kind = "object"
-# enabled = false
-# alive = true
-# source = "fixed"
-# latitude = 28.536725
-# longitude = -81.242932
-# altitude_meters = 0
-# course = 0
-# speed_knots = 0
-# symbol_table = "/"
-# comment = ""
-# minimum_seconds = 30
-# time_only = false
-# heading_degrees = 30
-# forecast_error_meters = 160.9344
-# distance_meters = 1609.344
+[operating]
+filter_mode = "range"
+custom_filter = ""
+monitor_capacity = 1000
+feed_enabled = false
+feed_port = 14581
+satellite_aliases = ["RS0ISS","NA1SS","ARISS","APRSAT"]
+
+[[port_presets]]
+name = "Dire Wolf KISS"
+notes = "Start Dire Wolf with KISSPORT 8001. Select your sound card and PTT in Dire Wolf."
+frequency_mhz = ""
+enabled = false
+protocol = "Simply(KISS)"
+transport = "tcp"
+device = ""
+endpoint = "127.0.0.1:8001"
+baud = 9600
+channel = 0
+provides_nmea = false
+transmit = true
+rf_to_is = true
+no_gate_me = false
+is_to_rf = true
+beacon = true
+beacon_path = "WIDE1-1,WIDE2-1"
+message_path = "WIDE1-1"
+messages = true
+objects = true
+digipeater = false
+digi_outputs = []
+digi_transforms = ["WIDE1-1="]
+gate_calls = []
+gate_objects = []
+passall = false
+open_commands = []
+close_commands = []
+command_prompt = "cmd:"
+command_timeout_ms = 3000
+command_delay_ms = 100
+reconnect_seconds = 3
+transmit_per_minute = 20
+minimum_transmit_ms = 1000
+kiss_txdelay = -1
+kiss_persistence = -1
+kiss_slot = -1
+kiss_tail = -1
+kiss_duplex = -1
+
+[[port_presets]]
+name = "Dire Wolf / AGWPE"
+notes = "Start the packet engine with AGWPORT 8000. Radio channel is zero based."
+frequency_mhz = ""
+enabled = false
+protocol = "AGW"
+transport = "tcp"
+device = ""
+endpoint = "127.0.0.1:8000"
+baud = 9600
+channel = 0
+provides_nmea = false
+transmit = true
+rf_to_is = true
+no_gate_me = false
+is_to_rf = true
+beacon = true
+beacon_path = "WIDE1-1,WIDE2-1"
+message_path = "WIDE1-1"
+messages = true
+objects = true
+digipeater = false
+digi_outputs = []
+digi_transforms = ["WIDE1-1="]
+gate_calls = []
+gate_objects = []
+passall = false
+open_commands = []
+close_commands = []
+command_prompt = "cmd:"
+command_timeout_ms = 3000
+command_delay_ms = 100
+reconnect_seconds = 3
+transmit_per_minute = 20
+minimum_transmit_ms = 1000
+kiss_txdelay = -1
+kiss_persistence = -1
+kiss_slot = -1
+kiss_tail = -1
+kiss_duplex = -1
+
+[[port_presets]]
+name = "SoundModem KISS"
+notes = "Enable the KISS TCP server in SoundModem and match its configured port here."
+frequency_mhz = ""
+enabled = false
+protocol = "Simply(KISS)"
+transport = "tcp"
+device = ""
+endpoint = "127.0.0.1:8100"
+baud = 9600
+channel = 0
+provides_nmea = false
+transmit = true
+rf_to_is = true
+no_gate_me = false
+is_to_rf = true
+beacon = true
+beacon_path = "WIDE1-1,WIDE2-1"
+message_path = "WIDE1-1"
+messages = true
+objects = true
+digipeater = false
+digi_outputs = []
+digi_transforms = ["WIDE1-1="]
+gate_calls = []
+gate_objects = []
+passall = false
+open_commands = []
+close_commands = []
+command_prompt = "cmd:"
+command_timeout_ms = 3000
+command_delay_ms = 100
+reconnect_seconds = 3
+transmit_per_minute = 20
+minimum_transmit_ms = 1000
+kiss_txdelay = -1
+kiss_persistence = -1
+kiss_slot = -1
+kiss_tail = -1
+kiss_duplex = -1
+
+[[port_presets]]
+name = "Bluetooth or USB KISS TNC"
+notes = "Pair a Bluetooth SPP TNC in Windows or connect USB, then select its outgoing COM port. BLE-only devices need a compatible bridge."
+frequency_mhz = ""
+enabled = false
+protocol = "Simply(KISS)"
+transport = "serial"
+device = ""
+endpoint = ""
+baud = 9600
+channel = 0
+provides_nmea = false
+transmit = true
+rf_to_is = true
+no_gate_me = false
+is_to_rf = true
+beacon = true
+beacon_path = "WIDE1-1,WIDE2-1"
+message_path = "WIDE1-1"
+messages = true
+objects = true
+digipeater = false
+digi_outputs = []
+digi_transforms = ["WIDE1-1="]
+gate_calls = []
+gate_objects = []
+passall = false
+open_commands = []
+close_commands = []
+command_prompt = "cmd:"
+command_timeout_ms = 3000
+command_delay_ms = 100
+reconnect_seconds = 3
+transmit_per_minute = 20
+minimum_transmit_ms = 1000
+kiss_txdelay = -1
+kiss_persistence = -1
+kiss_slot = -1
+kiss_tail = -1
+kiss_duplex = -1
+
+[[port_presets]]
+name = "USB or Bluetooth GPS"
+notes = "Select the receiver's COM port and baud rate. Bluetooth receivers must expose a serial port."
+frequency_mhz = ""
+enabled = false
+protocol = "NMEA"
+transport = "serial"
+device = ""
+endpoint = ""
+baud = 4800
+channel = 0
+provides_nmea = true
+transmit = false
+rf_to_is = false
+no_gate_me = false
+is_to_rf = false
+beacon = false
+beacon_path = "WIDE1-1,WIDE2-1"
+message_path = "WIDE1-1"
+messages = false
+objects = false
+digipeater = false
+digi_outputs = []
+digi_transforms = ["WIDE1-1="]
+gate_calls = []
+gate_objects = []
+passall = false
+open_commands = []
+close_commands = []
+command_prompt = "cmd:"
+command_timeout_ms = 3000
+command_delay_ms = 100
+reconnect_seconds = 3
+transmit_per_minute = 20
+minimum_transmit_ms = 1000
+kiss_txdelay = -1
+kiss_persistence = -1
+kiss_slot = -1
+kiss_tail = -1
+kiss_duplex = -1
+
+[[port_presets]]
+name = "ISS / satellite KISS"
+notes = "ARISS status checked 2026-11-20: 437.825 MHz packet. Check current status before each pass and tune the radio manually. ARISS path; no terrestrial WIDE aliases. Enable only during a usable pass. Frequency is a reminder, not radio control."
+frequency_mhz = "437.825"
+enabled = false
+protocol = "Simply(KISS)"
+transport = "serial"
+device = ""
+endpoint = ""
+baud = 9600
+channel = 0
+provides_nmea = false
+transmit = true
+rf_to_is = true
+no_gate_me = false
+is_to_rf = false
+beacon = true
+beacon_path = "ARISS"
+message_path = "ARISS"
+messages = true
+objects = false
+digipeater = false
+digi_outputs = []
+digi_transforms = []
+gate_calls = []
+gate_objects = []
+passall = false
+open_commands = []
+close_commands = []
+command_prompt = "cmd:"
+command_timeout_ms = 3000
+command_delay_ms = 100
+reconnect_seconds = 3
+transmit_per_minute = 20
+minimum_transmit_ms = 1000
+kiss_txdelay = -1
+kiss_persistence = -1
+kiss_slot = -1
+kiss_tail = -1
+kiss_duplex = -1

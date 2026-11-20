@@ -94,5 +94,9 @@ class ChatDatabase(path: Path, private val now: () -> Long = System::currentTime
     suspend fun markRead(account: String, peer: String) = access {
         if(execute("UPDATE messages SET unread=0 WHERE account=? AND peer=? AND unread=1",account,peer)>0) changed()
     }
+    suspend fun retry(account: String, row: Long) {
+        val message=rows(account).firstOrNull {it.id==row && it.outgoing && it.status in listOf("NO_ACK","REJECTED")} ?: return
+        enqueue(account,message.peer,message.body)
+    }
     override fun close() { db.close() }
 }

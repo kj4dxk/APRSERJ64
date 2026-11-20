@@ -1,0 +1,50 @@
+# Editable first-run setup templates. Copied to [[port_presets]] in settings.toml.
+[[port_presets]]
+name = "Dire Wolf KISS"
+protocol = "Simply(KISS)"
+transport = "tcp"
+endpoint = "127.0.0.1:8001"
+notes = "Start Dire Wolf with KISSPORT 8001. Select your sound card and PTT in Dire Wolf."
+enabled = false
+[[port_presets]]
+name = "Dire Wolf / AGWPE"
+protocol = "AGW"
+transport = "tcp"
+endpoint = "127.0.0.1:8000"
+notes = "Start the packet engine with AGWPORT 8000. Radio channel is zero based."
+enabled = false
+[[port_presets]]
+name = "SoundModem KISS"
+protocol = "Simply(KISS)"
+transport = "tcp"
+endpoint = "127.0.0.1:8100"
+notes = "Enable the KISS TCP server in SoundModem and match its configured port here."
+enabled = false
+[[port_presets]]
+name = "Bluetooth or USB KISS TNC"
+protocol = "Simply(KISS)"
+transport = "serial"
+device = ""
+notes = "Pair a Bluetooth SPP TNC in Windows or connect USB, then select its outgoing COM port. BLE-only devices need a compatible bridge."
+enabled = false
+[[port_presets]]
+name = "USB or Bluetooth GPS"
+protocol = "NMEA"
+transport = "serial"
+device = ""
+notes = "Select the receiver's COM port and baud rate. Bluetooth receivers must expose a serial port."
+enabled = false
+[[port_presets]]
+name = "ISS / satellite KISS"
+protocol = "Simply(KISS)"
+transport = "serial"
+device = ""
+beacon_path = "ARISS"
+message_path = "ARISS"
+is_to_rf = false
+objects = false
+digipeater = false
+digi_transforms = []
+frequency_mhz = "437.825"
+notes = "ARISS status checked 2026-11-20: 437.825 MHz packet. Check current status before each pass and tune the radio manually. ARISS path; no terrestrial WIDE aliases. Enable only during a usable pass. Frequency is a reminder, not radio control."
+enabled = false

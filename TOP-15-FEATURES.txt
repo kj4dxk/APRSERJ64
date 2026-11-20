@@ -1,0 +1,91 @@
+APRSIS64 0.4.0 — coverage of the requested top 15 categories
+2026-11-20
+
+Ranking supplied in APRS-top-30-features.md. This is category-level functional
+coverage, not a claim to reproduce every APRSIS32 behavior or hardware profile.
+Existing working components were retained and the missing workflows added.
+
+1. Radio/TNC setup
+   Ports workspace: guided setup, serial discovery, named ports, staged graphical
+   rewiring, Undo/Redo, live counters and persisted protocol/command settings.
+   New editable setup templates are in [[port_presets]], separate from live ports.
+2. RF iGate operation
+   RF-to-IS and locally-heard message gating to RF, associated positions, pass lists,
+   duplicate suppression, PASSALL/NOGATE handling and third-party encapsulation.
+   Packet monitor now exposes actual RX/TX paths. Device writes do not prove RF delivery.
+3. GPS/location
+   Fixed position, serial/TCP NMEA and GPSd; named-port selection, checksum checks,
+   fix-age limits, accuracy limits, lost-fix behavior and reconnect handling.
+4. Objects/items
+   Persisted static/following objects, items and companion stations; per-object
+   destinations, paths, intervals and kill reports. Receiving a kill now removes
+   the matching object/item only when sent by its last observed owner.
+5. KISS/packet interfaces
+   AX.25 UI, incremental KISS framing/channel selection and AGW raw frames.
+   Command/text TNC profiles remain available. Actual TCP KISS and AGW tests pass.
+6. Digipeating/aliases
+   Explicit activation, WIDE1 fill-in default rule, editable transforms, graphical
+   cross-port outputs and duplicate/rate controls. No global enabling on upgrade.
+7. Map providers
+   Editable pdeffenb raster defaults, custom XYZ tile templates, optional overlay/
+   underlay, opacity, cache and zoom limits. North remains fixed up.
+8. Position beacons/SmartBeaconing
+   Existing adaptive distance/heading/forecast/start-stop behavior remains default.
+   Settings > Beacon adds optional speed-based SmartBeaconing: slow/fast speed,
+   fast interval and speed-dependent turn angle/slope/minimum turn time. Units
+   are explicitly knots. The maximum interval is the slow interval. Manual sends,
+   reconnect and GPS transitions retain the existing controls and minimum limits.
+9. Sound-card modems
+   Add port offers Dire Wolf KISS (8001), Dire Wolf/AGWPE (8000), and SoundModem
+   KISS (8100). Start/configure the external modem's audio/PTT separately. APRSIS64
+   supplies the client interfaces; it does not contain a new audio DSP modem.
+10. APRS-IS filters/range
+   Settings > Operating: fixed-center range, moving range or custom mode; radius
+   plus custom server terms. Settings are validated against line injection and
+   length limits. Own-call message delivery is retained. Save reconnects an active
+   session so the filter takes effect. Blank custom mode requests own-call traffic.
+   Custom syntax is interpreted by the server, which may reject unknown terms.
+11. Serial/USB/Bluetooth
+   Named serial ports, baud and reconnect settings. New USB/Bluetooth GPS and KISS
+   presets explain COM-port selection. Windows pairing/USB drivers are external;
+   Bluetooth SPP is supported through COM, not arbitrary BLE GATT devices.
+12. Messaging/delivery
+   Per-callsign/SSID persisted conversations, retries, ACK/reject status, dedup,
+   RF/IS routing and clickable stations. Failed/rejected messages can now be
+   retried with a fresh wire ID while keeping the earlier attempt in history.
+13. Identity
+   Full callsign/SSID and local passcode persistence, symbol/overlay, comment and
+   status settings. Connection adds an SSID 0–15 chooser; SSID zero omits suffix.
+14. Interoperability
+   Packets window: searchable RX/TX monitor, pause display, satellite-path filter,
+   copyable packet text, TNC2 export under exports/. Optional receive-only TCP
+   feed binds to 127.0.0.1 at a configurable port, serving up to eight consumers.
+   It never accepts transmit commands. Slow consumers disconnect rather than block
+   radio routing. Local demo disables the feed. This is not a full APRS-IS server.
+15. Satellite/ISS
+   Editable ISS KISS preset uses ARISS paths, leaves digipeating and IS-to-RF off,
+   and does not automatically distribute objects to the satellite port. Frequency
+   reminder is 437.825 MHz based on ARISS status checked 2026-11-20; verify status
+   before each pass. Packet monitor highlights configurable satellite call/path
+   prefixes and links to current ISS status. No orbital pass prediction, Doppler
+   tuning or rotator control is implemented in this release.
+
+Validation: 61 automated tests across Windows and shared core, including loopback
+TCP interfaces, filter login, local feed, shutdown, settings migration, chat retry,
+SmartBeaconing and object lifecycle. Native Vulkan map/demo startup checked.
+Screenshot capture still times out; full visual interaction testing is outstanding.
+Physical radios, Bluetooth pairing, sound cards and satellite contacts are not
+hardware-validated. Android was not rebuilt; shared APIs remain backward compatible.
+
+Multiple instances are allowed in separate folders. The existing per-folder lock
+protects settings/database files. Different instances must use distinct COM ports
+and local feed listening ports when those features are enabled.
+
+Protocol/setup references (consulted 2026-11-20):
+https://aprs-is.net/javAPRSFilter.aspx
+https://github.com/wb2osz/direwolf/blob/master/conf/generic.conf
+https://github.com/wb2osz/direwolf/blob/master/src/beacon.c
+https://uz7.ho.ua/modem_beta/user_guide_v114_EN.pdf
+https://www.ariss.org/current-status-of-iss-stations.html
+https://www.aprs.org/ariss.html
+Independent implementations; no proprietary APRSIS32 code was copied.

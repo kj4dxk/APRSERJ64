@@ -10,7 +10,7 @@ import kotlinx.coroutines.sync.withLock
 import net.osmand.shared.aprs.*
 
 /** Routing decisions are serialized; socket/serial readers never wait for their own transmit lock. */
-class RadioPorts(val call: String, values: Properties, configs: List<Properties>, parent: CoroutineScope) : AutoCloseable, AprsMessageTransport {
+class RadioPorts(val call: String, values: Properties, configs: List<Properties>, parent: CoroutineScope, private val traffic: (String,String,String)->Unit = {_,_,_->}) : AutoCloseable, AprsMessageTransport {
     private val scope=CoroutineScope(parent.coroutineContext+SupervisorJob(parent.coroutineContext[Job]))
     private val router=RadioRouter(call,PortPreferences.rules(values))
     private val routing=Mutex()
@@ -31,10 +31,11 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
             val config=PortConfig(props)
             devices[config.name]=DevicePort(config,scope,{events.trySend(config.name to it).isSuccess},{reading->
                 fixes[config.name]=if(!reading.valid && reading.position==null) fixes[config.name]?.copy(valid=false,detail=reading.detail) ?: reading else reading
-            })
+            },{packet->traffic(config.name,"TX",packet.line())})
         }
         scope.launch {for((name,packet) in events) routing.withLock {
             val now=System.currentTimeMillis();val device=devices[name] ?: return@withLock
+            traffic(name,"RX",packet.line())
             store.receive(packet.line(),now);stations.value=store.snapshot(now)
             router.observeRf(name,packet,now)
             if(!packet.payload.startsWith('}')) {
@@ -54,7 +55,7 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
             val isClient=client
             if(config.flag("rf_to_is") && !(config.flag("no_gate_me") && packet.source==call) && !config.flag("passall") && isClient?.state?.value==AprsConnectionState.VERIFIED && !router.duplicate("igate",packet,now)) {
                 router.toInternet(packet,config.canTransmit && config.flag("is_to_rf") && router.messageReachable(name,packet.source,now))?.let {
-                    try {isClient.sendGated(call,it);router.transmitted("igate",packet,now)}
+                    try {isClient.sendGated(call,it);traffic("APRS-IS","TX",it);router.transmitted("igate",packet,now)}
                     catch(cancelled: CancellationException) {throw cancelled} catch(_: Exception) { /* No offline queue. */ }
                 }
             }
@@ -67,6 +68,7 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
             launch {value.messages.collect {incoming.send(it)}}
             value.packets.collect {line->
             val packet=RadioPacket.parse(line) ?: return@collect
+            traffic("APRS-IS","RX",line)
             routing.withLock {
                 val now=System.currentTimeMillis();router.observeInternet(packet,now)
                 if(!RadioPacket.address(call)) return@withLock
@@ -97,7 +99,7 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
         val connection=client
         if(connection?.canSend()==true) {
             // Message framing is already validated above, including its APRS destination.
-            connection.sendBroadcast(call,line);return
+            connection.sendBroadcast(call,line);traffic("APRS-IS","TX",line);return
         }
         val fallback=checkNotNull(candidates.firstOrNull()) {"No messaging output"}
         check(fallback.transmit(packet.copy(path=fallback.config.path("message_path"))))
@@ -109,7 +111,7 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
         var sent=false
         val connection=client
         if(useIs && connection?.state?.value==AprsConnectionState.VERIFIED) {
-            try {connection.sendBroadcast(call,line);sent=true}
+            try {connection.sendBroadcast(call,line);traffic("APRS-IS","TX",line);sent=true}
             catch(cancelled: CancellationException) {throw cancelled} catch(_: Exception) { }
         }
         if(useRf && RadioPacket.address(call)) for((name,device) in devices) {

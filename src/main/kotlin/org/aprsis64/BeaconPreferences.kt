@@ -28,6 +28,12 @@ object BeaconPreferences {
         BeaconField("position.serial_baud","GPS serial baud","4800",i),
         BeaconField("position.maximum_age_seconds","GPS fix age limit (seconds)","30",i),
         BeaconField("position.maximum_accuracy_meters","GPS accuracy limit (meters)","100",d),
+        BeaconField("beacon.smart","Use speed-based SmartBeaconing","false",b),
+        BeaconField("beacon.smart_slow_knots","Smart slow speed (knots)","5",d),
+        BeaconField("beacon.smart_fast_knots","Smart fast speed (knots)","60",d),
+        BeaconField("beacon.smart_fast_seconds","Smart fast interval (seconds)","120",i),
+        BeaconField("beacon.smart_turn_slope","Smart turn slope (degrees × knots)","255",d),
+        BeaconField("beacon.smart_turn_seconds","Smart minimum turn interval (seconds)","30",i),
         BeaconField("beacon.minimum_seconds","Minimum automatic interval (seconds)","10",i),
         BeaconField("beacon.maximum_seconds","Maximum interval (seconds)","1800",i),
         BeaconField("beacon.time_only","Use time only","false",b),
@@ -130,7 +136,8 @@ class BeaconConfiguration(val values: Properties, val entities: List<Properties>
     fun number(key: String)=text(key).toDouble()
     fun integer(key: String)=text(key).toInt()
     val timing=BeaconTiming(integer("beacon.minimum_seconds"),integer("beacon.maximum_seconds"),bool("beacon.time_only"),
-        bool("beacon.start_stop"),number("beacon.heading_degrees"),number("beacon.forecast_error_meters"),number("beacon.distance_meters"),number("beacon.moving_knots"))
+        bool("beacon.start_stop"),number("beacon.heading_degrees"),number("beacon.forecast_error_meters"),number("beacon.distance_meters"),number("beacon.moving_knots"),bool("beacon.smart"),number("beacon.smart_slow_knots"),number("beacon.smart_fast_knots"),
+        integer("beacon.smart_fast_seconds"),number("beacon.smart_turn_slope"),integer("beacon.smart_turn_seconds"))
     val format=BeaconFormat(text("beacon.symbol_table").single(),text("beacon.symbol").single(),BeaconTimestamp.valueOf(text("beacon.timestamp").uppercase()),
         bool("beacon.compressed"),bool("beacon.course_speed"),bool("beacon.altitude"),integer("beacon.precision"),bool("beacon.messaging"),bool("beacon.include_reason"),text("beacon.status_tag"))
     val comments=Json.parseToJsonElement(text("beacon.comments")).jsonArray.map {it.jsonPrimitive.content}

@@ -28,7 +28,7 @@ import kotlinx.serialization.json.*
     DialogWindow(onCloseRequest=dismiss,title="Settings",state=rememberDialogState(width=780.dp,height=790.dp)) {
         MaterialTheme(colors=darkColors()) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
             Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
-                listOf("Beacon","Position","Status","Objects","Map","Services").forEach {tab ->
+                listOf("Beacon","Position","Status","Objects","Map","Services","Operating").forEach {tab ->
                     TextButton(onClick={selected=tab}) {Text(if(selected==tab) "[$tab]" else tab)}
                 }
             }
@@ -43,8 +43,12 @@ import kotlinx.serialization.json.*
                     objects.forEachIndexed {index,obj -> TextButton(onClick={entity=index}) {Text(obj["name"].orEmpty().ifBlank {"New object"})} }
                     objects.getOrNull(entity)?.let {objectValues -> BeaconPreferences.entityFields.forEach {SettingField(it,objectValues)} }
                 } else {
+                    if(selected=="Operating") {
+                        SettingField(BeaconField("radiusKm","APRS-IS radius (km)","100",SettingKind.INTEGER),values)
+                        Text("Range uses the connection coordinates; moving follows your last APRS-IS position. Custom uses only your filter terms plus delivery to your callsign. Example: b/N1CALL d/RS0ISS*")
+                    }
                     val section=selected.lowercase()
-                    val schema=when(selected) {"Map","Services"->ServicePreferences.fields;"Radio"->PortPreferences.global;else->BeaconPreferences.fields}
+                    val schema=when(selected) {"Operating"->OperatingPreferences.fields;"Map","Services"->ServicePreferences.fields;"Radio"->PortPreferences.global;else->BeaconPreferences.fields}
                     schema.filter {it.key.startsWith("$section.") || selected=="Beacon" && it.key.startsWith("odometer.")}.forEach {field -> SettingField(field,values)}
                     if(selected=="Beacon") {
                         Row {TextButton(onClick={model.reportOdometer()}) {Text("Report odometer")}; TextButton(onClick={model.reportOdometer(true)}) {Text("Report and reset")}}

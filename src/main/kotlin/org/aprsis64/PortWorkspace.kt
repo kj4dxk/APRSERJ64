@@ -120,7 +120,7 @@ private val DigiColor=Color(0xFFD3A7FF)
                     },enabled=draft.dirty && issues.isEmpty()) {Text("Apply changes")}
                 }
             } }
-            if(wizard) AddPortWizard(draft,{wizard=false}) {props,useGps->
+            if(wizard) AddPortWizard(draft,model.portPresets,{wizard=false}) {props,useGps->
                 selected=draft.add(props);if(useGps) draft.useGps(draft.devices.first {it.id==selected})
                 wizard=false;page="Wiring"
             }
@@ -426,7 +426,7 @@ private fun profileDescription(protocol: String)=when(protocol) {
     else->"A device or network service exchanging TNC2 text packets."
 }
 
-@Composable private fun AddPortWizard(draft: PortWorkspaceDraft,dismiss: ()->Unit,add: (Properties,Boolean)->Unit) {
+@Composable private fun AddPortWizard(draft: PortWorkspaceDraft,presets: List<Properties>,dismiss: ()->Unit,add: (Properties,Boolean)->Unit) {
     var step by remember {mutableStateOf(0)}
     val values=remember {mutableStateMapOf<String,String>().apply {putAll(PortPreferences.defaults().entriesMap());put("name",draft.uniqueName("VHF"))}}
     var useGps by remember {mutableStateOf(false)}
@@ -439,12 +439,21 @@ private fun profileDescription(protocol: String)=when(protocol) {
             LinearProgressIndicator((step+1)/3f,Modifier.fillMaxWidth().padding(vertical=16.dp))
             Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
                 when(step) {
-                    0->PortPreferences.protocols.forEach {type->Surface(Modifier.fillMaxWidth().clickable {if(type!=protocol) {
+                    0->{
+                    presets.forEach {preset->OutlinedButton(onClick={
+                        values.clear();values.putAll(preset.entriesMap());values["name"]=draft.uniqueName(preset.getProperty("name"));values["enabled"]="true"
+                        useGps=values["protocol"]=="NMEA";step=1
+                    },modifier=Modifier.fillMaxWidth()) {Text(preset.getProperty("name"))}}
+                    Text("Other device protocols",fontWeight=FontWeight.Bold)
+                    PortPreferences.protocols.forEach {type->Surface(Modifier.fillMaxWidth().clickable {if(type!=protocol) {
                         values.clear();values.putAll(PortPreferences.defaults(type).entriesMap());values["name"]=draft.uniqueName(if(type=="NMEA") "GPS" else if(type=="AGW") "AGW" else "VHF");useGps=type=="NMEA"
                     }},shape=RoundedCornerShape(10.dp),border=BorderStroke(if(protocol==type) 2.dp else 1.dp,if(protocol==type) ReceiveColor else Color(0xFF38505D))) {
                         Column(Modifier.padding(14.dp)) {Text(type,fontWeight=FontWeight.Bold);Text(profileDescription(type),fontSize=12.sp,color=WorkspaceMuted)}
                     }}
+                    }
                     1->{
+                        if(!values["notes"].isNullOrBlank()) Text(values["notes"].orEmpty(),color=WorkspaceMuted)
+                        if(!values["frequency_mhz"].isNullOrBlank()) Text("Radio: ${values["frequency_mhz"]} MHz",color=SendColor)
                         Text(protocol,fontWeight=FontWeight.Bold)
                         OutlinedTextField(values["name"].orEmpty(),{values["name"]=it},label={Text("A name you'll recognize")},isError=!validName,modifier=Modifier.fillMaxWidth(),singleLine=true)
                         if(!validName) Text("Choose a unique port name.",color=SendColor,fontSize=12.sp)

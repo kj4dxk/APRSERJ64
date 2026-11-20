@@ -11,3 +11,5 @@ build/
 /logs/
 /app/
 /APRSIS64.exe
+
+/exports/

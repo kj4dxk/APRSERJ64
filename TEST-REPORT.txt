@@ -1,3 +1,16 @@
+APRSIS64 0.4.0 feature integration — 2026-11-20
+PASS: test :core:test packagePortable. 61 tests: 38 shared core, 23 Windows.
+New coverage: custom/moving/range filters and actual login wire output, preset
+round-trip/removal, SmartBeaconing interval/turn handling, owner-scoped object
+withdrawal, bounded packet monitor, read-only TCP feed/export/demo isolation,
+feed shutdown without hanging, failed chat retry preserving history and new IDs.
+Portable demo reaches VERIFIED, sends its initial beacon only to loopback, loads
+pdeffenb style and renders a Vulkan frame at 889x789 before reaching map idle.
+Visual capture failed twice with: window capture timed out: timed out waiting on
+channel. Manual UI/hardware validation remains outstanding. See TOP-15-FEATURES.txt.
+
+Earlier 0.3.0 verification follows:
+
 APRSIS64 0.3.0 combined verification — 2026-11-20
 
 PASS: Gradle test :core:test and packagePortable on this Windows PC.

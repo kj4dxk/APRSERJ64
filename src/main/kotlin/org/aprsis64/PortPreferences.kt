@@ -13,6 +13,8 @@ object PortPreferences {
     private val b=SettingKind.BOOLEAN; private val i=SettingKind.INTEGER
     val fields=listOf(
         BeaconField("name","Port name","New port"),
+        BeaconField("notes","Setup notes",""),
+        BeaconField("frequency_mhz","Radio frequency reminder (MHz)",""),
         BeaconField("enabled","Enabled","true",b),
         BeaconField("protocol","Protocol","Simply(KISS)",choices=protocols),
         BeaconField("transport","Connection","serial",choices=listOf("serial","tcp")),

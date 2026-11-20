@@ -19,7 +19,8 @@ data class PortStatus(val name: String, val detail: String, val received: Long=0
 /** One serial/TCP owner. No disconnected transmit queue; reconnect creates fresh decoders. */
 class DevicePort(val config: PortConfig, parent: CoroutineScope,
                  private val packet: suspend (RadioPacket)->Boolean,
-                 private val nmea: (GpsReading)->Unit) : AutoCloseable {
+                 private val nmea: (GpsReading)->Unit,
+                 private val transmitted: (RadioPacket)->Unit = {}) : AutoCloseable {
     private val scope=CoroutineScope(parent.coroutineContext+SupervisorJob(parent.coroutineContext[Job]))
     val status=MutableStateFlow(PortStatus(config.name,"Opening"))
     private val writes=Mutex()
@@ -103,7 +104,7 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
                     if(config.protocol=="KWD710(APRS)") {command("TC 1\r");command("TC 1\r")}
                 }
             }
-            lastTransmit=now;transmissions.addLast(now);status.value=status.value.copy(transmitted=status.value.transmitted+1);true
+            transmitted(value);lastTransmit=now;transmissions.addLast(now);status.value=status.value.copy(transmitted=status.value.transmitted+1);true
         } catch(cancelled: CancellationException) {throw cancelled}
         catch(_: Exception) {ready=false;runCatching {resource?.close()};status.value=status.value.copy(detail="Transmit failed; reconnecting");false}
     } }

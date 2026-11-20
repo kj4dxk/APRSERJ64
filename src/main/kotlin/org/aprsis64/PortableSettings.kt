@@ -65,6 +65,9 @@ class SettingsStore(private val root: Path) {
     var ports: List<Properties> = document?.getArray("ports")?.let {array ->
         (0 until array.size()).map {index->PortPreferences.load(array.getTable(index))}
     } ?: emptyList()
+    var portPresets: List<Properties> = document?.getArray("port_presets")?.let {array ->
+        (0 until array.size()).map {PortPreferences.load(array.getTable(it))}
+    } ?: PortPresets.defaults()
     var servers: List<ServerPreset> = document?.getArray("aprs.servers")?.let { array ->
         (0 until array.size()).map { index -> val entry=array.getTable(index)
             val port=requireNotNull(entry.getLong("port")).also {require(it in 1L..65535L)}.toInt()
@@ -80,13 +83,16 @@ class SettingsStore(private val root: Path) {
         BeaconPreferences.load(values,document)
         ServicePreferences.load(values,document)
         BeaconPreferences.loadFields(values,document,PortPreferences.global)
+        BeaconPreferences.loadFields(values,document,OperatingPreferences.fields)
+        OperatingPreferences.validate(values)
         PortPreferences.validateAll(values,ports,entities)
         ServicePreferences.validate(values)
         BeaconConfiguration(values,entities)
-        if(!Files.exists(path) || document?.get("aprs.servers")==null ||
-            (BeaconPreferences.fields+ServicePreferences.fields+PortPreferences.global).any {document?.get(it.key)==null}) save()
+        if(!Files.exists(path) || document?.get("aprs.servers")==null || document?.get("port_presets")==null ||
+            (BeaconPreferences.fields+ServicePreferences.fields+PortPreferences.global+OperatingPreferences.fields).any {document?.get(it.key)==null}) save()
     }
     fun save() {
+        OperatingPreferences.validate(values)
         PortPreferences.validateAll(values,ports,entities)
         BeaconConfiguration(values,entities)
         ServicePreferences.validate(values)
@@ -119,9 +125,14 @@ class SettingsStore(private val root: Path) {
         } + BeaconPreferences.write(values,PortPreferences.global) + ports.joinToString("") {
             "\n[[ports]]\n"+BeaconPreferences.write(it,PortPreferences.fields,sections=false)
         }
+        require(portPresets.size<=64);portPresets.forEach {PortConfig(it)}
+        val completeContents=(if(portPresets.isEmpty()) "port_presets = []\n" else "")+contents+
+            BeaconPreferences.write(values,OperatingPreferences.fields)+portPresets.joinToString("") {
+                "\n[[port_presets]]\n"+BeaconPreferences.write(it,PortPreferences.fields,sections=false)
+            }
         val temp = Files.createTempFile(root, ".settings-", ".tmp")
         try {
-            Files.writeString(temp, contents)
+            Files.writeString(temp, completeContents)
             try { Files.move(temp, path, ATOMIC_MOVE, REPLACE_EXISTING) }
             catch (_: AtomicMoveNotSupportedException) { Files.move(temp, path, REPLACE_EXISTING) }
         } finally { Files.deleteIfExists(temp) }

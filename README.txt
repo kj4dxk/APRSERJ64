@@ -1,6 +1,6 @@
 APRSIS64 — portable Windows APRS map, chat and beaconing
 
-RELEASE 0.3.0: Windows/shared-core build and 52 tests pass. Portable map/demo
+RELEASE 0.4.0: Windows/shared-core build and 61 tests pass. Portable map/demo
 startup verified. Physical radio and full visual UI validation remain outstanding.
 See TEST-REPORT.txt.
 
@@ -147,4 +147,10 @@ guided setup flow, object route matrix and Radio limits. Click a source port
 and its destination controls to rewire; digipeater outputs can be selected on
 the diagram. Changes are staged with Undo/Redo until Apply changes. See
 PORT-WORKSPACE.txt for behavior and the APRSIS32/defaults comparison.
-The workspace is source-only and has not been built, rendered or tested yet.
+The workspace compiles and its transaction tests pass; full visual interaction review remains outstanding.
+
+TOP 15 FEATURE COVERAGE
+See TOP-15-FEATURES.txt for each ranked category, setup instructions, evidence
+and explicit limits. New controls: Ports > Add port presets; Settings > Operating
+for server filters/local feed; Settings > Beacon for SmartBeaconing; Packets for
+traffic inspection, satellite filtering and export; Connection > SSID chooser.

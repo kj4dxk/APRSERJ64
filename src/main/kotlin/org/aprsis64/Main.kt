@@ -56,7 +56,7 @@ fun main(args: Array<String>) {
         cacheFile = kotlinx.io.files.Path(home.resolve("cache/tiles.db").toString())
         maximumCacheSizeBytes = model.settings.getProperty("map.cache_megabytes").toLong() * 1024 * 1024
     }
-    println("APRSIS64 0.3.0 | Java ${System.getProperty("java.version")} | Vulkan / Direct3D12 | home=$home")
+    println("APRSIS64 0.4.0 | Java ${System.getProperty("java.version")} | Vulkan / Direct3D12 | home=$home")
     if(demoMode) model.localDemo()
     else model.connectSaved()
     application {
@@ -85,6 +85,7 @@ fun main(args: Array<String>) {
     var settings by remember { mutableStateOf(false) }
     var about by remember { mutableStateOf(false) }
     var preferences by remember { mutableStateOf(false) }
+    var packetMonitor by remember {mutableStateOf(false)}
     var portWorkspace by remember {mutableStateOf(false)}
     var rows by remember { mutableStateOf<List<ChatRow>>(emptyList()) }
     LaunchedEffect(account,revision,selected) {
@@ -103,6 +104,7 @@ fun main(args: Array<String>) {
             OutlinedButton(onClick={ settings=true }) { Text("Connection") }
             TextButton(onClick={preferences=true}) {Text("Settings")}
             TextButton(onClick={portWorkspace=true}) {Text("Ports")}
+            TextButton(onClick={packetMonitor=true}) {Text("Packets")}
             Button(onClick={model.transmitBeacon()},enabled=beacon.enabled && account.isNotBlank()) {Text("Transmit")}
             Spacer(Modifier.width(8.dp))
             if(connection==AprsConnectionState.STOPPED) Button(onClick={ model.localDemo() }) { Text("Local demo") }
@@ -134,8 +136,9 @@ fun main(args: Array<String>) {
     }
     if(settings) ConnectionDialog(model) {settings=false}
     if(preferences) PreferencesDialog(model) {preferences=false}
+    if(packetMonitor) PacketMonitorWindow(model) {packetMonitor=false}
     if(portWorkspace) PortWorkspaceWindow(model) {portWorkspace=false}
-    if(about) AlertDialog(onDismissRequest={about=false},title={Text("APRSIS64 0.3.0")},text={
+    if(about) AlertDialog(onDismissRequest={about=false},title={Text("APRSIS64 0.4.0")},text={
         Text("Copyright 2026 APRSIS64 contributors.\nAGPL-3.0. No warranty.\n\nContains GPLv3 shared components. Third-party license notices are included in the app folder.")
     },confirmButton={TextButton(onClick={Desktop.getDesktop().browse(URI(model.settings.getProperty("services.source_url")))}) {Text("Source & license")}},dismissButton={TextButton(onClick={about=false}) {Text("Close")}})
 }
@@ -222,6 +225,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
                 items(history,key={it.id}) {row -> Column(Modifier.fillMaxWidth().background(if(row.outgoing) Color(0xFF24473F) else Color(0xFF263740)).padding(10.dp)) {
                     Text(if(row.outgoing) "You" else row.peer,color=Accent,fontSize=11.sp)
                     Text(row.body,Modifier.padding(vertical=5.dp),fontSize=14.sp)
+                    if(row.outgoing && row.status in listOf("NO_ACK","REJECTED")) TextButton(onClick={scope.launch {model.database.retry(account,row.id)}}) {Text("Retry as new message")}
                     Text(DateTimeFormatter.ofPattern("MMM d HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(row.time))+" · "+row.status.replace('_',' '),fontSize=9.sp,color=Muted)
                 } }
             }
@@ -238,6 +242,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
 
 @Composable private fun ConnectionDialog(model: AppModel, dismiss: ()->Unit) {
     var call by remember {mutableStateOf(model.settings.getProperty("callsign",""))}
+    var ssidMenu by remember {mutableStateOf(false)}
     var pass by remember {mutableStateOf(model.settings.getProperty("passcode",""))}
     var host by remember {mutableStateOf(model.settings.getProperty("endpoint"))}
     val presets=model.servers
@@ -249,7 +254,15 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     DialogWindow(onCloseRequest=dismiss,title="Connection",state=rememberDialogState(width=560.dp,height=650.dp)) {
         Surface {Column(Modifier.fillMaxSize().padding(22.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             Text("APRS-IS connection",fontSize=22.sp)
-            OutlinedTextField(call,{call=it.uppercase()},label={Text("Callsign-SSID")},singleLine=true,modifier=Modifier.fillMaxWidth())
+            Row {
+                OutlinedTextField(call,{call=it.uppercase()},label={Text("Callsign-SSID")},singleLine=true,modifier=Modifier.weight(1f))
+                Box {
+                    TextButton(onClick={ssidMenu=true}) {Text("SSID")}
+                    DropdownMenu(expanded=ssidMenu,onDismissRequest={ssidMenu=false}) {(0..15).forEach {ssid->
+                        DropdownMenuItem(onClick={runCatching {call=AprsIdentity.callsign(call.substringBefore('-'),ssid)};ssidMenu=false}) {Text(if(ssid==0) "0 (no suffix)" else "-$ssid")}
+                    }}
+                }
+            }
             OutlinedTextField(pass,{pass=it},label={Text("Passcode (blank = receive only)")},visualTransformation=PasswordVisualTransformation(),singleLine=true,modifier=Modifier.fillMaxWidth())
             Box {
                 OutlinedButton(onClick={menu=true},modifier=Modifier.fillMaxWidth()) {Text(if(preset>=0) presets[preset].name else "Custom server")}
