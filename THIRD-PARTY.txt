@@ -25,3 +25,10 @@ Tiles are served by the configured pdeffenb service. Map attribution is displaye
 
 Dependency JARs retain their bundled META-INF license/notice files. The packaging
 task also collects available license/notice texts into resources/dependency-notices.
+
+MapLibre's logo is optional; its BSD license notices remain bundled.
+https://maplibre.org/maplibre-gl-js/docs/API/type-aliases/MapOptions/
+OpenStreetMap attribution is retained as a visible, clickable map credit:
+https://osmfoundation.org/wiki/Licence/Attribution_Guidelines
+The portable bootstrap uses the installed Windows .NET Framework; it does not
+redistribute that framework. The bundled Java runtime retains runtime/legal.

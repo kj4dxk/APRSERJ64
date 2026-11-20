@@ -4,3 +4,9 @@ build/
 .idea/
 *.iml
 *.log
+/settings.properties
+/data/
+/cache/
+/logs/
+/app/
+/APRSIS64.exe

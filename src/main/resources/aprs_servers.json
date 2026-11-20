@@ -1,0 +1,71 @@
+{
+  "checkedOn": "2026-10-20",
+  "sources": [
+    "https://www.aprs-is.net/aprsservers.aspx",
+    "https://status.aprs2.net/api/full",
+    "https://www.aprs2.net/"
+  ],
+  "servers": [
+    {
+      "host": "rotate.aprs2.net",
+      "port": 14580,
+      "name": "Main aprs2.net rotate — rotate.aprs2.net"
+    },
+    {
+      "host": "noam.aprs2.net",
+      "port": 14580,
+      "name": "North America — noam.aprs2.net"
+    },
+    {
+      "host": "euro.aprs2.net",
+      "port": 14580,
+      "name": "Europe — euro.aprs2.net"
+    },
+    {
+      "host": "asia.aprs2.net",
+      "port": 14580,
+      "name": "Asia — asia.aprs2.net"
+    },
+    {
+      "host": "aunz.aprs2.net",
+      "port": 14580,
+      "name": "Australia and New Zealand — aunz.aprs2.net"
+    },
+    {
+      "host": "soam.aprs2.net",
+      "port": 14580,
+      "name": "South America — soam.aprs2.net"
+    },
+    {
+      "host": "rotate.aprs.net",
+      "port": 14580,
+      "name": "Core — rotate.aprs.net"
+    },
+    {
+      "host": "germany.aprs2.net",
+      "port": 14580,
+      "name": "Germany — germany.aprs2.net"
+    },
+    {
+      "host": "japan.aprs2.net",
+      "port": 14580,
+      "name": "Japan — japan.aprs2.net"
+    },
+    {
+      "host": "nordic.aprs2.net",
+      "port": 14580,
+      "name": "Nordic countries — nordic.aprs2.net"
+    },
+    {
+      "host": "swiss.aprs2.net",
+      "port": 14580,
+      "name": "Switzerland — swiss.aprs2.net"
+    },
+    {
+      "host": "china.aprs2.net",
+      "port": 14580,
+      "name": "China — china.aprs2.net"
+    }
+  ],
+  "ordering": "Recommended worldwide default, major regional pools, core fallback, then country pools. Practical priority order; no audited popularity ranking is available."
+}

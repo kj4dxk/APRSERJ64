@@ -1,12 +1,11 @@
 import java.util.zip.ZipFile
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 plugins {
     kotlin("jvm") version "2.4.20"
     id("org.jetbrains.kotlin.plugin.compose") version "2.4.20"
     id("org.jetbrains.compose") version "1.12.1"
 }
 group = "org.aprsfoundation.community"
-version = "0.1.0"
+version = "0.2.0"
 repositories { google(); mavenCentral() }
 kotlin { jvmToolchain(25) }
 dependencies {
@@ -26,14 +25,12 @@ compose.desktop {
         // Vulkan shares textures with Compose's Direct3D12 host; Intel WGL import failed in testing.
         jvmArgs += listOf("--enable-native-access=ALL-UNNAMED", "-Xmx768m")
         nativeDistributions {
-            targetFormats(TargetFormat.Msi)
             packageName = "APRSIS64"
-            packageVersion = "0.1.0"
+            packageVersion = "0.2.0"
             description = "APRS map and persistent chat prototype"
             vendor = "APRSIS64 contributors"
             appResourcesRootDir.set(layout.buildDirectory.dir("appResources"))
             modules("java.sql", "java.net.http", "jdk.unsupported", "jdk.crypto.ec")
-            windows { menu = true; shortcut = true }
         }
     }
 }
@@ -61,4 +58,13 @@ val collectNotices by tasks.registering {
     }
 }
 tasks.matching { it.name == "prepareAppResources" }.configureEach { dependsOn(collectNotices) }
+tasks.matching { it.name == "createDistributable" }.configureEach {
+    // Compose's app-image up-to-date check otherwise misses notice-only edits.
+    inputs.files("LICENSE", "THIRD-PARTY.txt")
+}
 tasks.withType<Test>().configureEach { jvmArgs("--enable-native-access=ALL-UNNAMED") }
+
+tasks.register<Exec>("packagePortable") {
+    dependsOn("createDistributable")
+    commandLine("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", file("portable/build.ps1").absolutePath)
+}

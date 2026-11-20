@@ -1,3 +1,35 @@
+APRSIS64 0.2.0 portable verification — 2026-11-20
+
+PASS: test and packagePortable; 28 tests (23 shared core, 5 Windows), zero failures.
+New tests verify the exact 12 Android server presets, saved passcode, automatic
+reconnection after reopening settings, and remembered manual disconnect.
+
+PASS: single EXE copied into an otherwise empty folder containing spaces, launched
+with C:\Windows as working directory. Extracted its Java runtime and app locally,
+created settings.properties, data/chats.sqlite, cache/tiles.db, cache/tmp and logs.
+Local demo verified through the shared APRS transport; native Vulkan map rendered.
+
+PASS: closed the app, moved the entire folder, relaunched from C:\Windows. Native
+map rendered again; existing local chat database and tile cache remained in place.
+Map cache grew to approximately 370 KiB from visible pdeffenb map resources.
+No installer or separate Java runtime was used by the tested portable EXE.
+
+PASS: user's local Desktop copy connected to rotate.aprs2.net:14580, received a
+VERIFIED APRS-IS login, and received live station positions. Credentials are only
+in that local settings.properties file, not source or the embedded distribution.
+No position beacon or test chat was sent to the public APRS network in this check.
+
+UI: removed preview subtitle, north-up label, development banners, map status
+notes, demo stress control and optional MapLibre logo. OSM attribution remains as
+a small clickable credit. Computer Use could inspect the window's title and close
+it with Alt+F4, but image capture and its recovery attempt both returned:
+"window capture timed out: timed out waiting on channel".
+Full visual review and manual click-to-chat review remain unverified.
+
+The v0.1.0 report below records the earlier core/graphics tests, not the current
+packaging behavior. The MSI has been superseded by the single portable EXE.
+
+--- Historical v0.1.0 verification ---
 APRSIS64 0.1.0 prototype verification — 2026-11-20
 
 Machine: Windows, Intel Iris Xe Graphics, driver 32.0.101.7079.

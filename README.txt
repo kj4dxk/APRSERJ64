@@ -1,70 +1,87 @@
-APRSIS64 — Windows map and chat prototype
+APRSIS64 — portable Windows APRS map and chat
 
 Source: https://github.com/kj4dxk/APRSIS64
 Shared core: https://github.com/kj4dxk/aprs-core (pinned git submodule)
-
 License: AGPL-3.0, matching APRSFoundation/APRSISMO. No warranty.
-Copyright 2026 APRSIS64 contributors. See LICENSE and THIRD-PARTY.txt.
-Extracted GPLv3 core components retain their original terms and notices.
-No APRSIS32 proprietary source or OsmAnd artwork is included.
-
-WHAT WORKS
-- Native MapLibre map using pdeffenb raster tiles; north-up with rotation disabled.
-- APRS-IS connection with callsign/SSID, passcode and editable host:port.
-- Stations on the map; click a marker or station list entry to open its conversation.
-- Local SQLite chat history, full-SSID conversations, unread indicators, durable
-  outgoing queue, ACK/REJ/reply-ACK processing, retry limits and duplicate handling.
-- Local demo uses the real shared APRS-IS transport against a loopback-only server.
-  It never connects to the public APRS network. Demo data uses N0CALL-12.
-- New incoming messages are saved before ACK. Passcodes are never saved to disk.
-
-LIMITS OF THIS PREVIEW
-This is not full APRSIS32 parity. Markers are circles, not the complete APRS symbol
-atlas. No Mic-E/ambiguous positions, RF, beacon transmission, GPS, routing UI,
-objects editor, weather/telemetry, satellite passes or offline map manager yet.
-The 100 km feed filter is centered at the configured coordinates; panning the map
-does not change it. Chats load complete history; pagination remains future work.
-Queued messages expire after 15 minutes and stop after five attempts, separated
-by at least 30 seconds. ACK means packet receipt, not that the recipient read it.
-Saved chats survive app restarts; settings contain no passcode. There is no cloud
-backup or analytics. Live sending requires a verified login and an explicit Send.
+Extracted GPLv3 components retain their original terms and notices.
+See LICENSE and THIRD-PARTY.txt. No proprietary APRSIS32 source is included.
 
 RUN
-Open APRSIS64.exe from the complete packaged APRSIS64 folder, or install the MSI.
-The Java runtime is bundled. Keep the app/ and runtime/ folders beside the EXE.
-Choose Local demo to test without a callsign. Choose Connection for real APRS-IS.
-Default server: rotate.aprs2.net:14580; blank passcode means receive-only.
-Default map: http://pdeffenb.homeip.net:82/raster/light/{z}/{x}/{y}.png
-Map availability depends on that service; APRS and chat continue independently.
-Normal data: %LOCALAPPDATA%/APRSIS64/chats.sqlite and settings.properties.
+Download APRSIS64.exe, put it in a writable folder, and run it. No installer,
+administrator access, or separate Java installation is needed on Windows x64.
+The bootstrap uses Windows' built-in .NET Framework; the Java runtime and all
+application dependencies are embedded in the EXE and extracted on first launch.
+It always works relative to the EXE, even if a shortcut starts elsewhere.
+
+The program creates these items beside APRSIS64.exe:
+  settings.properties   Callsign/SSID, passcode, server, filter and startup setting
+  data/chats.sqlite     Persistent chat history and outgoing queue
+  cache/tiles.db        Downloaded map resources (512 MiB ambient cache limit)
+  cache/tmp/            Native-library extraction and temporary runtime files
+  logs/                 Current and previous launch diagnostics
+  app/<payload-id>/     Bundled application and Java runtime
+
+Close APRSIS64 before moving its folder. Move the whole folder to retain settings,
+chats and cached tiles. Moving just the EXE starts a fresh copy. An updated EXE
+unpacks a separate runtime subfolder without replacing settings, chats or tiles.
+Only one instance can run from a folder. Data does not go to AppData or the registry.
+Old app/<payload-id> runtime folders may be removed manually when no longer needed.
+
+FIRST CONNECTION
+Open Connection, enter your callsign including SSID and APRS-IS passcode, choose
+a preset or Custom server, then Connect. Passcode is saved in settings.properties.
+Connect on startup is enabled by default; Disconnect disables automatic startup
+connection until enabled again. The distributed EXE contains no personal credentials.
+Local settings, data and caches are excluded from the source repository.
+
+The exact 12 presets and order come from APRSISOSM's aprs_servers.json:
+rotate.aprs2.net (default), noam.aprs2.net, euro.aprs2.net, asia.aprs2.net,
+aunz.aprs2.net, soam.aprs2.net, rotate.aprs.net, germany.aprs2.net,
+japan.aprs2.net, nordic.aprs2.net, swiss.aprs2.net, china.aprs2.net.
+All use port 14580; Custom accepts host:port or tcp://host:port.
+This is the existing practical priority order, not an audited popularity ranking.
+A blank passcode is receive-only. Live message transmission requires verified login.
+
+MAP AND CHAT
+Map tiles download automatically for the visible area from:
+http://pdeffenb.homeip.net:82/raster/light/{z}/{x}/{y}.png
+The map stays north-up. The initial view and 100 km APRS feed filter are centered
+near 32825; filter coordinates are editable in Connection. Panning does not change
+the APRS filter. Map availability depends on pdeffenb; APRS/chat work independently.
+MapLibre's optional logo is removed. A small clickable OpenStreetMap credit remains.
+
+Click a station marker or station list entry to open its conversation. The Messages
+panel holds conversations by complete callsign/SSID. History, unread state and the
+outgoing queue persist. Incoming messages are saved before ACK; duplicates are
+suppressed. Retries stop after five attempts at least 30 seconds apart or 15 minutes.
+ACK is delivery acknowledgement, not a read receipt. APRS messages are public.
+The Local demo button or --demo argument uses a loopback-only test server.
+
+CURRENT SCOPE
+Map and chat, not full APRSIS32 parity. Markers are circles. No Mic-E/ambiguous
+positions, beacon transmission, RF, GPS, routing UI, objects editor, weather,
+telemetry, satellite passes or offline region download manager yet. Cached tiles
+are reused as MapLibre's HTTP cache permits; there is no bulk tile pre-download.
+Chats currently load complete history rather than pages.
 
 BUILD
-git clone --recurse-submodules https://github.com/kj4dxk/APRSIS64.git
-Install JDK 25 and JDK 17. Java 25 is required by the native MapLibre integration;
-the shared library is tested separately on Java 17 for Android compatibility.
-Set JAVA_HOME to JDK 25 and JAVA17_HOME to JDK 17, then:
-  .\gradlew.bat test createDistributable
-  .\gradlew.bat packageMsi
-Output: build/compose/binaries/main/app/APRSIS64 and main/msi.
-Gradle wrapper, Kotlin, Compose and MapLibre versions are pinned in source.
-No Android SDK or Android Studio is required to build the Windows application.
+Clone with --recurse-submodules. Install JDK 25 and JDK 17; set JAVA_HOME to 25 and
+JAVA17_HOME to 17. Windows .NET Framework's C# compiler builds the bootstrap.
+  .\gradlew.bat test packagePortable
+Output: build/portable/APRSIS64.exe (single file, approximately 93 MiB).
+Do not distribute the internal createDistributable EXE alone: it needs its runtime.
+The top-level portable EXE contains that runtime and creates the required folders.
+The GitHub Actions workflow builds the portable EXE, not an MSI.
 
 ANDROID SHARING
-APRSISOSM includes the same aprs-core submodule's common sources in OsmAnd-shared.
-Android keeps its Java 17/Kotlin toolchain and existing foreground service/UI.
-Windows uses the new shared ChatSession and a JDBC ChatRepository adapter.
-SQLDelight schema convergence and Android chat-policy migration are later work;
-the prototype deliberately does not risk an existing phone's chat database.
+APRSISOSM includes the same core's common sources in OsmAnd-shared. Android retains
+its Java 17 toolchain and existing foreground service/database. Windows uses shared
+ChatSession with a JDBC adapter. Android database migration is not part of this work.
 
-DIAGNOSTICS
-Launch with --demo to use only the local fake APRS server. Optional JVM properties:
-  aprsis64.dataDir — alternate data directory for isolated tests
-  aprsis64.probe=true — log native rendered-feature hit test after startup
-These properties do not enable live transmission or store credentials.
-The demo-only 10,000-station button is a renderer stress tool, not live data.
-
-GRAPHICS
-MapLibre Vulkan producer feeds Compose's Direct3D12 presentation on Windows.
-Intel Iris Xe testing rejected OpenGL/Direct3D texture import (GL error 0x500),
-so the packaged default uses Vulkan. See TEST-REPORT.txt for measured results.
-This is a prototype integration, not a guarantee across all Windows drivers.
+GRAPHICS AND DIAGNOSTICS
+MapLibre Vulkan feeds Compose Direct3D12 on Windows. The Intel Iris Xe driver on the
+test PC rejected OpenGL texture import, so Vulkan is the default. Native libraries'
+license notices are bundled. See TEST-REPORT.txt for test evidence and limitations.
+For source development, -Daprsis64.home can set a test folder; the portable launcher
+sets APRSIS64_HOME automatically. -Daprsis64.probe=true enables a rendered-feature
+query diagnostic in development launches. Diagnostic output never prints passcodes.

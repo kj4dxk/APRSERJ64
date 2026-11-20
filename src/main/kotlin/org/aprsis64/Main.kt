@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.*
 import java.awt.Desktop
 import java.net.URI
-import java.nio.file.Path
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -44,12 +43,18 @@ private val Accent = Color(0xFF72E4C3)
 private val Panel = Color(0xFF15252D)
 private val Muted = Color(0xFFA2B4BE)
 
+@OptIn(org.maplibre.compose.util.ExperimentalMaplibreComposeApi::class)
 fun main(args: Array<String>) {
-    val data = System.getProperty("aprsis64.dataDir")?.let(Path::of)
-        ?: Path.of(System.getenv("LOCALAPPDATA") ?: System.getProperty("user.home"),"APRSIS64")
-    val model = AppModel(data)
-    println("APRSIS64 0.1.0 | Java ${System.getProperty("java.version")} | MapLibre Compose 0.20.0 | Vulkan / Direct3D12")
+    val home = PortableHome.resolve()
+    PortableHome.prepare(home)
+    DefaultMapRuntime.configure {
+        cacheFile = kotlinx.io.files.Path(home.resolve("cache/tiles.db").toString())
+        maximumCacheSizeBytes = 512L * 1024 * 1024
+    }
+    val model = AppModel(home)
+    println("APRSIS64 0.2.0 | Java ${System.getProperty("java.version")} | Vulkan / Direct3D12 | home=$home")
     if("--demo" in args || System.getProperty("aprsis64.demo") == "true") model.localDemo()
+    else model.connectSaved()
     application {
         Window(onCloseRequest={ model.close(); exitApplication() }, title="APRSIS64",
             state=rememberWindowState(width=1480.dp,height=900.dp)) {
@@ -79,45 +84,37 @@ fun main(args: Array<String>) {
     LaunchedEffect(account) { selected=null }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colors.background)) {
         Row(Modifier.fillMaxWidth().background(Panel).padding(18.dp,12.dp),verticalAlignment=Alignment.CenterVertically) {
-            Column { Text("APRSIS64",fontSize=24.sp,fontWeight=FontWeight.Bold,color=Accent); Text("WINDOWS PREVIEW  /  MAP + MESSAGES",fontSize=10.sp,color=Muted) }
+            Text("APRSIS64",fontSize=24.sp,fontWeight=FontWeight.Bold,color=Accent)
             Spacer(Modifier.width(28.dp))
-            Text(if(demo) "LOCAL DEMO · ${account}" else account.ifBlank { "Set your callsign to connect" },color=Muted)
+            Text(if(demo) "Demo · $account" else account,color=Muted)
             Spacer(Modifier.weight(1f))
             Text(connection.name,color=if(connection==AprsConnectionState.VERIFIED) Accent else Muted)
             Spacer(Modifier.width(14.dp))
             OutlinedButton(onClick={ settings=true }) { Text("Connection") }
             Spacer(Modifier.width(8.dp))
             if(connection==AprsConnectionState.STOPPED) Button(onClick={ model.localDemo() }) { Text("Local demo") }
-            else OutlinedButton(onClick={ model.disconnect() }) { Text("Disconnect") }
+            else OutlinedButton(onClick={ model.disconnect(remember=true) }) { Text("Disconnect") }
             TextButton(onClick={about=true}) {Text("About")}
         }
         if(error.isNotBlank()) Text(error,Modifier.fillMaxWidth().background(Color(0xFF6B332B)).padding(10.dp))
         Row(Modifier.weight(1f)) {
             Column(Modifier.width(225.dp).fillMaxHeight().background(Panel).padding(14.dp)) {
                 Text("STATIONS",color=Muted,fontSize=12.sp)
-                Text("${stations.size} on the map",Modifier.padding(vertical=10.dp),fontSize=20.sp)
-                if(stations.isEmpty()) Text("Connect to APRS-IS or open the local demo. Select a station to start a chat.",color=Muted)
-                LazyColumn(Modifier.weight(1f)) { items(stations.take(200),key={it.callsign}) { station ->
+                Text("${stations.size}",Modifier.padding(vertical=10.dp),fontSize=20.sp)
+                LazyColumn(Modifier.weight(1f)) { items(stations,key={it.callsign}) { station ->
                     Column(Modifier.fillMaxWidth().clickable { selected=station.callsign }.padding(vertical=10.dp)) {
                         Text(station.callsign,color=if(selected==station.callsign) Accent else Color.White,fontWeight=FontWeight.Bold)
                         Text("%.3f, %.3f".format(station.latitude,station.longitude),fontSize=11.sp,color=Muted)
                     }; Divider(color=Color(0xFF2B3D46))
                 } }
-                if(stations.size>200) Text("First 200 listed; all rendered",fontSize=11.sp,color=Muted)
-                if(demo) TextButton(onClick={model.stressStations(10_000)}) {Text("Render 10,000 test stations")}
-                Text("NORTH UP · LOCKED",fontSize=11.sp,color=Accent)
             }
             MapPanel(stations,selected,Modifier.weight(1f).fillMaxHeight()) { selected=it }
             ChatPanel(account,selected,{selected=it},rows,model,Modifier.width(350.dp).fillMaxHeight())
         }
-        Row(Modifier.fillMaxWidth().padding(12.dp,7.dp),horizontalArrangement=Arrangement.SpaceBetween) {
-            Text(if(demo) "Demo messages stay on this PC. No APRS-IS or RF transmissions." else "APRS-IS only · Position beaconing off · Chats saved locally",fontSize=11.sp,color=Muted)
-            Text("pdeffenb maps · 100 km feed filter",fontSize=11.sp,color=Muted)
-        }
     }
     if(settings) ConnectionDialog(model) {settings=false}
-    if(about) AlertDialog(onDismissRequest={about=false},title={Text("APRSIS64 0.1.0")},text={
-        Text("Copyright 2026 APRSIS64 contributors.\nAGPL-3.0, matching APRSFoundation/APRSISMO. No warranty. You may redistribute under its terms.\n\nShared core includes extracted GPLv3 code; original notices are preserved.\nMapLibre Native / Compose, JetBrains Compose, SQLite and other dependency notices are included with the source.\n\nThis is a map-and-chat prototype, not full APRSIS32 feature parity.")
+    if(about) AlertDialog(onDismissRequest={about=false},title={Text("APRSIS64 0.2.0")},text={
+        Text("Copyright 2026 APRSIS64 contributors.\nAGPL-3.0. No warranty.\n\nContains GPLv3 shared components. Third-party license notices are included in the app folder.")
     },confirmButton={TextButton(onClick={Desktop.getDesktop().browse(URI("https://github.com/kj4dxk/APRSIS64"))}) {Text("Source & license")}},dismissButton={TextButton(onClick={about=false}) {Text("Close")}})
 }
 
@@ -137,7 +134,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
         CircleLayer(id="aprs-stations",source=source,radius=const(7.dp),color=const(Color(0xFF006D65)),strokeWidth=const(2.dp),strokeColor=const(Color.White),hitPadding=8.dp,
             onClick={features -> features.firstOrNull()?.properties?.get("callsign")?.jsonPrimitive?.content?.let(select); ClickResult.Consume})
     }
-    var mapStatus by remember {mutableStateOf("Loading pdeffenb map…")}
+    var mapError by remember {mutableStateOf("")}
     LaunchedEffect(state) {
         if(System.getProperty("aprsis64.probe") == "true") {
             delay(15_000)
@@ -149,10 +146,10 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
         }
     }
     LaunchedEffect(state) {state.events.collect { event -> when(event) {
-        MapEvent.StyleLoaded -> {mapStatus="Style loaded"; println("MAP style loaded")}
-        MapEvent.Idle -> {mapStatus="Map ready"; println("MAP idle")}
-        is MapEvent.StyleLoadFailed -> {mapStatus="Map style could not load"; System.err.println("MAP style failed: ${event.reason}")}
-        is MapEvent.SourceDataFailed -> {mapStatus="Station layer failed"; System.err.println("MAP source failed: ${event.sourceId}")}
+        MapEvent.StyleLoaded -> {mapError=""; println("MAP style loaded")}
+        MapEvent.Idle -> println("MAP idle")
+        is MapEvent.StyleLoadFailed -> {mapError="Unable to load map"; System.err.println("MAP style failed: ${event.reason}")}
+        is MapEvent.SourceDataFailed -> {mapError="Unable to load map data"; System.err.println("MAP source failed: ${event.sourceId}")}
         is MapEvent.FrameRendered -> if(event.stats?.frameCount == 1L) println("MAP_FIRST_FRAME ${event.stats}")
         else -> Unit
     } } }
@@ -163,9 +160,10 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     }
     Box(modifier) {
         MaplibreMap(state=state,interactions=MapInteractions {camera {rotate {enabled=false}; pitch {enabled=false}}},
-            cameraConstraints=CameraConstraints {maxPitch=0.0; maxZoom=18.0},renderOptions=RenderOptions {maximumFps=30})
-        Text("$mapStatus  ·  N ↑",Modifier.align(Alignment.TopStart).padding(12.dp).background(Panel).padding(10.dp),color=Accent,fontSize=12.sp)
-        if(selected!=null) Text("$selected · conversation open →",Modifier.align(Alignment.BottomCenter).padding(bottom=48.dp).background(Panel).padding(10.dp),color=Color.White)
+            cameraConstraints=CameraConstraints {maxPitch=0.0; maxZoom=18.0},renderOptions=RenderOptions {maximumFps=30}, overlay={})
+        Text("© OpenStreetMap contributors",Modifier.align(Alignment.BottomEnd).padding(6.dp).background(Color.White.copy(alpha=0.88f))
+            .clickable {Desktop.getDesktop().browse(URI("https://www.openstreetmap.org/copyright"))}.padding(5.dp),color=Color(0xFF263740),fontSize=11.sp)
+        if(mapError.isNotEmpty()) Text(mapError,Modifier.align(Alignment.TopStart).padding(12.dp).background(Panel).padding(10.dp),color=Accent,fontSize=12.sp)
     }
 }
 
@@ -183,7 +181,6 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
             Spacer(Modifier.weight(1f)); if(peer!=null) TextButton(onClick={select(null)}) {Text("Inbox")}
         }
         if(peer==null) {
-            Text("Conversations saved on this PC",color=Muted,fontSize=12.sp)
             Row(Modifier.padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically) {
                 OutlinedTextField(recipient,{recipient=it.uppercase()},Modifier.weight(1f),label={Text("Callsign-SSID")},singleLine=true)
                 TextButton(onClick={select(recipient)},enabled=AprsProtocol.validCallsign(recipient)&&recipient!=account&&account.isNotBlank()) {Text("Chat")}
@@ -195,7 +192,6 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
                     Text(thread.last().body,maxLines=2,color=Muted,fontSize=12.sp)
                 }; Divider()
             } }
-            if(threads.isEmpty()) Text("Select a station on the map, or enter a callsign above.",color=Muted)
         } else {
             Text("As ${account.ifBlank {"—"}}",fontSize=12.sp,color=Muted)
             LazyColumn(Modifier.weight(1f).padding(vertical=12.dp),state=list,verticalArrangement=Arrangement.spacedBy(10.dp)) {
@@ -205,10 +201,9 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
                     Text(DateTimeFormatter.ofPattern("MMM d HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(row.time))+" · "+row.status.replace('_',' '),fontSize=9.sp,color=Muted)
                 } }
             }
-            Text("APRS messages are public and unencrypted. ACK means received, not read.",color=Muted,fontSize=10.sp)
             OutlinedTextField(draft,{draft=it},Modifier.fillMaxWidth().padding(top=8.dp),label={Text("Message")},maxLines=3)
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                Text("${draft.length}/67 · printable ASCII",color=Muted,fontSize=10.sp)
+                Text("${draft.length}/67",color=Muted,fontSize=10.sp)
                 Spacer(Modifier.weight(1f))
                 Button(onClick={sending=true; scope.launch {try {model.send(peer,draft); draft=""} catch(_:Exception){model.error.value="Unable to save this message."} finally {sending=false}}},
                     enabled=!sending&&AprsMessages.validText(draft)&&AprsProtocol.validCallsign(account)&&account!=peer) {Text("Send")}
@@ -219,20 +214,30 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
 
 @Composable private fun ConnectionDialog(model: AppModel, dismiss: ()->Unit) {
     var call by remember {mutableStateOf(model.settings.getProperty("callsign",""))}
-    var pass by remember {mutableStateOf("")}
-    var host by remember {mutableStateOf(model.settings.getProperty("endpoint","rotate.aprs2.net:14580"))}
+    var pass by remember {mutableStateOf(model.settings.getProperty("passcode",""))}
+    var host by remember {mutableStateOf(model.settings.getProperty("endpoint",AprsServers.defaultEndpoint))}
+    var preset by remember {mutableStateOf(AprsServers.presets.indexOfFirst {it.endpoint==host})}
+    var menu by remember {mutableStateOf(false)}
+    var autoConnect by remember {mutableStateOf(model.settings.getProperty("autoConnect","true").toBoolean())}
     var lat by remember {mutableStateOf(model.settings.getProperty("latitude","28.536725"))}
     var lon by remember {mutableStateOf(model.settings.getProperty("longitude","-81.242932"))}
-    DialogWindow(onCloseRequest=dismiss,title="APRS-IS connection",state=rememberDialogState(width=480.dp,height=590.dp)) {
+    DialogWindow(onCloseRequest=dismiss,title="Connection",state=rememberDialogState(width=560.dp,height=650.dp)) {
         Surface {Column(Modifier.fillMaxSize().padding(22.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             Text("APRS-IS connection",fontSize=22.sp)
-            OutlinedTextField(call,{call=it.uppercase()},label={Text("Callsign with SSID, e.g. KJ4DXK-12")},singleLine=true,modifier=Modifier.fillMaxWidth())
+            OutlinedTextField(call,{call=it.uppercase()},label={Text("Callsign-SSID")},singleLine=true,modifier=Modifier.fillMaxWidth())
             OutlinedTextField(pass,{pass=it},label={Text("Passcode (blank = receive only)")},visualTransformation=PasswordVisualTransformation(),singleLine=true,modifier=Modifier.fillMaxWidth())
-            OutlinedTextField(host,{host=it},label={Text("Server host:port")},singleLine=true,modifier=Modifier.fillMaxWidth())
+            Box {
+                OutlinedButton(onClick={menu=true},modifier=Modifier.fillMaxWidth()) {Text(if(preset>=0) AprsServers.presets[preset].name else "Custom server")}
+                DropdownMenu(expanded=menu,onDismissRequest={menu=false}) {
+                    AprsServers.presets.forEachIndexed { index, server -> DropdownMenuItem(onClick={preset=index; host=server.endpoint; menu=false}) {Text(server.name)} }
+                    DropdownMenuItem(onClick={preset=-1; menu=false}) {Text("Custom server")}
+                }
+            }
+            OutlinedTextField(host,{host=it},label={Text("Server URL or host:port")},enabled=preset<0,singleLine=true,modifier=Modifier.fillMaxWidth())
             Row {OutlinedTextField(lat,{lat=it},Modifier.weight(1f),label={Text("Filter latitude")}); Spacer(Modifier.width(8.dp)); OutlinedTextField(lon,{lon=it},Modifier.weight(1f),label={Text("Filter longitude")})}
-            Text("100 km station filter. No location beaconing. Passcode stays in memory and is not saved.",color=Muted,fontSize=12.sp)
+            Row(verticalAlignment=Alignment.CenterVertically) {Checkbox(autoConnect,{autoConnect=it}); Text("Connect on startup")}
             Spacer(Modifier.weight(1f))
-            Row {TextButton(onClick=dismiss){Text("Cancel")}; Spacer(Modifier.weight(1f)); Button(onClick={model.connect(call,pass,host,lat.toDoubleOrNull()?:Double.NaN,lon.toDoubleOrNull()?:Double.NaN); dismiss()}){Text("Connect")}}
+            Row {TextButton(onClick=dismiss){Text("Cancel")}; Spacer(Modifier.weight(1f)); Button(onClick={if(model.connect(call,pass,host,lat.toDoubleOrNull()?:Double.NaN,lon.toDoubleOrNull()?:Double.NaN,autoConnect)) dismiss()}){Text("Connect")}}
         } }
     }
 }
