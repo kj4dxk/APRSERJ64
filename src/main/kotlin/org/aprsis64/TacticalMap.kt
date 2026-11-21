@@ -49,7 +49,14 @@ internal fun tacticalGeometry(stations:List<AprsStation>,selected:String?,paths:
  }
  stations.forEach {s->
   val origin=AprsSpatial.fix(s);val details=AprsSpatial.details(s)
-  if(enabled("dead_reckoning")) AprsSpatial.predicted(s,now,p.getProperty("tactical.prediction_seconds").toInt())?.let {prediction->
+  if(s.ambiguityDigits>0) {
+   val half=listOf(0.0,0.1,1.0,10.0,60.0)[s.ambiguityDigits]/120
+   val south=(s.latitude-half).coerceAtLeast(-90.0);val north=(s.latitude+half).coerceAtMost(90.0)
+   val west=(s.longitude-half).coerceAtLeast(-180.0);val east=(s.longitude+half).coerceAtMost(180.0)
+   val points=listOf(AprsFix(south,west,now),AprsFix(north,west,now),AprsFix(north,east,now),AprsFix(south,east,now),AprsFix(south,west,now))
+   shape("ambiguity-${s.callsign}",points,"#b78432",true,true,dashed=true)
+  }
+  if(enabled("dead_reckoning") && s.ambiguityDigits==0) AprsSpatial.predicted(s,now,p.getProperty("tactical.prediction_seconds").toInt())?.let {prediction->
    val freshness=(1-(now-s.heardAtMillis).toFloat()/(p.getProperty("tactical.prediction_seconds").toInt()*1000)).coerceIn(0f,1f)
    shape("prediction-${s.callsign}",listOf(origin,prediction),if(freshness>0.5) "#249c49" else "#d35229",opacity=0.3f+freshness*0.7f,dashed=true)
    shape("estimate-${s.callsign}",AprsSpatial.circle(prediction,35.0,12),"#d35229",true,opacity=0.3f+freshness*0.7f)

@@ -48,6 +48,7 @@ object BeaconPreferences {
         BeaconField("beacon.symbol_table","Symbol table or overlay","/"),
         BeaconField("beacon.symbol","Symbol code","-"),
         BeaconField("beacon.timestamp","Timestamp","hms",choices=listOf("none","hms","dhm")),
+        BeaconField("beacon.mic_e","Transmit Mic-E positions","false",b),
         BeaconField("beacon.compressed","Compressed position","false",b),
         BeaconField("beacon.course_speed","Include course / speed","true",b),
         BeaconField("beacon.altitude","Include altitude","true",b),
@@ -65,7 +66,9 @@ object BeaconPreferences {
         BeaconField("status.timestamp","Include status timestamp","true",b),
         BeaconField("status.grid","Include grid instead of timestamp","false",b),
         BeaconField("status.text","Status text","APRSIS64"),
-        BeaconField("odometer.report_on_exit","Report odometer on exit","false",b)
+        BeaconField("odometer.report_on_exit","Report odometer on exit","false",b),
+        BeaconField("odometer.minimum_meters","Odometer jitter threshold (meters)","3",d),
+        BeaconField("odometer.maximum_kph","Odometer maximum plausible speed (km/h)","1000",d)
     )
     val entityFields=listOf(
         BeaconField("name","Name / companion callsign",""),
@@ -139,11 +142,12 @@ class BeaconConfiguration(val values: Properties, val entities: List<Properties>
         bool("beacon.start_stop"),number("beacon.heading_degrees"),number("beacon.forecast_error_meters"),number("beacon.distance_meters"),number("beacon.moving_knots"),bool("beacon.smart"),number("beacon.smart_slow_knots"),number("beacon.smart_fast_knots"),
         integer("beacon.smart_fast_seconds"),number("beacon.smart_turn_slope"),integer("beacon.smart_turn_seconds"))
     val format=BeaconFormat(text("beacon.symbol_table").single(),text("beacon.symbol").single(),BeaconTimestamp.valueOf(text("beacon.timestamp").uppercase()),
-        bool("beacon.compressed"),bool("beacon.course_speed"),bool("beacon.altitude"),integer("beacon.precision"),bool("beacon.messaging"),bool("beacon.include_reason"),text("beacon.status_tag"))
+        bool("beacon.compressed"),bool("beacon.course_speed"),bool("beacon.altitude"),integer("beacon.precision"),bool("beacon.messaging"),bool("beacon.include_reason"),text("beacon.status_tag"),bool("beacon.mic_e"))
     val comments=Json.parseToJsonElement(text("beacon.comments")).jsonArray.map {it.jsonPrimitive.content}
     init {
         AprsFix(number("position.latitude"),number("position.longitude"),0)
         require(number("position.altitude_meters").isFinite())
+        require(number("odometer.minimum_meters") in 0.0..1000.0 && number("odometer.maximum_kph") in 1.0..10000.0)
         require(integer("position.maximum_age_seconds") in 1..120 && number("position.maximum_accuracy_meters") in 1.0..10000.0)
         require(integer("position.serial_baud") in 1200..921600)
         gpsEndpoint()

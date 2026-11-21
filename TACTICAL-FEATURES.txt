@@ -1,3 +1,6 @@
+0.6.0 UPDATE: see RELEASE-0.6.0.txt for current features and validation.
+The implementation-status notes below are historical.
+
 Additional ten APRSIS32-inspired capabilities - source update 2026-11-20
 
 STATUS

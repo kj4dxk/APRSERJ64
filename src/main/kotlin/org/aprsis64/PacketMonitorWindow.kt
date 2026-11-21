@@ -23,9 +23,10 @@ import java.time.format.DateTimeFormatter
     val scope=rememberCoroutineScope()
     var query by remember {mutableStateOf("")}
     var satellites by remember {mutableStateOf(false)}
+    var category by remember {mutableStateOf("All")}
     var paused by remember {mutableStateOf<List<TrafficEntry>?>(null)}
     var result by remember {mutableStateOf("")}
-    val displayed=(paused ?: entries).filter {(!satellites || it.satellite) && (it.packet.contains(query,true)||it.port.contains(query,true))}
+    val displayed=(paused ?: entries).filter {(!satellites || it.satellite) && (it.packet.contains(query,true)||it.port.contains(query,true)) && when(category){"RF"->it.port!="APRS-IS";"Duplicates"->it.duplicate;"Invalid"->it.invalid;else->true}}
     Window(onCloseRequest=dismiss,title="Packets — APRSIS64",state=rememberWindowState(width=1100.dp,height=760.dp)) {
         MaterialTheme(colors=darkColors()) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
             Row {
@@ -34,15 +35,16 @@ import java.time.format.DateTimeFormatter
                 Button(onClick={val snapshot=displayed.toList();scope.launch {result=runCatching {"Saved ${model.monitor.export(snapshot)}"}.getOrElse {"Export failed"}}}) {Text("Export TNC2")}
             }
             Row {Checkbox(satellites,{satellites=it});Text("Satellite paths only",Modifier.padding(top=12.dp))}
+            Row {listOf("All","RF","Duplicates","Invalid").forEach {name->TextButton(onClick={category=name}){Text(if(name==category)"[$name]" else name)}}}
             if(satellites) TextButton(onClick={java.awt.Desktop.getDesktop().browse(java.net.URI(model.settings.getProperty("services.satellite_status_url")))}) {Text("Current ISS radio status")}
             Text("$feed · ${displayed.size} packets",fontSize=12.sp)
             if(result.isNotBlank()) Text(result,fontSize=12.sp)
-            LazyColumn(Modifier.weight(1f).fillMaxWidth()) {items(displayed.asReversed(),key={it.sequence}) {entry ->
+            key(category,satellites,query) {LazyColumn(Modifier.weight(1f).fillMaxWidth()) {items(displayed.asReversed(),key={it.sequence}) {entry ->
                 Column(Modifier.padding(vertical=6.dp)) {
                     Text("${DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(entry.time))}  ${entry.direction}  ${entry.port}"+(if(entry.satellite) "  Satellite" else ""),color=MaterialTheme.colors.primary,fontSize=11.sp)
                     SelectionContainerCompat(entry.packet)
                 };Divider()
-            }}
+            }}}
         }}}
     }
 }

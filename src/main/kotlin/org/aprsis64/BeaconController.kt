@@ -15,11 +15,14 @@ data class BeaconState(val enabled: Boolean = true, val source: String = "Fixed"
 /** Session-owned broadcaster. Never queues old positions for a later connection. */
 class BeaconController(private val account: String, private val ports: RadioPorts,
     private val config: BeaconConfiguration, parent: CoroutineScope, initialDistanceMeters: Double,
-    private val saveDistance: (Double)->Unit, private val recenter: (BeaconPosition)->Unit) : AutoCloseable {
+    private val saveDistance: (Double)->Unit, private val journal:BeaconJournal?=null, private val recenter: (BeaconPosition)->Unit) : AutoCloseable {
     private val scope=CoroutineScope(parent.coroutineContext+SupervisorJob(parent.coroutineContext[Job]))
     private val gps=if(config.text("position.source") !in listOf("fixed","port")) GpsReceiver(config,scope) else null
     val state=MutableStateFlow(BeaconState(config.bool("beacon.enabled"),if(config.text("position.source")=="fixed") "Fixed" else "GPS"))
     private val policy=AdaptiveBeaconPolicy(config.timing,initialDistanceMeters)
+    private var traveled=initialDistanceMeters
+    private var lastFix:AprsFix?=null
+    private var savedDistanceAt=0L
     private val manual=AtomicBoolean(false)
     private val statusNow=AtomicBoolean(false)
     private val odometerNow=AtomicBoolean(false)
@@ -35,7 +38,10 @@ class BeaconController(private val account: String, private val ports: RadioPort
         val policy=AdaptiveBeaconPolicy(timing)
         var kills=0; var killedAt=0L
     }
-    private val entities=config.entities.map { Entity(it,config.entityTiming(it)) }
+    private val entities=config.entities.map { p->Entity(p,config.entityTiming(p)).also {e->
+        if(p.getProperty("alive").toBoolean())journal?.revive(p)
+        else journal?.read(p)?.let {(count,time)->e.kills=count;e.killedAt=time}
+    } }
     init {
         scope.launch {
             while(isActive) {
@@ -62,12 +68,25 @@ class BeaconController(private val account: String, private val ports: RadioPort
     }
     private suspend fun tick(now: Long) {
         val p=position(now)
+        if(config.text("position.source")!="fixed" && p?.current==true) {
+            val previous=lastFix
+            if(previous==null)lastFix=p.fix else if(p.fix.timeMillis>previous.timeMillis) {
+                val elapsed=p.fix.timeMillis-previous.timeMillis
+                val meters=AdaptiveBeaconPolicy.distance(previous,p.fix)
+                if(elapsed>config.integer("position.maximum_age_seconds")*1000L)lastFix=p.fix
+                else if(meters>=config.number("odometer.minimum_meters")) {
+                    if(meters/(elapsed/1000.0)<=config.number("odometer.maximum_kph")/3.6)traveled+=meters
+                    lastFix=p.fix
+                }
+            }
+            if(now-savedDistanceAt>=10000) {saveDistance(traveled);savedDistanceAt=now}
+        }
         val localEntities=config.entities.filter {it.getProperty("enabled").toBoolean() && it.getProperty("alive").toBoolean()}.mapNotNull {e ->
             val pos=if(e.getProperty("source")=="follow") p else config.entityPosition(e,now)
             pos?.let {AprsStation(e.getProperty("name"),it.fix.latitude,it.fix.longitude,config.entityFormat(e).table,
                 config.entityFormat(e).symbol,ObjectGeometry.comment(e),it.fix.timeMillis,it.course,it.speedKnots,it.altitudeMeters)}
         }
-        state.value=state.value.copy(position=p,odometerMeters=policy.distanceMeters,entities=localEntities)
+        state.value=state.value.copy(position=p,odometerMeters=traveled,entities=localEntities)
         if(!config.bool("beacon.enabled")) {manual.set(false); statusNow.set(false); odometerNow.set(false);state.value=state.value.copy(detail="Off");return}
         val verified=ports.available()
         if(verified && !connected) reconnect=config.bool("beacon.on_reconnect")
@@ -76,10 +95,10 @@ class BeaconController(private val account: String, private val ports: RadioPort
         if(p==null || !p.current) state.value=state.value.copy(detail="Waiting for GPS fix")
         if(p!=null && (p.current || gpsEvent=="GPS lost")) {
             if(odometerNow.get()) {
-                val km=(policy.distanceMeters/10).toInt()/100.0
+                val km=(traveled/10).toInt()/100.0
                 if(send(BeaconPackets.position(account,p,config.format,"Odometer=${km}km","Odometer"),now,p,"Odometer")) {
                     odometerNow.set(false)
-                    if(resetOdometer.getAndSet(false)) {policy.resetDistance();saveDistance(0.0)}
+                    if(resetOdometer.getAndSet(false)) {policy.resetDistance();traveled=0.0;lastFix=p.fix;saveDistance(0.0)}
                     return
                 }
             }
@@ -90,7 +109,7 @@ class BeaconController(private val account: String, private val ports: RadioPort
                 val comment=if(includeComment && config.comments.isNotEmpty()) config.comments[commentIndex%config.comments.size] else ""
                 if(send(BeaconPackets.position(account,p,config.format,comment,decision.reason),now,p,decision.reason)) {
                     policy.sent(p,now);manual.set(false);reconnect=false;gpsEvent=null
-                    runCatching {saveDistance(policy.distanceMeters)}
+                    runCatching {saveDistance(traveled)}
                     if(comment.isNotEmpty()) {lastComment=now;if(config.bool("beacon.rotate_comments")) commentIndex=(commentIndex+1)%config.comments.size}
                     if(config.bool("beacon.recenter_after_transmit")) recenter(p)
                     return
@@ -118,7 +137,7 @@ class BeaconController(private val account: String, private val ports: RadioPort
                 else BeaconPackets.entity(account,name,kind=="item",alive,pos,format,ObjectGeometry.comment(e),due.reason)
             if(!send(packet,now,pos,"$name: ${due.reason}",e)) continue
             entity.policy.sent(pos,now)
-            if(!alive) {entity.kills++; entity.killedAt=now}
+            if(!alive) {entity.kills++; entity.killedAt=now;journal?.write(e,entity.kills,now)}
             return
         }
         state.value=state.value.copy(detail=if(config.text("position.source")=="fixed") "Fixed" else if(p?.current==true) "GPS fix" else "Waiting for GPS fix")
@@ -133,9 +152,10 @@ class BeaconController(private val account: String, private val ports: RadioPort
         return true
     }
     suspend fun beforeExit() {
+        saveDistance(traveled)
         if(config.bool("beacon.enabled") && config.bool("odometer.report_on_exit") && ports.available()) {
             val now=System.currentTimeMillis(); val p=state.value.position?.takeIf {it.current} ?: return
-            ports.broadcast(BeaconPackets.position(account,p,config.format,"Odometer=${(policy.distanceMeters/10).toInt()/100.0}km","Exit"),config.bool("beacon.internet"),config.bool("beacon.radio"))
+            ports.broadcast(BeaconPackets.position(account,p,config.format,"Odometer=${(traveled/10).toInt()/100.0}km","Exit"),config.bool("beacon.internet"),config.bool("beacon.radio"))
         }
     }
     override fun close() {gps?.close();scope.cancel()}

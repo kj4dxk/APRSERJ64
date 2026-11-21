@@ -66,7 +66,7 @@ fun main(args: Array<String>) {
         cacheFile = kotlinx.io.files.Path(home.resolve("cache/tiles.db").toString())
         maximumCacheSizeBytes = model.settings.getProperty("map.cache_megabytes").toLong() * 1024 * 1024
     }
-    println("APRSIS64 0.5.0 | Java ${System.getProperty("java.version")} | Vulkan / Direct3D12 | home=$home")
+    println("APRSIS64 0.6.0 | Java ${System.getProperty("java.version")} | Vulkan / Direct3D12 | home=$home")
     if(demoMode) model.localDemo()
     else model.connectSaved()
     application {
@@ -98,9 +98,10 @@ fun main(args: Array<String>) {
     var kind by remember {mutableStateOf(model.settings.getProperty("display.kind"))}
     var sort by remember {mutableStateOf(model.settings.getProperty("display.sort"))}
     val notices by model.activity.notices.collectAsState()
+    val metadata by model.views.stations.collectAsState()
     val filtered=stations.filter {station->
         station.callsign.contains(search,true) && System.currentTimeMillis()-station.heardAtMillis<=model.settings.getProperty("display.maximum_age_minutes").toLong()*60000 &&
-        when(kind) {"weather"->station.symbol=='_';"moving"->Regex("^\\d{3}/(\\d{3})").find(station.comment)?.groupValues?.get(1)?.toIntOrNull()?.let {it>0}==true;"objects"->station.callsign in model.archive.objects.value;else->true}
+        when(kind) {"weather"->station.symbol=='_';"moving"->(AprsSpatial.details(station).speedKnots?:0.0)>0.0;"objects"->station.callsign in model.archive.objects.value;"rf"->metadata[station.callsign]?.rf==true;"message-capable"->metadata[station.callsign]?.messageCapable==true;"frequency"->metadata[station.callsign]?.frequency!=null;"ambiguous"->station.ambiguityDigits>0;"mic-e"->station.micEStatus!=null;else->true}
     }.let {list->when(sort) {"recent"->list.sortedByDescending {it.heardAtMillis};"distance"->list.sortedBy {AdaptiveBeaconPolicy.distance(AprsFix(model.settings.getProperty("position.latitude").toDouble(),model.settings.getProperty("position.longitude").toDouble(),0),AprsFix(it.latitude,it.longitude,0))};else->list.sortedBy {it.callsign}}}
 
     var settings by remember { mutableStateOf(false) }
@@ -140,7 +141,7 @@ fun main(args: Array<String>) {
             Column(Modifier.width(225.dp).fillMaxHeight().background(Panel).padding(14.dp)) {
                 Text("STATIONS",color=Muted,fontSize=12.sp)
                 OutlinedTextField(search,{search=it},label={Text("Find station")},singleLine=true,modifier=Modifier.fillMaxWidth())
-                TextButton(onClick={kind=listOf("all","weather","moving","objects").let {it[(it.indexOf(kind)+1)%it.size]}}){Text("Type: $kind")}
+                TextButton(onClick={kind=listOf("all","weather","moving","objects","rf","message-capable","frequency","ambiguous","mic-e").let {it[(it.indexOf(kind)+1)%it.size]}}){Text("Type: $kind")}
                 TextButton(onClick={sort=listOf("callsign","recent","distance").let {it[(it.indexOf(sort)+1)%it.size]}}){Text("Sort: $sort")}
                 TextButton(onClick={val p=java.util.Properties().apply {putAll(model.settings);setProperty("display.search",search);setProperty("display.kind",kind);setProperty("display.sort",sort);setProperty("display.tracking_calls",encodedNames(tracking.toList()))};model.savePreferences(p,model.entities)}){Text("Save view defaults")}
                 Text("${filtered.size} / ${stations.size}",Modifier.padding(vertical=6.dp),fontSize=16.sp)
@@ -170,7 +171,7 @@ fun main(args: Array<String>) {
     if(preferences) PreferencesDialog(model) {preferences=false}
     if(packetMonitor) PacketMonitorWindow(model) {packetMonitor=false}
     if(portWorkspace) PortWorkspaceWindow(model) {portWorkspace=false}
-    if(about) AlertDialog(onDismissRequest={about=false},title={Text("APRSIS64 0.5.0")},text={
+    if(about) AlertDialog(onDismissRequest={about=false},title={Text("APRSIS64 0.6.0")},text={
         Text("Copyright 2026 APRSIS64 contributors.\nAGPL-3.0. No warranty.\n\nContains GPLv3 shared components. Third-party license notices are included in the app folder.")
     },confirmButton={TextButton(onClick={Desktop.getDesktop().browse(URI(model.settings.getProperty("services.source_url")))}) {Text("Source & license")}},dismissButton={TextButton(onClick={about=false}) {Text("Close")}})
 }
@@ -189,7 +190,9 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     val historyRevision by model.archive.revision.collectAsState()
     val preferencesRevision by model.settingsRevision.collectAsState()
     val selectedPath by remember(selected) {model.tactical.paths.map {it[selected]}.distinctUntilChanged()}.collectAsState(initial=null)
-    val warnings by model.weatherAlerts.alerts.collectAsState()
+    val webWarnings by model.weatherAlerts.alerts.collectAsState()
+    val legacyWarnings by model.legacyWeather.alerts.collectAsState()
+    val warnings=webWarnings+legacyWarnings
     val weather by model.archive.weather.collectAsState()
     var clock by remember {mutableStateOf(System.currentTimeMillis())}
     var chosenAlert by remember {mutableStateOf<WeatherAlert?>(null)}
@@ -290,6 +293,8 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     var recipient by remember {mutableStateOf("")}
     var draft by remember(account,peer) {mutableStateOf("")}
     var sending by remember {mutableStateOf(false)}
+    var chatOptions by remember(account,peer) {mutableStateOf(ChatOptions())}
+    LaunchedEffect(account,peer) {if(peer!=null)chatOptions=model.database.options(account,peer)}
     val focusManager=LocalFocusManager.current
     val history=all.filter {it.peer==peer}
     val list=rememberLazyListState()
@@ -313,6 +318,10 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
             } }
         } else {
             Text("As ${account.ifBlank {"—"}}",fontSize=12.sp,color=Muted)
+            Row(verticalAlignment=Alignment.CenterVertically) {
+                TextButton(onClick={scope.launch {val routes=listOf("best","rf","is");val next=chatOptions.copy(route=routes[(routes.indexOf(chatOptions.route)+1)%3]);model.database.saveOptions(account,peer,next);chatOptions=next}}) {Text("Route: ${chatOptions.route.uppercase()}")}
+                Checkbox(chatOptions.requestAck,{checked->scope.launch {val next=chatOptions.copy(requestAck=checked);model.database.saveOptions(account,peer,next);chatOptions=next}});Text("ACK")
+            }
             LazyColumn(Modifier.weight(1f).padding(vertical=12.dp),state=list,verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 items(history,key={it.id}) {row -> Column(Modifier.fillMaxWidth().background(if(row.outgoing) Color(0xFF24473F) else Color(0xFF263740)).padding(10.dp)) {
                     Text(if(row.outgoing) "You" else row.peer,color=Accent,fontSize=11.sp)
@@ -323,10 +332,10 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
             }
             OutlinedTextField(draft,{draft=it},Modifier.fillMaxWidth().onPreviewKeyEvent {event->if(event.type==KeyEventType.KeyDown && event.key==Key.Tab) {focusManager.moveFocus(if(event.isShiftPressed) FocusDirection.Previous else FocusDirection.Next);true} else false}.padding(top=8.dp),label={Text("Message")},maxLines=3)
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                Text("${draft.length}/67",color=Muted,fontSize=10.sp)
+                Text("${draft.length}/300",color=Muted,fontSize=10.sp)
                 Spacer(Modifier.weight(1f))
                 Button(onClick={sending=true; scope.launch {try {model.send(peer,draft); draft=""} catch(_:Exception){model.error.value="Unable to save this message."} finally {sending=false}}},
-                    enabled=!sending&&AprsMessages.validText(draft)&&AprsProtocol.validCallsign(account)&&AprsProtocol.validCallsign(peer)&&account!=peer) {Text("Send")}
+                    enabled=!sending&&AprsMessages.validLongText(draft)&&AprsProtocol.validCallsign(account)&&AprsProtocol.validCallsign(peer)&&account!=peer) {Text("Send")}
             }
         }
     }

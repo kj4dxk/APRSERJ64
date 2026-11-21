@@ -21,7 +21,10 @@ import java.time.Instant
  val definitions by model.archive.definitions.collectAsState()
  val bulletins by model.archive.bulletins.collectAsState()
  val notices by model.activity.notices.collectAsState()
- val alerts by model.weatherAlerts.alerts.collectAsState()
+ val webAlerts by model.weatherAlerts.alerts.collectAsState()
+ val legacyAlerts by model.legacyWeather.alerts.collectAsState()
+ val alerts=webAlerts+legacyAlerts
+ val legacyStatus by model.legacyWeather.status.collectAsState()
  val weatherStatus by model.weatherAlerts.status.collectAsState()
  val download by model.offline.status.collectAsState()
  val downloading by model.offline.running.collectAsState()
@@ -38,6 +41,8 @@ import java.time.Instant
  var qru by remember {mutableStateOf("INFO")}
  var radius by remember {mutableStateOf("50")}
  var slot by remember {mutableStateOf("1")}
+ var interval by remember {mutableStateOf("1800")}
+ var route by remember {mutableStateOf("is")}
  var south by remember {mutableStateOf((preferences.getProperty("latitude").toDouble()-0.03).toString())}
  var north by remember {mutableStateOf((preferences.getProperty("latitude").toDouble()+0.03).toString())}
  var west by remember {mutableStateOf((preferences.getProperty("longitude").toDouble()-0.03).toString())}
@@ -47,9 +52,10 @@ import java.time.Instant
  fun send(peer:String,text:String){scope.launch {result=runCatching {model.send(peer,text);"Queued to $peer; see Messages for delivery"}.getOrElse {"Unable to queue: check callsigns and message length"}}}
  Window(onCloseRequest=dismiss,title="Operating tools — APRSIS64",state=rememberWindowState(width=1000.dp,height=800.dp)) {
   MaterialTheme(colors=darkColors()) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
-   FlowRow(Modifier.fillMaxWidth()) {listOf("Station","Weather","Telemetry","Tracks","Offline","Groups","QRU","Bulletins","Alerts","Radio DX","Direction finding").forEach {name->TextButton(onClick={tab=name;result=""}){Text(if(tab==name) "[$name]" else name)}}}
+   FlowRow(Modifier.fillMaxWidth()) {listOf("Station","Weather","Telemetry","Tracks","Offline","Groups","QRU","Bulletins","Alerts","Radio DX","Direction finding","Frequency","Platforms","Email").forEach {name->TextButton(onClick={tab=name;result=""}){Text(if(tab==name) "[$name]" else name)}}}
    if(result.isNotBlank()) Text(result,Modifier.padding(vertical=8.dp),color=MaterialTheme.colors.primary)
    ScrollableForm(Modifier.weight(1f).fillMaxWidth()) {when(tab) {
+    "Frequency","Platforms","Email"->AdditionalTools(model,tab)
     "Station","Radio DX","Direction finding"->TacticalTools(model,selected,tab)
     "Weather"->{
      Text("Received APRS weather",fontSize=20.sp)
@@ -61,11 +67,13 @@ import java.time.Instant
      }
      if(weather.isEmpty())Text("No weather packets received yet.")
      Text(weatherStatus,fontSize=16.sp)
+     if(legacyStatus.isNotBlank())Text(legacyStatus)
      Row {Checkbox(preferences.getProperty("weather.enabled").toBoolean(),{model.updateFeature("weather.enabled",it.toString())});Text("Fetch alerts for the configured fixed location",Modifier.padding(top=12.dp))}
      Text("Alert source and radar XYZ overlay are configurable in Settings → Weather.")
      alerts.forEach {a->Text("${a.severity}: ${a.event}",color=Color(0xFFFFC078));Text(a.headline);Text(a.description);Text("Expires ${a.expires}");Divider()}
     }
     "Telemetry"->{
+     Text("Own telemetry: ${if(preferences.getProperty("telemetry.enabled").toBoolean())"On" else "Off"}. Channels, equations, timing and routing: Settings → Telemetry.")
      OutlinedTextField(call,{call=it.uppercase()},label={Text("Station callsign")},singleLine=true)
      FlowRow(Modifier.fillMaxWidth()) {telemetry.keys.sorted().forEach {c->TextButton(onClick={call=c}) {Text(c)}}}
      Row {(0..4).forEach {i->TextButton(onClick={channel=i}) {Text("A${i+1}")}}}
@@ -89,6 +97,7 @@ import java.time.Instant
      } else Text("No classic T# telemetry received for this station.")
     }
     "Tracks"->{
+     Text("Automatic CSV: ${preferences.getProperty("logging.csv")} · GPX: ${preferences.getProperty("logging.gpx")}. Configure under Settings → Logging.")
      if(archiveStatus.isNotBlank())Text(archiveStatus)
      if(dropped>0)Text("$dropped packets omitted from history because the input queue filled")
      OutlinedTextField(call,{call=it.uppercase()},label={Text("Station or object name")},singleLine=true)
@@ -138,6 +147,19 @@ import java.time.Instant
      Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {OutlinedTextField(slot,{slot=it.uppercase()},Modifier.width(100.dp),label={Text("Slot")});OutlinedTextField(group,{group=it.uppercase()},Modifier.weight(1f),label={Text("Group (0–5 characters)")})}
      OutlinedTextField(message,{message=it},label={Text("Bulletin text")},modifier=Modifier.fillMaxWidth())
      Button(onClick={scope.launch {result=runCatching {if(model.sendBulletin(slot,group,message))"Bulletin transmitted" else "No available output"}.getOrElse {"Check slot, group and text"}}}){Text("Transmit bulletin")}
+     OutlinedTextField(interval,{interval=it},label={Text("Repeat interval (seconds)")},singleLine=true)
+     Row {listOf("is","rf","both").forEach {r->TextButton(onClick={route=r}){Text(if(route==r)"[${r.uppercase()}]" else r.uppercase())}}}
+     Button(onClick={runCatching {
+      val entry="$slot|$group|$interval|$route|$message";ScheduledBulletin.parse(entry)
+      val saved=names(model.settings.getProperty("bulletins.entries")).filterNot {val b=ScheduledBulletin.parse(it);b.slot==slot && b.group==group}+entry
+      check(model.updateFeature("bulletins.entries",encodedNames(saved)));result="Saved bulletin"
+     }.onFailure {result="Check slot, group, interval and text"}}){Text("Save scheduled bulletin")}
+     Row {Checkbox(preferences.getProperty("bulletins.enabled").toBoolean(),{model.updateFeature("bulletins.enabled",it.toString())});Text("Transmit saved bulletins",Modifier.padding(top=12.dp))}
+     names(preferences.getProperty("bulletins.entries")).forEach {entry->
+      val b=ScheduledBulletin.parse(entry)
+      Text("${b.slot} ${b.group} · ${b.seconds}s · ${b.route.uppercase()} · ${b.text}")
+      Row {TextButton(onClick={slot=b.slot;group=b.group;interval=b.seconds.toString();route=b.route;message=b.text}){Text("Edit")};TextButton(onClick={model.updateFeature("bulletins.entries",encodedNames(names(model.settings.getProperty("bulletins.entries"))-entry))}){Text("Remove")}}
+     }
      bulletins.asReversed().forEach {b->Text("${b.destination} · ${b.sender} · ${Instant.ofEpochMilli(b.time)}",color=MaterialTheme.colors.primary);Text(b.text);Divider()}
     }
     else->{TextButton(onClick={model.activity.dismiss()}){Text("Dismiss notifications")};notices.asReversed().forEach {Text("${Instant.ofEpochMilli(it.time)}  ${it.text}");Divider()};Text("Message and watched-callsign alerts, sound and cooldown settings are under Settings → Alerts.")}

@@ -5,10 +5,10 @@ import java.net.URI
 import net.osmand.shared.aprs.*
 
 object FeaturePreferences {
- val fields=TacticalPreferences.fields+listOf(
+ val fields=AdditionalPreferences.fields+TacticalPreferences.fields+listOf(
   BeaconField("connectivity.failover","Try other saved APRS-IS presets on failure","false",SettingKind.BOOLEAN),
   BeaconField("display.search","Station search",""),
-  BeaconField("display.kind","Station type","all",choices=listOf("all","weather","moving","objects")),
+  BeaconField("display.kind","Station type","all",choices=listOf("all","weather","moving","objects","rf","message-capable","frequency","ambiguous","mic-e")),
   BeaconField("display.sort","Station sorting","callsign",choices=listOf("callsign","recent","distance")),
   BeaconField("display.maximum_age_minutes","Station age limit (minutes)","30",SettingKind.INTEGER),
   BeaconField("display.symbols","Show APRS symbols","true",SettingKind.BOOLEAN),
@@ -43,6 +43,7 @@ object FeaturePreferences {
  )
  fun validate(p: Properties) {
   TacticalPreferences.validate(p)
+  AdditionalPreferences.validate(p)
   fun n(k:String)=p.getProperty(k).toInt()
   require(n("display.maximum_age_minutes") in 1..1440 && n("history.maximum_points") in 1000..1000000 && n("history.track_points") in 2..10000)
   require(n("offline.maximum_tiles") in 1..10000 && n("offline.maximum_megabytes") in 16..8192)

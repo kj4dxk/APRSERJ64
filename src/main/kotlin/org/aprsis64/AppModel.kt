@@ -45,6 +45,9 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
     private val queries=QueryResponder(this,scope) {radio}
     val monitor=PacketMonitor(directory,scope)
     val beaconCenter=MutableStateFlow<AprsFix?>(null)
+    val views=StationViews()
+    val legacyWeather=LegacyWeather(directory,scope) {settings.getProperty(it)}
+    private val automation=OperatingAutomation(this,scope) {radio}
     init { account.value = settings.getProperty("callsign","");startPorts() }
     private fun startPorts() {
         chat?.close();chat=null
@@ -123,10 +126,20 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
             val temp=Files.createTempFile(directory.resolve("data"),"odometer-",".tmp")
             try {Files.writeString(temp,meters.toString());Files.move(temp,odometer,StandardCopyOption.REPLACE_EXISTING)}
             finally {Files.deleteIfExists(temp)}
-        }) {beaconCenter.value=it.fix}
+        },BeaconJournal(directory.resolve("data/kills-$call"))) {beaconCenter.value=it.fix}
         broadcaster=controller
         controller.extraStatus={if(settings.getProperty("tactical.dx_status").toBoolean()) tactical.summary() else null}
-        beaconObserver=scope.launch {controller.state.collect {beaconState.value=it}}
+        beaconObserver=scope.launch {
+            var recordedTime:Long?=null
+            controller.state.collect {value->
+                beaconState.value=value
+                val position=value.position
+                if(snapshot.getProperty("position.source")!="fixed" && position?.current==true && position.fix.timeMillis!=recordedTime) {
+                    recordedTime=position.fix.timeMillis
+                    archive.offer(BeaconPackets.position(call,position,BeaconFormat()).trimEnd('\r','\n'),position.fix.timeMillis)
+                }
+            }
+        }
     }
     fun savePreferences(values: Properties, entities: List<Properties>, ports: List<Properties> = store.ports): Boolean {
         val previous=Properties().apply {putAll(settings)}
@@ -141,7 +154,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
             // stations or restart beacon timers when editing a nickname or layer.
             val changed= (previous.stringPropertyNames()+values.stringPropertyNames()).filter {previous.getProperty(it)!=values.getProperty(it)}
             val liveOnly=entities==previousEntities && ports==previousPorts && changed.all {
-                it.startsWith("display.") ||
+                listOf("display.","messaging.","bulletins.","telemetry.","logging.","qru.").any {prefix->it.startsWith(prefix)} ||
                     (it.startsWith("tactical.") && it !in setOf("tactical.qru_enabled","tactical.qru_address"))
             }
             if(liveOnly) {error.value="";return true}
@@ -159,9 +172,11 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         } catch(_: Exception) {settings.clear();settings.putAll(previous);store.entities=previousEntities;store.ports=previousPorts;error.value="Check the settings values and folder write access.";return false}
     }
     private fun recordTraffic(port:String,direction:String,line:String) {
-        val packet=line.trimEnd();monitor.record(port,direction,packet)
+        val packet=line.trimEnd('\r','\n');monitor.record(port,direction,packet)
+        automation.observe(direction,packet)
         if(direction=="RX" || port=="APRS-IS") archive.offer(packet)
         if(direction=="RX") {
+            views.receive(port,packet);legacyWeather.offer(packet)
             tactical.offer(port,packet,beaconState.value.position?.takeIf {it.current}?.fix)
             queries.receive(port,packet)
             activity.incoming(packet,account.value)
@@ -218,7 +233,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         disconnect()
         broadcaster?.close();radioObserver?.cancel()
         runBlocking {try {withTimeoutOrNull(3000) {radio?.shutdown()}} finally {radio?.close()}}
-        monitor.close();offline.close();weatherAlerts.close();activity.close()
+        automation.close();legacyWeather.close();monitor.close();offline.close();weatherAlerts.close();activity.close()
         runBlocking {archive.finish();tactical.finish()}
         runBlocking { scope.coroutineContext[Job]?.cancelAndJoin() }
         database.close()

@@ -7,6 +7,7 @@ import org.tomlj.Toml
 
 object OperatingPreferences {
     fun filterTerms(values:Properties):String=listOf(values.getProperty("operating.custom_filter"),
+        if(values.getProperty("legacyweather.enabled","false").toBoolean()) values.getProperty("legacyweather.filter","g/NWS*") else "",
         if(values.getProperty("tactical.qru_enabled","false").toBoolean()) "g/"+values.getProperty("tactical.qru_address") else "").filter {it.isNotBlank()}.joinToString(" ")
     val fields=listOf(
         BeaconField("operating.filter_mode","APRS-IS filter mode","range",choices=listOf("range","moving","custom")),

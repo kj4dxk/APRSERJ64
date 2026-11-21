@@ -1,5 +1,10 @@
 APRSIS64 — portable Windows APRS map, chat and beaconing
 
+RELEASE 0.6.0: the twelve reviewed gap areas are implemented. 99 automated
+tests pass, with packaged Windows visual/restart QA. See RELEASE-0.6.0.txt for
+features, settings, validation and remaining hardware/interoperability limits.
+The release report supersedes the historical implementation notes below.
+
 TACTICAL UPDATE: ten additional APRSIS32-inspired capabilities compile and package;
 82 tests pass (49 shared core, 33 Windows). Portable native-map startup/probe passed.
 The ten new capabilities received interactive Windows visual QA with local APRS, RF

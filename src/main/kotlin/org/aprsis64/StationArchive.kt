@@ -17,6 +17,7 @@ class StationArchive(private val home: Path,parent: CoroutineScope,private val s
  val status=MutableStateFlow("")
  val dropped=MutableStateFlow(0L)
  private val lock=Any()
+ private val trackLog=TrackLog(home,setting)
  private val db=DriverManager.getConnection("jdbc:sqlite:${home.resolve("data/stations.sqlite")}")
  private val input=Channel<Pair<String,Long>>(2048)
  private val worker: Job
@@ -43,6 +44,7 @@ class StationArchive(private val home: Path,parent: CoroutineScope,private val s
  }
  private fun ingest(line: String,time: Long)=synchronized(lock) {
   val observation=decode(line,time)
+  AprsProtocol.parse(line,time)?.let {trackLog.record(it)}
   if(observation) db.prepareStatement("INSERT INTO observations(time,packet) VALUES(?,?)").use {it.setLong(1,time);it.setString(2,line);it.executeUpdate()}
   if(setting("history.enabled").toBoolean()) AprsProtocol.parse(line,time)?.let {s->
    db.prepareStatement("INSERT INTO tracks(call,time,lat,lon) VALUES(?,?,?,?)").use {it.setString(1,s.callsign);it.setLong(2,time);it.setDouble(3,s.latitude);it.setDouble(4,s.longitude);it.executeUpdate()}

@@ -67,8 +67,8 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
         if(value!=null) internetJob=scope.launch {
             launch {value.messages.collect {incoming.send(it)}}
             value.packets.collect {line->
-            val packet=RadioPacket.parse(line) ?: return@collect
             traffic("APRS-IS","RX",line)
+            val packet=RadioPacket.parse(line) ?: return@collect
             routing.withLock {
                 val now=System.currentTimeMillis();router.observeInternet(packet,now)
                 if(!RadioPacket.address(call)) return@withLock
@@ -90,14 +90,20 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
     override suspend fun acknowledge(account: String, recipient: String, id: String) {
         check(account==call);sendChat(recipient,AprsMessages.ack(account,recipient,id))
     }
-    private suspend fun sendChat(recipient: String, line: String) {
-        val candidates=devices.values.filter {it.ready && it.config.canTransmit && it.config.flag("messages")}
+    override suspend fun sendPending(account:String,message:PendingChat) {
+        check(account==call)
+        sendChat(message.peer,if(message.requestAck) AprsMessages.packet(account,message.peer,message.body,message.wireId)
+            else AprsMessages.unnumbered(account,message.peer,message.body),message.route)
+    }
+    private suspend fun sendChat(recipient: String, line: String, route:String="best") {
+        require(route in listOf("best","rf","is"))
+        val candidates=devices.values.filter {route!="is" && it.ready && it.config.canTransmit && it.config.flag("messages")}
         val heard=heardForChat[recipient]?.takeIf {System.currentTimeMillis()-it.second in 0..heardMillis}
         val device=candidates.firstOrNull {it.config.name==heard?.first}
         val packet=requireNotNull(RadioPacket.parse(line.trimEnd('\r','\n')))
         if(device!=null) {check(device.transmit(packet.copy(path=device.config.path("message_path"))));return}
         val connection=client
-        if(connection?.canSend()==true) {
+        if(route!="rf" && connection?.canSend()==true) {
             // Message framing is already validated above, including its APRS destination.
             connection.sendBroadcast(call,line);traffic("APRS-IS","TX",line);return
         }

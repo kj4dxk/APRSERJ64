@@ -1,0 +1,95 @@
+APRSIS64 0.6.0 — remaining-gap implementation
+2026-11-20
+
+This release implements the twelve areas identified in the preceding gap review.
+It is not a certification of every historical APRSIS32 feature or radio model.
+
+1. Mic-E: shared encoder/decoder, standard/custom status decoding, motion,
+   base-91 altitude and ambiguity. Settings > Beacon enables transmission.
+   The dateline falls back to a normal position because Mic-E cannot encode 180.
+   Mic-E is intrinsically hundredth-minute precision; DAO is not added to it.
+2. Ambiguous received positions: validate paired trailing blanks, center the
+   ambiguity cell, display a shaded boundary and approximate-position label.
+   Dead reckoning does not project an apparently precise ambiguous position.
+3. Long chats: up to 300 printable characters, split into numbered parts of
+   at most 67 characters, independently persisted, retried and acknowledged.
+4. Messaging: saved per-conversation BEST/RF/IS route and ACK switch. No-ACK
+   messages finish at SENT after a successful write. RF-only never falls back
+   to IS. Settings > Messaging has inactivity replies with sender cooldown and
+   AA loop protection. Tools > Email supplies the configurable gateway address.
+5. Scheduled bulletins: create/edit/remove in Tools > Bulletins, with interval,
+   group and IS/RF/both routing. Saved entries and enable state are in TOML.
+6. Tools > Frequency displays advertised MHz, tone, offset and range.
+7. Own telemetry: five selectable local counters or constant raw values,
+   configurable channel names/units/equations, eight digital bits, definitions,
+   interval and routing. Sequence persists across restart. Raw values clamp
+   to 0..255; coefficients describe engineering conversion, not counter scaling.
+8. Views: RF, message-capable, frequency, ambiguous and Mic-E station filters;
+   Tools > Platforms with callsign/platform search; packet RF/duplicate/invalid
+   filters. Unknown destination identifiers remain visible as raw identifiers.
+9. Automatic daily per-station GPX/CSV logs in logs/tracks, with callsign filter
+   and retention. GPX closes its XML document after each append. Own fresh GPS
+   fixes are logged independently of beacon timing. Filenames encode station
+   names to avoid unsafe filenames and name collisions.
+10. Legacy NWS: decode NWS-/NWS_ compressed zone/county messages, expiry and
+    multiline objects. Local WGS84 .shp/.dbf polygon boundaries support UGC
+    lookup, or NOAA STATE plus ZONE/FIPS columns. Missing boundaries leave the
+    warning text available. Settings > APRS weather holds files and IS filter.
+11. QRU: automatic QRU<base-callsign> location object, alternate-table question
+    symbol, RNG range and group list. Advertises only with enabled responder,
+    active groups and current position. Advertisement interval/route are in TOML.
+    Existing nearest-object limits, requester freshness, pacing and RF-vs-IS
+    distribution remain enforced. Internet point items retain the 67-byte limit.
+12. Beacon edges: object kill count/time persist across restarts; reviving an
+    object resets its kill progress. Odometer samples fresh GPS fixes even while
+    disconnected, with configurable jitter/speed limits and periodic persistence.
+
+Defaults and migration
+Existing settings, server lists, paths, credentials and chats are preserved.
+Missing TOML keys receive defaults. Normal beaconing remains enabled. Optional
+auto-reply, scheduled bulletins, own telemetry, automatic log files and legacy
+NWS reception default off. QRU location advertisements follow an explicitly
+enabled QRU responder with configured groups. Map sources and north-up behavior
+are unchanged. User data, passwords, runtime logs and generated EXEs are not in git.
+SQLite chat migration adds route/ACK columns and a conversation-options table.
+
+Validation
+99 automated tests pass: 55 shared-core and 44 Windows tests, no failures/errors.
+Coverage includes an independent APRS-spec Mic-E vector, encoding bands and AX.25
+round trips, ambiguity centers, malformed packets, long-message reconstruction,
+chat restart and no-ACK completion, object kill journal restart, GPX XML and CSV
+append/restart, NWS expiry/month boundary, compressed UGC expansion, synthetic
+SHP/DBF lookup, telemetry definitions, duplicate/invalid packet classification,
+inactivity reply deduplication, and verified loopback transmission/routing.
+The existing KISS, AGW, NMEA, IGate, digipeater, QRU, map-settings and history
+regression tests remain included.
+The shared core also passes its standalone Java 17 build. A TCP NMEA integration
+test verifies odometer persistence and GPX logging while APRS-IS is disconnected.
+
+Interactive packaged Windows QA used an isolated folder and loopback APRS/TNC/
+weather services, never the public network for synthetic messages or warnings.
+Observed: pdeffenb map, ambiguity cell, Mic-E station, chat from station click,
+210-character four-part chat with four ACKs, IS route and history surviving an
+EXE upgrade/restart, frequency/offset/tone, platform/capability views, email form,
+scheduled bulletin editor, own telemetry names/units/value, new settings panels,
+invalid packet view, legacy local shapefile polygon and warning text.
+Packet-filter scroll state was corrected during QA. Optional-operation settings
+now apply live without reconnecting the station or resetting beacon timers.
+The desktop upgrade preserved every previous TOML value and chat row; SQLite
+integrity passed. The deployed app connected with a verified APRS-IS login.
+
+Limits
+Physical serial GPS/TNC/radio validation remains outstanding. Telemetry inputs
+currently use application counters, GPS speed, uptime and configured constants;
+there is no new hardware sensor driver. Shapefiles must already be local and
+use longitude/latitude coordinates; there is no reprojection/download wizard.
+Live third-party email delivery and hardware interoperability are not certified.
+Auto-reply, telemetry and scheduled bulletins do not imply that a packet was
+heard over the air; successful writes and APRS message ACKs are distinct states.
+
+References (independent implementation, no proprietary source copied)
+https://www.aprs.org/doc/APRS101.PDF
+https://www.aprs-is.net/WX/
+https://www.aprs-is.net/wx/multilineprotocol.aspx
+https://aprsisce.wikidot.com/en-contexthelp
+QRU wire behavior was also checked against the user's local APRSIS32 source.

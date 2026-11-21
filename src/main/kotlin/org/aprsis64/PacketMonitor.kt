@@ -13,7 +13,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import net.osmand.shared.aprs.RadioPacket
 
-data class TrafficEntry(val sequence: Long,val time: Long,val port: String,val direction: String,val packet: String,val satellite: Boolean)
+data class TrafficEntry(val sequence: Long,val time: Long,val port: String,val direction: String,val packet: String,val satellite: Boolean,val duplicate:Boolean=false,val invalid:Boolean=false)
 
 /** Bounded monitor plus optional receive-only TNC2 feed. Never accepts transmit input. */
 class PacketMonitor(private val directory: Path,private val parent: CoroutineScope): AutoCloseable {
@@ -22,6 +22,7 @@ class PacketMonitor(private val directory: Path,private val parent: CoroutineSco
     private var capacity=1000
     private var aliases=emptyList<String>()
     private var sequence=0L
+    private val seen=linkedMapOf<String,Long>()
     private var server: ServerSocket?=null
     private var worker: Job?=null
     private var feedPort: Int?=null
@@ -53,9 +54,15 @@ class PacketMonitor(private val directory: Path,private val parent: CoroutineSco
         } catch(_: Exception) {feedStatus.value="Local feed unavailable: port $port is in use or cannot be opened";feedPort=null}
     }
     @Synchronized fun record(port: String,direction: String,line: String) {
-        val clean=line.trimEnd('\r','\n');val packet=RadioPacket.parse(clean) ?: return
-        val satellite=(listOf(packet.source)+packet.path).any {address->aliases.any {address.trimEnd('*').startsWith(it)}}
-        entries.value=(entries.value+TrafficEntry(++sequence,System.currentTimeMillis(),port,direction,clean,satellite)).takeLast(capacity)
+        val clean=line.trimEnd('\r','\n').take(510);val packet=RadioPacket.parse(clean)
+        val satellite=packet?.let {(listOf(it.source)+it.path).any {address->aliases.any {address.trimEnd('*').startsWith(it)}}} ?: false
+        val now=System.currentTimeMillis()
+        seen.entries.removeAll {now-it.value>=30000}
+        val key=packet?.let {"$direction:${it.key}"}
+        val duplicate=key!=null && key in seen
+        if(key!=null) {seen.remove(key);seen[key]=now;while(seen.size>capacity)seen.remove(seen.keys.first())}
+        val invalid=packet==null || packet.payload.firstOrNull() in listOf('!','=','/','@','`','\'') && net.osmand.shared.aprs.AprsProtocol.parse(clean,now)==null
+        entries.value=(entries.value+TrafficEntry(++sequence,now,port,direction,clean,satellite,duplicate,invalid)).takeLast(capacity)
         if(direction=="RX") peers.forEach {if(!it.queue.trySend(clean).isSuccess) {it.close();peers.remove(it)}}
     }
     suspend fun export(snapshot: List<TrafficEntry>): Path=withContext(Dispatchers.IO) {

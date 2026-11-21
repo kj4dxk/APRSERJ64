@@ -123,6 +123,7 @@ recenter_after_transmit = false
 symbol_table = "/"
 symbol = "-"
 timestamp = "hms"
+mic_e = false
 compressed = false
 course_speed = true
 altitude = true
@@ -138,6 +139,8 @@ selected_comment = 0
 
 [odometer]
 report_on_exit = false
+minimum_meters = 3.0
+maximum_kph = 1000.0
 
 [position]
 source = "fixed"
@@ -166,129 +169,6 @@ duplicate_seconds = 30
 internet_seconds = 1800
 maximum_entries = 4096
 
-[[ports]]
-name = "GPS"
-notes = ""
-frequency_mhz = ""
-enabled = false
-protocol = "NMEA"
-transport = "serial"
-device = ""
-endpoint = ""
-baud = 4800
-channel = 0
-provides_nmea = true
-transmit = false
-rf_to_is = false
-no_gate_me = false
-is_to_rf = false
-beacon = false
-beacon_path = "WIDE1-1,WIDE2-1"
-message_path = "WIDE1-1"
-messages = false
-objects = false
-digipeater = false
-digi_outputs = []
-digi_transforms = ["WIDE1-1="]
-gate_calls = []
-gate_objects = []
-passall = false
-open_commands = []
-close_commands = []
-command_prompt = "cmd:"
-command_timeout_ms = 3000
-command_delay_ms = 100
-reconnect_seconds = 3
-transmit_per_minute = 20
-minimum_transmit_ms = 1000
-kiss_txdelay = -1
-kiss_persistence = -1
-kiss_slot = -1
-kiss_tail = -1
-kiss_duplex = -1
-
-[[ports]]
-name = "VHF"
-notes = ""
-frequency_mhz = ""
-enabled = false
-protocol = "Simply(KISS)"
-transport = "serial"
-device = ""
-endpoint = ""
-baud = 9600
-channel = 0
-provides_nmea = false
-transmit = true
-rf_to_is = true
-no_gate_me = false
-is_to_rf = true
-beacon = true
-beacon_path = "WIDE1-1,WIDE2-1"
-message_path = "WIDE1-1"
-messages = true
-objects = true
-digipeater = false
-digi_outputs = []
-digi_transforms = ["WIDE1-1="]
-gate_calls = []
-gate_objects = []
-passall = false
-open_commands = []
-close_commands = []
-command_prompt = "cmd:"
-command_timeout_ms = 3000
-command_delay_ms = 100
-reconnect_seconds = 3
-transmit_per_minute = 20
-minimum_transmit_ms = 1000
-kiss_txdelay = -1
-kiss_persistence = -1
-kiss_slot = -1
-kiss_tail = -1
-kiss_duplex = -1
-
-[[ports]]
-name = "AGW"
-notes = ""
-frequency_mhz = ""
-enabled = false
-protocol = "AGW"
-transport = "tcp"
-device = ""
-endpoint = "127.0.0.1:8000"
-baud = 9600
-channel = 0
-provides_nmea = false
-transmit = true
-rf_to_is = true
-no_gate_me = false
-is_to_rf = true
-beacon = true
-beacon_path = "WIDE1-1,WIDE2-1"
-message_path = "WIDE1-1"
-messages = true
-objects = true
-digipeater = false
-digi_outputs = []
-digi_transforms = ["WIDE1-1="]
-gate_calls = []
-gate_objects = []
-passall = false
-open_commands = []
-close_commands = []
-command_prompt = "cmd:"
-command_timeout_ms = 3000
-command_delay_ms = 100
-reconnect_seconds = 3
-transmit_per_minute = 20
-minimum_transmit_ms = 1000
-kiss_txdelay = -1
-kiss_persistence = -1
-kiss_slot = -1
-kiss_tail = -1
-kiss_duplex = -1
-
 [operating]
 filter_mode = "range"
 custom_filter = ""
@@ -296,6 +176,77 @@ monitor_capacity = 1000
 feed_enabled = false
 feed_port = 14581
 satellite_aliases = ["RS0ISS","NA1SS","ARISS","APRSAT"]
+
+[messaging]
+auto_reply = false
+inactive_minutes = 15
+reply_minutes = 30
+reply_text = "Away from keyboard"
+email_gateway = "EMAIL-2"
+
+[bulletins]
+enabled = false
+entries = []
+
+[telemetry]
+enabled = false
+interval_seconds = 600
+definitions_seconds = 3600
+route = "is"
+channels = ["Rx|pkts|rx|0|1|0","Tx|pkts|tx|0|1|0","Sta|count|stations|0|1|0","Spd|knots|speed|0|1|0","Up|min|uptime|0|1|0"]
+bits = "00000000"
+bit_names = ["Bit1","Bit2","Bit3","Bit4","Bit5","Bit6","Bit7","Bit8"]
+title = "Station telemetry"
+
+[logging]
+csv = false
+gpx = false
+calls = []
+retention_days = 30
+
+[legacyweather]
+enabled = false
+filter = "g/NWS*"
+shapefiles = []
+code_field = "UGC"
+
+[qru]
+advertise = true
+route = "is"
+interval_seconds = 1800
+
+[tactical]
+paths = true
+path_age_seconds = 1800
+nicknames = []
+labels = "selected"
+maximum_labels = 100
+label_speed = true
+label_altitude = true
+label_weather = true
+dead_reckoning = true
+prediction_seconds = 300
+phg = true
+shapes = true
+warning_polygons = true
+direction_finding = true
+df_age_seconds = 1800
+df_zero_radius_km = 10.0
+df_measurements = []
+horizon = true
+ground_meters = 0.0
+receiver_height_meters = 2.0
+dx_minimum_km = 10.0
+dx_retention_days = 30
+dx_query = false
+dx_status = false
+qru_enabled = false
+qru_address = "QRU"
+qru_radius_km = 50
+qru_maximum_radius_km = 500
+qru_maximum_objects = 5
+qru_position_age_seconds = 1800
+qru_spacing_seconds = 5
 
 [connectivity]
 failover = false
@@ -592,67 +543,3 @@ kiss_persistence = -1
 kiss_slot = -1
 kiss_tail = -1
 kiss_duplex = -1
-
-[tactical]
-# Show selected station's received packet path
-paths = true
-# Maximum path age (seconds)
-path_age_seconds = 1800
-# Nicknames: CALLSIGN=Name, one per line
-nicknames = []
-# Map labels
-labels = "selected"
-# Maximum map labels
-maximum_labels = 100
-# Include reported speed
-label_speed = true
-# Include reported altitude
-label_altitude = true
-# Include received weather
-label_weather = true
-# Show estimated moving positions
-dead_reckoning = true
-# Stop predictions after (seconds)
-prediction_seconds = 300
-# Show selected station's estimated PHG range
-phg = true
-# Show received lines and areas
-shapes = true
-# Show weather warning boundaries
-warning_polygons = true
-# Show direction-finding reports
-direction_finding = true
-# Maximum DF report age (seconds)
-df_age_seconds = 1800
-# S0 non-detection reference radius (km)
-df_zero_radius_km = 10
-# Local DF bearings: name,lat,lon,bearing,range_km,width_degrees
-df_measurements = []
-# Show selected station's estimated radio horizon
-horizon = true
-# Ground elevation MSL for horizon estimate (m)
-ground_meters = 0
-# Receiving antenna height above ground (m)
-receiver_height_meters = 2
-# Minimum direct-heard DX distance (km)
-dx_minimum_km = 10
-# Retain direct-heard DX records (days)
-dx_retention_days = 30
-# Answer directed ?DX queries
-dx_query = false
-# Include furthest direct-heard DX in periodic status
-dx_status = false
-# Serve configured QRU object groups
-qru_enabled = false
-# QRU service address
-qru_address = "QRU"
-# Default QRU radius (km)
-qru_radius_km = 50
-# Maximum QRU radius (km)
-qru_maximum_radius_km = 500
-# Maximum QRU objects per query
-qru_maximum_objects = 5
-# Maximum requester position age (seconds)
-qru_position_age_seconds = 1800
-# Spacing between QRU object replies (seconds)
-qru_spacing_seconds = 5
