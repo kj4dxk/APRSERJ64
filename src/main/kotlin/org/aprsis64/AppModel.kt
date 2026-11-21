@@ -41,6 +41,8 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
     val activity=ActivityAlerts {settings.getProperty(it)}
     private val kioskReplies=java.util.concurrent.ConcurrentHashMap<String,Long>()
     val archive=StationArchive(directory,scope) {settings.getProperty(it)}
+    val tactical=TacticalHistory(directory,scope) {settings.getProperty(it)}
+    private val queries=QueryResponder(this,scope) {radio}
     val monitor=PacketMonitor(directory,scope)
     val beaconCenter=MutableStateFlow<AprsFix?>(null)
     init { account.value = settings.getProperty("callsign","");startPorts() }
@@ -65,7 +67,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
             val address = AprsEndpoint.parse(endpoint)
             val config = AprsIsConfig(call.trim().uppercase(),password.trim().ifBlank { "-1" },address.host,address.port,
                 latitude,longitude,radiusKm=settings.getProperty("radiusKm").toInt(),application="APRSIS64",
-                filterMode=settings.getProperty("operating.filter_mode"),customFilter=settings.getProperty("operating.custom_filter"),
+                filterMode=settings.getProperty("operating.filter_mode"),customFilter=OperatingPreferences.filterTerms(settings),
                 fallbackServers=if(settings.getProperty("connectivity.failover").toBoolean()) servers.take(16).map {AprsEndpoint(it.host,it.port)} else emptyList())
             settings.setProperty("callsign", config.callsign); settings.setProperty("endpoint",endpoint)
             settings.setProperty("passcode", config.passcode)
@@ -123,6 +125,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
             finally {Files.deleteIfExists(temp)}
         }) {beaconCenter.value=it.fix}
         broadcaster=controller
+        controller.extraStatus={if(settings.getProperty("tactical.dx_status").toBoolean()) tactical.summary() else null}
         beaconObserver=scope.launch {controller.state.collect {beaconState.value=it}}
     }
     fun savePreferences(values: Properties, entities: List<Properties>, ports: List<Properties> = store.ports): Boolean {
@@ -139,7 +142,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
                     AprsEndpoint.parse(settings.getProperty("endpoint")).host,AprsEndpoint.parse(settings.getProperty("endpoint")).port,
                     settings.getProperty("latitude").toDouble(),settings.getProperty("longitude").toDouble(),
                     radiusKm=settings.getProperty("radiusKm").toInt(),application="APRSIS64",
-                    filterMode=settings.getProperty("operating.filter_mode"),customFilter=settings.getProperty("operating.custom_filter"),
+                    filterMode=settings.getProperty("operating.filter_mode"),customFilter=OperatingPreferences.filterTerms(settings),
                 fallbackServers=if(settings.getProperty("connectivity.failover").toBoolean()) servers.take(16).map {AprsEndpoint(it.host,it.port)} else emptyList())
                 disconnect();startPorts();start(config)
             } else startPorts()
@@ -151,9 +154,12 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         val packet=line.trimEnd();monitor.record(port,direction,packet)
         if(direction=="RX" || port=="APRS-IS") archive.offer(packet)
         if(direction=="RX") {
+            tactical.offer(port,packet,beaconState.value.position?.takeIf {it.current}?.fix)
+            queries.receive(port,packet)
             activity.incoming(packet,account.value)
             val message=AprsMessages.parse(packet)
-            if(message!=null && message.recipient==account.value && message.acknowledgement==null && settings.getProperty("kiosk.enabled").toBoolean() && !demo.value) {
+            if(message!=null && message.recipient==account.value && message.acknowledgement==null && settings.getProperty("kiosk.enabled").toBoolean() && !demo.value &&
+                !(settings.getProperty("tactical.qru_enabled").toBoolean() && (message.text.trim().uppercase().substringBefore(' ')=="INFO" || entities.any {it.getProperty("qru_group","")==message.text.trim().uppercase().substringBefore(' ')} ))) {
                 val entries=names(settings.getProperty("kiosk.entries")).associate {it.substringBefore('=') to it.substringAfter('=')}
                 val query=message.text.trim().uppercase()
                 val reply=if(query=="INFO") entries.keys.joinToString(" ").take(67) else entries[query]
@@ -182,6 +188,12 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         return savePreferences(values,entities)
     }
     fun transmitBeacon() {broadcaster?.transmit()}
+    suspend fun reportDx():Boolean {
+        if(!settings.getProperty("beacon.enabled").toBoolean())return false
+        val summary=tactical.summary() ?: return false
+        return radio?.broadcast(BeaconPackets.status(account.value,summary,System.currentTimeMillis()),
+            settings.getProperty("beacon.internet").toBoolean(),settings.getProperty("beacon.radio").toBoolean()) ?: false
+    }
     fun transmitStatus() {broadcaster?.transmitStatus()}
     fun reportOdometer(reset: Boolean=false) {broadcaster?.reportOdometer(reset)}
     fun stressStations(count: Int) {
@@ -199,7 +211,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         broadcaster?.close();radioObserver?.cancel()
         runBlocking {try {withTimeoutOrNull(3000) {radio?.shutdown()}} finally {radio?.close()}}
         monitor.close();offline.close();weatherAlerts.close();activity.close()
-        runBlocking {archive.finish()}
+        runBlocking {archive.finish();tactical.finish()}
         runBlocking { scope.coroutineContext[Job]?.cancelAndJoin() }
         database.close()
     }

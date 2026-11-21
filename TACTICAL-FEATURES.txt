@@ -1,0 +1,85 @@
+Additional ten APRSIS32-inspired capabilities - source update 2026-11-20
+
+STATUS
+Implemented in source only at the user's request. No compilation, automated test
+execution, visual testing or Desktop EXE replacement was performed for this change.
+New protocol regression fixtures are present but have NOT been run. The earlier
+70 passing tests and visual report describe the preceding build only.
+
+CAPABILITIES
+1. Received packet paths: orange map segments join located, used digipeaters and
+   an identified IGate for the selected station. Unknown positions/aliases create
+   gaps, not invented hops. Tools > Station shows the original path and receive port.
+2. Nicknames and labels: Tools > Station edits a local nickname without changing
+   callsign routing. Map labels include optional reported speed, altitude and
+   temperature. Selected-only is default; all/none and a label cap are configurable.
+   Labels use local rendered fonts and need no remote glyph service.
+3. Dead reckoning: course/speed project moving stations for up to 300 seconds by
+   default. Outlined prediction endpoints and fading lines do not replace reported
+   positions or saved history. Wind speed is never interpreted as station motion.
+4. Warning boundaries: enabled weather alerts retain GeoJSON Polygon/MultiPolygon
+   geometry. Missing geometry can be resolved from affected-zone links on the same
+   HTTPS host as the configured alert service, with bounded requests and caching.
+   Severity colors, expiration, and clickable alert details are included. Interior
+   holes and dateline crossings retain outlines without misleading filled areas.
+   Weather fetching remains off unless explicitly enabled in existing settings.
+5. Objects: Settings > Objects adds multiline lines/polygons, style selection,
+   latitude/longitude vertices and classic APRS area descriptors. Shapes are fixed
+   objects with existing interval, routing and kill controls. Multiline codecs use
+   the documented west-positive offsets. Existing point objects remain unchanged.
+6. PHG: selected-station coverage circles decode power/height/gain/directivity and
+   RNG ranges; directional PHG centers shift by one-third of the estimated radius.
+   These are estimates, not measured coverage or guaranteed communications ranges.
+7. RF DX: direct-heard positions are saved in data/radio-history.sqlite by port and
+   callsign, retaining greatest distance within the configured retention period.
+   Internet, third-party and already-repeated packets are excluded. Tools > Radio
+   DX shows records and can send a status report. Optional periodic-status inclusion
+   and directed ?DX replies are off by default. Reception requires a current own fix.
+8. QRU object server: assign object groups and optional query-only transmission in
+   Settings > Objects, then enable the server in Settings > Tactical. INFO/group
+   queries use the requester's recent position, configured radius/object limits,
+   per-sender cooldown and spacing. Group messages are not ACKed on behalf of QRU.
+   Internet replies use directed item-in-message points without a stale offline
+   queue; RF queries send standard objects only through the receiving eligible port
+   and honor each object's configured outputs. Incoming items appear on the map and
+   in history. Query-only live objects skip periodic transmissions; kills still send.
+   The configured QRU address is added to the APRS-IS message filter when enabled.
+9. DF: received bearing/range/quality reports produce beams and centerlines; DFS
+   signal reports produce contours. Tools > Direction finding adds/removes persistent
+   local measurements from multiple locations. S0 circles use an explicitly editable
+   reference radius, not a measured transmitter distance. Received reports expire.
+10. Altitude/radio horizon: selected stations show altitude and estimated horizon
+   using the 4/3-Earth approximation, configurable ground MSL and receiving antenna
+   height. Compressed positions now retain speed/course or altitude for these tools.
+
+CONFIGURATION AND REUSE
+All new preferences are under [tactical] in portable settings.toml and exposed in
+Settings > Tactical. Old values are preserved and missing defaults are seeded.
+Objects gain shape, vertices, line_style, area_type, area_color, area_latitude_code,
+area_longitude_code, qru_group and query_only fields. The extent codes encode the
+square-root offsets used by the APRS area format, not linear meters.
+Nicknames use a TOML string array of CALLSIGN=Name entries. Manual DF measurements
+use name,latitude,longitude,true_bearing,range_km,beam_width_degrees entries; the
+Tools editor creates those entries without requiring hand editing.
+The shared core owns geometry, prediction, PHG/DF decoding, shape encoding,
+QRU selection and item-in-message decoding. Windows owns rendering, SQLite and UI.
+Android is not rebuilt or rewired in this update. North-up remains enforced.
+
+INTEROPERABILITY LIMITS TO VERIFY
+This does not claim complete historical APRSIS32 parity. Mic-E and ambiguous
+positions remain unsupported by the existing decoder. Prediction uses arrival age,
+not a reconstruction of delayed packet timestamps. QRU Internet items convey point
+locations with comments fitting 67 characters, not full multiline geometry; group
+object names must be valid item names without spaces. Automatic QRU server-location
+advertisements, NWS legacy shapefile lookup, DF auto-triangulation and hardware
+compatibility certification are not part of these ten implementations.
+Live QRU peers, real RF/GPS, rendered polygons, labels and restart behavior need
+build/runtime verification before treating this source update as a tested release.
+
+PROTOCOL REFERENCES (independent implementations; no proprietary code copied)
+https://www.aprs.org/doc/APRS101.PDF (data extensions, objects, PHG and DF)
+https://www.aprs-is.net/wx/multilineprotocol.aspx
+https://www.aprs.org/aprs12.html (item-in-message proposal)
+https://www.weather.gov/documentation/services-web-api
+https://aprsisce.wikidot.com/en-contexthelp
+https://privat.bahnhof.se/wb758759/documents/APRSIS32-Manual.pdf

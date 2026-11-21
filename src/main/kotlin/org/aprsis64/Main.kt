@@ -26,6 +26,8 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.serialization.json.*
 import net.osmand.shared.aprs.*
 import org.maplibre.compose.camera.CameraPosition
@@ -146,7 +148,7 @@ fun main(args: Array<String>) {
 
                 LazyColumn(Modifier.weight(1f)) { items(filtered,key={it.callsign}) { station ->
                     Column(Modifier.fillMaxWidth().clickable { selected=station.callsign }.padding(vertical=10.dp)) {
-                        Text(station.callsign,color=if(selected==station.callsign) Accent else Color.White,fontWeight=FontWeight.Bold)
+                        Text(TacticalPreferences.aliases(model.settings)[station.callsign]?.let {"$it (${station.callsign})"} ?: station.callsign,color=if(selected==station.callsign) Accent else Color.White,fontWeight=FontWeight.Bold)
                         Text("%.3f, %.3f".format(station.latitude,station.longitude),fontSize=11.sp,color=Muted)
                     }; Divider(color=Color(0xFF2B3D46))
                 } }
@@ -156,7 +158,7 @@ fun main(args: Array<String>) {
                 beacon.sentAt?.let {Text("Last sent "+DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(it)),fontSize=11.sp,color=Muted)}
             }
             val own=beacon.position?.takeIf {account.isNotBlank()}?.let {p -> AprsStation(account,p.fix.latitude,p.fix.longitude,
-                model.settings.getProperty("beacon.symbol_table").single(),model.settings.getProperty("beacon.symbol").single(),"",p.fix.timeMillis)}
+                model.settings.getProperty("beacon.symbol_table").single(),model.settings.getProperty("beacon.symbol").single(),"",p.fix.timeMillis,p.course,p.speedKnots,p.altitudeMeters)}
             val localStations=listOfNotNull(own)+beacon.entities
             key(settingsRevision) {MapPanel(localStations+filtered.filter {remote->localStations.none {it.callsign==remote.callsign}},selected,model,beaconCenter,Modifier.weight(1f).fillMaxHeight()) { selected=it }}
             ChatPanel(account,selected,{selected=it},rows,model,Modifier.width(350.dp).fillMaxHeight())
@@ -185,6 +187,13 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     val data = remember(stations) { GeoJsonData.JsonString(stationJson(stations)) }
     val style = remember { BaseStyle.Json(ServicePreferences.style(mapSettings(model))) }
     val historyRevision by model.archive.revision.collectAsState()
+    val selectedPath by remember(selected) {model.tactical.paths.map {it[selected]}.distinctUntilChanged()}.collectAsState(initial=null)
+    val warnings by model.weatherAlerts.alerts.collectAsState()
+    val weather by model.archive.weather.collectAsState()
+    var clock by remember {mutableStateOf(System.currentTimeMillis())}
+    var chosenAlert by remember {mutableStateOf<WeatherAlert?>(null)}
+    LaunchedEffect(Unit) {while(true) {delay(5000);clock=System.currentTimeMillis()}}
+    val geometry=remember(stations,selected,selectedPath,warnings,clock) {tacticalGeometry(stations,selected,selectedPath?.let {mapOf(it.call to it)}.orEmpty(),warnings,model.settings,clock)}
     var trail by remember(selected) {mutableStateOf<List<AprsFix>>(emptyList())}
     var follow by remember {mutableStateOf(forceFollow || model.settings.getProperty("display.follow").toBoolean())}
     var gotoLat by remember {mutableStateOf("")};var gotoLon by remember {mutableStateOf("")}
@@ -194,6 +203,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
 
     val initial=remember {Position(model.settings.getProperty("longitude").toDouble(),model.settings.getProperty("latitude").toDouble())}
     val state=rememberMapState(baseStyle=style,initialCameraPosition=CameraPosition(center=if(forceFollow) stations.firstOrNull {it.callsign==selected}?.let {Position(it.longitude,it.latitude)} ?: initial else initial,zoom=model.settings.getProperty("map.initial_zoom").toDouble())) {
+        TacticalLayers(geometry) {chosenAlert=it}
         if(model.settings.getProperty("display.trails").toBoolean() && trail.size>1) {
             val trailSource=rememberGeoJsonSource(GeoJsonData.JsonString(trailJson(trail)))
             LineLayer(id="station-trail",source=trailSource,color=const(Color(0xFFB33E20)),width=const(3.dp))
@@ -205,6 +215,16 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
             val symbols=rememberGeoJsonSource(GeoJsonData.JsonString(stationJson(group)))
             SymbolLayer(id="symbol-$id",source=symbols,iconImage=image(StationSymbols.bitmap(group.first().symbolTable,group.first().symbol)),iconAllowOverlap=const(true),
                 onClick={features->features.firstOrNull()?.properties?.get("callsign")?.jsonPrimitive?.content?.let(select);ClickResult.Consume})
+        }}
+        val labels=when(model.settings.getProperty("tactical.labels")) {
+            "all"->stations.sortedBy {if(it.callsign==selected) 0 else 1}.take(model.settings.getProperty("tactical.maximum_labels").toInt())
+            "selected"->stations.filter {it.callsign==selected}
+            else->emptyList()
+        }
+        labels.forEach {station->key("label-${station.callsign}") {
+            val source=rememberGeoJsonSource(GeoJsonData.JsonString(stationJson(listOf(station))))
+            SymbolLayer(id="label-${station.callsign}",source=source,iconImage=image(StationSymbols.label(stationLabel(station,model.settings,weather[station.callsign]))),
+                iconAllowOverlap=const(false),onClick={select(station.callsign);ClickResult.Consume})
         }}
     }
     val mapReady=state.style.loadState == StyleLoadState.Ready
@@ -233,6 +253,9 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
         }
     }
     val followed=stations.firstOrNull {it.callsign==selected}
+    chosenAlert?.let {alert->AlertDialog(onDismissRequest={chosenAlert=null},title={Text("${alert.severity}: ${alert.event}")},
+        text={Column(Modifier.heightIn(max=400.dp).verticalScroll(rememberScrollState())) {Text(alert.headline);Text(alert.description);Text("Expires ${alert.expires}")}},
+        confirmButton={TextButton(onClick={chosenAlert=null}) {Text("Close")}})}
     LaunchedEffect(mapReady,follow,followed?.latitude,followed?.longitude) {if(mapReady && follow && followed!=null) state.animateCamera(CameraUpdate(center=Position(followed.longitude,followed.latitude),bearing=0.0,pitch=0.0))}
     LaunchedEffect(beaconCenter,mapReady) {if(mapReady) beaconCenter?.let {state.animateCamera(CameraUpdate(center=Position(it.longitude,it.latitude),bearing=0.0,pitch=0.0))}}
     Box(modifier) {

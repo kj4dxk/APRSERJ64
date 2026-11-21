@@ -1,5 +1,9 @@
 APRSIS64 — portable Windows APRS map, chat and beaconing
 
+SOURCE UPDATE (not built or tested): ten additional APRSIS32-inspired capabilities
+are implemented after 0.5.0. See TACTICAL-FEATURES.txt. The test results below apply
+to the previous built release, not these pending source changes.
+
 RELEASE 0.5.0: Windows/shared-core build and 70 tests pass. Visual QA covered
 all settings categories and operating-tools tabs, map, chat, persistence and
 representative port workflows. Physical radio testing remains outstanding.

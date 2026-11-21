@@ -47,6 +47,7 @@ class BeaconController(private val account: String, private val ports: RadioPort
         }
     }
     fun transmit() {manual.set(true)}
+    var extraStatus:()->String? = {null}
     fun transmitStatus() {statusNow.set(true)}
     fun reportOdometer(reset: Boolean=false) {odometerNow.set(true); resetOdometer.set(reset)}
     private fun position(now: Long): BeaconPosition? {
@@ -63,8 +64,8 @@ class BeaconController(private val account: String, private val ports: RadioPort
         val p=position(now)
         val localEntities=config.entities.filter {it.getProperty("enabled").toBoolean() && it.getProperty("alive").toBoolean()}.mapNotNull {e ->
             val pos=if(e.getProperty("source")=="follow") p else config.entityPosition(e,now)
-            pos?.let {AprsStation(e.getProperty("name"),it.fix.latitude,it.fix.longitude,e.getProperty("symbol_table").single(),
-                e.getProperty("symbol").single(),e.getProperty("comment"),it.fix.timeMillis)}
+            pos?.let {AprsStation(e.getProperty("name"),it.fix.latitude,it.fix.longitude,config.entityFormat(e).table,
+                config.entityFormat(e).symbol,ObjectGeometry.comment(e),it.fix.timeMillis,it.course,it.speedKnots,it.altitudeMeters)}
         }
         state.value=state.value.copy(position=p,odometerMeters=policy.distanceMeters,entities=localEntities)
         if(!config.bool("beacon.enabled")) {manual.set(false); statusNow.set(false); odometerNow.set(false);state.value=state.value.copy(detail="Off");return}
@@ -97,7 +98,7 @@ class BeaconController(private val account: String, private val ports: RadioPort
             }
             if(p.current && (statusNow.get() || config.bool("status.enabled") && config.integer("status.interval_seconds")>0 &&
                 (lastStatus==null || now-lastStatus!!>=config.integer("status.interval_seconds")*1000L))) {
-                if(send(BeaconPackets.status(account,config.text("status.text"),now,config.bool("status.timestamp"),
+                if(send(BeaconPackets.status(account,(config.text("status.text")+" "+extraStatus().orEmpty()).trim().take(200),now,config.bool("status.timestamp"),
                     if(config.bool("status.grid")) BeaconPackets.grid(p.fix) else ""),now,p,"Status")) {
                     lastStatus=now;statusNow.set(false);return
                 }
@@ -105,7 +106,7 @@ class BeaconController(private val account: String, private val ports: RadioPort
         }
         for(entity in entities) {
             val e=entity.properties
-            if(!e.getProperty("enabled").toBoolean()) continue
+            if(!e.getProperty("enabled").toBoolean() || e.getProperty("query_only","false").toBoolean() && e.getProperty("alive").toBoolean()) continue
             val follows=e.getProperty("source")=="follow"
             val pos=if(follows) p?.takeIf {it.current} ?: continue else config.entityPosition(e,now)
             val alive=e.getProperty("alive").toBoolean()
@@ -113,8 +114,8 @@ class BeaconController(private val account: String, private val ports: RadioPort
             val due=if(!alive) BeaconDecision("Killed",100.0) else entity.policy.evaluate(pos,now,follows && config.text("position.source")!="fixed")
             if(due==null) continue
             val kind=e.getProperty("kind"); val name=e.getProperty("name"); val format=config.entityFormat(e)
-            val packet=if(kind=="station") BeaconPackets.position(name,pos,format,e.getProperty("comment"),due.reason)
-                else BeaconPackets.entity(account,name,kind=="item",alive,pos,format,e.getProperty("comment"),due.reason)
+            val packet=if(kind=="station") BeaconPackets.position(name,pos,format,ObjectGeometry.comment(e),due.reason)
+                else BeaconPackets.entity(account,name,kind=="item",alive,pos,format,ObjectGeometry.comment(e),due.reason)
             if(!send(packet,now,pos,"$name: ${due.reason}",e)) continue
             entity.policy.sent(pos,now)
             if(!alive) {entity.kills++; entity.killedAt=now}

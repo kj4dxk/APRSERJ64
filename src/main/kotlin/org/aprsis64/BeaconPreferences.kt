@@ -87,7 +87,7 @@ object BeaconPreferences {
         BeaconField("heading_degrees","Heading change (degrees)","30",d),
         BeaconField("forecast_error_meters","Forecast error (meters)","160.9344",d),
         BeaconField("distance_meters","Maximum distance (meters)","1609.344",d)
-    )
+    )+ObjectGeometry.fields
     fun load(properties: Properties, document: TomlTable?) {
         loadFields(properties,document,fields)
         if(document?.get("position.latitude")==null) properties.setProperty("position.latitude",properties.getProperty("latitude","28.536725"))
@@ -154,6 +154,7 @@ class BeaconConfiguration(val values: Properties, val entities: List<Properties>
         require(text("status.text").length<=200 && text("status.text").all {it.code in 32..126})
         require(entities.size<=32 && entities.map {it.getProperty("name")}.distinct().size==entities.size)
         entities.forEach { e ->
+            ObjectGeometry.validate(e)
             val path=e.getProperty("rf_path").split(',').filter {it.isNotBlank()}
             require(path.size<=8 && path.all {RadioPacket.address(it)})
             val name=e.getProperty("name"); val kind=e.getProperty("kind")
@@ -163,7 +164,7 @@ class BeaconConfiguration(val values: Properties, val entities: List<Properties>
             entityTiming(e)
             val position=entityPosition(e,0)
             val f=entityFormat(e)
-            val comment=e.getProperty("comment")
+            val comment=ObjectGeometry.comment(e)
             if(kind=="station") BeaconPackets.position(name,position,f,comment)
             else BeaconPackets.entity("N0CALL",name,kind=="item",true,position,f,comment)
         }
@@ -176,7 +177,7 @@ class BeaconConfiguration(val values: Properties, val entities: List<Properties>
     }
     fun entityPosition(e: Properties, now: Long)=BeaconPosition(AprsFix(e.getProperty("latitude").toDouble(),e.getProperty("longitude").toDouble(),now),
         e.getProperty("speed_knots").toDouble(),e.getProperty("course").toDouble(),e.getProperty("altitude_meters").toDouble())
-    fun entityFormat(e: Properties)=format.copy(table=e.getProperty("symbol_table").single(),symbol=e.getProperty("symbol").single())
+    fun entityFormat(e: Properties)=ObjectGeometry.format(e,format.copy(table=e.getProperty("symbol_table").single(),symbol=e.getProperty("symbol").single()))
     fun entityTiming(e: Properties)=BeaconTiming(e.getProperty("minimum_seconds").toInt(),e.getProperty("interval_seconds").toInt(),
         e.getProperty("time_only").toBooleanStrict(),e.getProperty("start_stop").toBooleanStrict(),e.getProperty("heading_degrees").toDouble(),
         e.getProperty("forecast_error_meters").toDouble(),e.getProperty("distance_meters").toDouble(),timing.movingKnots)

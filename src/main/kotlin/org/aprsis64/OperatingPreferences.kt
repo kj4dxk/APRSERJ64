@@ -6,6 +6,8 @@ import net.osmand.shared.aprs.AprsFilters
 import org.tomlj.Toml
 
 object OperatingPreferences {
+    fun filterTerms(values:Properties):String=listOf(values.getProperty("operating.custom_filter"),
+        if(values.getProperty("tactical.qru_enabled","false").toBoolean()) "g/"+values.getProperty("tactical.qru_address") else "").filter {it.isNotBlank()}.joinToString(" ")
     val fields=listOf(
         BeaconField("operating.filter_mode","APRS-IS filter mode","range",choices=listOf("range","moving","custom")),
         BeaconField("operating.custom_filter","Additional / custom server filter",""),
@@ -16,7 +18,7 @@ object OperatingPreferences {
     )
     fun validate(values: Properties) {
         AprsFilters.compose("N0CALL-13",values.getProperty("latitude").toDouble(),values.getProperty("longitude").toDouble(),
-            values.getProperty("radiusKm").toInt(),values.getProperty("operating.filter_mode"),values.getProperty("operating.custom_filter"))
+            values.getProperty("radiusKm").toInt(),values.getProperty("operating.filter_mode"),filterTerms(values))
         require(values.getProperty("operating.monitor_capacity").toInt() in 100..10000)
         require(values.getProperty("operating.feed_port").toInt() in 1024..65535)
         require(names(values.getProperty("operating.satellite_aliases")).all {it.matches(Regex("[A-Z0-9-]{1,9}"))})

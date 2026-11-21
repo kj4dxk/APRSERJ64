@@ -47,9 +47,10 @@ import java.time.Instant
  fun send(peer:String,text:String){scope.launch {result=runCatching {model.send(peer,text);"Queued to $peer; see Messages for delivery"}.getOrElse {"Unable to queue: check callsigns and message length"}}}
  Window(onCloseRequest=dismiss,title="Operating tools — APRSIS64",state=rememberWindowState(width=1000.dp,height=800.dp)) {
   MaterialTheme(colors=darkColors()) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
-   FlowRow(Modifier.fillMaxWidth()) {listOf("Weather","Telemetry","Tracks","Offline","Groups","QRU","Bulletins","Alerts").forEach {name->TextButton(onClick={tab=name;result=""}){Text(if(tab==name) "[$name]" else name)}}}
+   FlowRow(Modifier.fillMaxWidth()) {listOf("Station","Weather","Telemetry","Tracks","Offline","Groups","QRU","Bulletins","Alerts","Radio DX","Direction finding").forEach {name->TextButton(onClick={tab=name;result=""}){Text(if(tab==name) "[$name]" else name)}}}
    if(result.isNotBlank()) Text(result,Modifier.padding(vertical=8.dp),color=MaterialTheme.colors.primary)
    ScrollableForm(Modifier.weight(1f).fillMaxWidth()) {when(tab) {
+    "Station","Radio DX","Direction finding"->TacticalTools(model,selected,tab)
     "Weather"->{
      Text("Received APRS weather",fontSize=20.sp)
      weather.values.sortedBy {it.call}.forEach {w->

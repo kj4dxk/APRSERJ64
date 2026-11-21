@@ -105,6 +105,12 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
         check(fallback.transmit(packet.copy(path=fallback.config.path("message_path"))))
     }
     fun available()=client?.state?.value==AprsConnectionState.VERIFIED || devices.values.any {it.ready && it.config.canTransmit}
+    /** Immediate directed Internet item reply: never queue a stale object or fall back to RF. */
+    suspend fun queryItem(recipient:String,text:String):Boolean {
+        val connection=client?.takeIf {it.canSend()} ?: return false
+        val line=AprsMessages.unnumbered(call,recipient,text)
+        connection.sendBroadcast(call,line);traffic("APRS-IS","TX",line);return true
+    }
     /** A report can target IS, selected RF ports, or both. Empty ports means all eligible RF ports. */
     suspend fun broadcast(line: String, useIs: Boolean=true, useRf: Boolean=true, selected: List<String> = emptyList(), rfPath: String?=null): Boolean {
         val packet=RadioPacket.parse(line.trimEnd('\r','\n')) ?: return false

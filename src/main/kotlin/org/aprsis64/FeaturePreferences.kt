@@ -5,7 +5,7 @@ import java.net.URI
 import net.osmand.shared.aprs.*
 
 object FeaturePreferences {
- val fields=listOf(
+ val fields=TacticalPreferences.fields+listOf(
   BeaconField("connectivity.failover","Try other saved APRS-IS presets on failure","false",SettingKind.BOOLEAN),
   BeaconField("display.search","Station search",""),
   BeaconField("display.kind","Station type","all",choices=listOf("all","weather","moving","objects")),
@@ -42,6 +42,7 @@ object FeaturePreferences {
   BeaconField("alerts.minimum_seconds","Minimum sound interval","30",SettingKind.INTEGER)
  )
  fun validate(p: Properties) {
+  TacticalPreferences.validate(p)
   fun n(k:String)=p.getProperty(k).toInt()
   require(n("display.maximum_age_minutes") in 1..1440 && n("history.maximum_points") in 1000..1000000 && n("history.track_points") in 2..10000)
   require(n("offline.maximum_tiles") in 1..10000 && n("offline.maximum_megabytes") in 16..8192)

@@ -592,3 +592,67 @@ kiss_persistence = -1
 kiss_slot = -1
 kiss_tail = -1
 kiss_duplex = -1
+
+[tactical]
+# Show selected station's received packet path
+paths = true
+# Maximum path age (seconds)
+path_age_seconds = 1800
+# Nicknames: CALLSIGN=Name, one per line
+nicknames = []
+# Map labels
+labels = "selected"
+# Maximum map labels
+maximum_labels = 100
+# Include reported speed
+label_speed = true
+# Include reported altitude
+label_altitude = true
+# Include received weather
+label_weather = true
+# Show estimated moving positions
+dead_reckoning = true
+# Stop predictions after (seconds)
+prediction_seconds = 300
+# Show selected station's estimated PHG range
+phg = true
+# Show received lines and areas
+shapes = true
+# Show weather warning boundaries
+warning_polygons = true
+# Show direction-finding reports
+direction_finding = true
+# Maximum DF report age (seconds)
+df_age_seconds = 1800
+# S0 non-detection reference radius (km)
+df_zero_radius_km = 10
+# Local DF bearings: name,lat,lon,bearing,range_km,width_degrees
+df_measurements = []
+# Show selected station's estimated radio horizon
+horizon = true
+# Ground elevation MSL for horizon estimate (m)
+ground_meters = 0
+# Receiving antenna height above ground (m)
+receiver_height_meters = 2
+# Minimum direct-heard DX distance (km)
+dx_minimum_km = 10
+# Retain direct-heard DX records (days)
+dx_retention_days = 30
+# Answer directed ?DX queries
+dx_query = false
+# Include furthest direct-heard DX in periodic status
+dx_status = false
+# Serve configured QRU object groups
+qru_enabled = false
+# QRU service address
+qru_address = "QRU"
+# Default QRU radius (km)
+qru_radius_km = 50
+# Maximum QRU radius (km)
+qru_maximum_radius_km = 500
+# Maximum QRU objects per query
+qru_maximum_objects = 5
+# Maximum requester position age (seconds)
+qru_position_age_seconds = 1800
+# Spacing between QRU object replies (seconds)
+qru_spacing_seconds = 5

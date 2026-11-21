@@ -34,7 +34,7 @@ class StationArchive(private val home: Path,parent: CoroutineScope,private val s
  private fun decode(line: String,time: Long): Boolean {
   var observation=false
   val packet=RadioPacket.parse(line)
-  if(packet?.payload?.firstOrNull() in listOf(';',')')) AprsProtocol.parse(line,time)?.let {objects.value=(objects.value+it.callsign).toList().takeLast(2000).toSet();observation=true}
+  if(packet?.payload?.firstOrNull() in listOf(';',')') || AprsMessages.parse(line)?.text?.startsWith(')')==true) AprsProtocol.parse(line,time)?.let {objects.value=(objects.value+it.callsign).toList().takeLast(2000).toSet();observation=true}
   AprsObservations.weather(line,time)?.let {weather.value=(weather.value+ (it.call to it)).entries.toList().takeLast(1000).associate {it.toPair()};observation=true}
   AprsObservations.telemetry(line,time)?.let {sample->telemetry.value=(telemetry.value+(sample.call to ((telemetry.value[sample.call].orEmpty()+sample).takeLast(300)))).entries.toList().takeLast(300).associate {it.toPair()};observation=true}
   AprsObservations.definition(line)?.let {d->definitions.value=(definitions.value+(d.call to (definitions.value[d.call].orEmpty()+(d.kind to d)))).entries.toList().takeLast(1000).associate {it.toPair()};observation=true}
