@@ -1,3 +1,6 @@
+LATEST TACTICAL VISUAL QA: see TACTICAL-VISUAL-TEST-REPORT.txt.
+The earlier results below are retained as historical records.
+
 APRSIS64 0.5.0 - Visual QA and regression fixes - 2026-11-20
 
 METHOD

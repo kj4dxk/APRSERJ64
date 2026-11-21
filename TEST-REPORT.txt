@@ -1,3 +1,6 @@
+LATEST TACTICAL VISUAL QA: see TACTICAL-VISUAL-TEST-REPORT.txt.
+The earlier results below are retained as historical records.
+
 APRSIS64 tactical additions verification - 2026-11-20
 PASS: test :core:test packagePortable, followed by the expanded full test suite.
 82 tests: 49 shared core and 33 Windows; zero failures/errors.

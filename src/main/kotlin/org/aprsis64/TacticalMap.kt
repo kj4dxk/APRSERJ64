@@ -102,17 +102,20 @@ internal fun tacticalGeometry(stations:List<AprsStation>,selected:String?,paths:
 
 @Composable internal fun TacticalLayers(geometry:List<TacticalGeometry>,onAlert:(WeatherAlert)->Unit) {
  // Batch alike features; per-station prediction does not create thousands of layers.
- geometry.groupBy {Triple(it.shape.color,it.shape.dashed,(it.opacity*5).toInt())}.entries.forEachIndexed {index,(style,entries)->
+ geometry.groupBy {Triple(it.shape.color,it.shape.dashed,(it.opacity*5).toInt())}.forEach {(style,entries)->
   key(style) {
+   // Prediction freshness and selection change group order. Layer IDs must
+   // follow the stable Compose key, or disposing one group removes another.
+   val layerId="${style.first.removePrefix("#")}-${style.second}-${style.third}"
    val color=Color(java.lang.Long.parseLong(style.first.removePrefix("#"),16) or 0xff000000L)
    val source=rememberGeoJsonSource(GeoJsonData.JsonString(shapeJson(entries,false)))
-   LineLayer(id="tactical-lines-$index",source=source,color=const(color),width=const(2.dp),opacity=const(style.third/5f),
+   LineLayer(id="tactical-lines-$layerId",source=source,color=const(color),width=const(2.dp),opacity=const(style.third/5f),
     dasharray=if(style.second) const(listOf(3,2)) else null,
     onClick={hits->hits.firstOrNull()?.properties?.get("id")?.jsonPrimitive?.content?.let {id->entries.firstOrNull {it.id==id}?.alert?.let(onAlert)};ClickResult.Consume})
    val filled=entries.filter {it.shape.filled && it.shape.closed}
    if(filled.isNotEmpty()) {
     val fill=rememberGeoJsonSource(GeoJsonData.JsonString(shapeJson(filled,true)))
-    FillLayer(id="tactical-fill-$index",source=fill,color=const(color),opacity=const(0.12f),
+    FillLayer(id="tactical-fill-$layerId",source=fill,color=const(color),opacity=const(0.12f),
      onClick={hits->hits.firstOrNull()?.properties?.get("id")?.jsonPrimitive?.content?.let {id->filled.firstOrNull {it.id==id}?.alert?.let(onAlert)};ClickResult.Consume})
    }
   }

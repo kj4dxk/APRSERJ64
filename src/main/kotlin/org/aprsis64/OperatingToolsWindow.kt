@@ -129,8 +129,9 @@ import java.time.Instant
      OutlinedTextField(qru,{qru=it.uppercase()},label={Text("Object group (INFO lists groups)")},singleLine=true)
      OutlinedTextField(radius,{radius=it},label={Text("Radius in km")},singleLine=true)
      Button(onClick={runCatching {AprsServices.qru(qru,radius.toInt())}.onSuccess {send(preferences.getProperty("kiosk.server"),it)}.onFailure {result="Check group and radius"}}){Text("Send QRU query")}
-     Text("Replies appear in Messages; returned positioned objects appear on the map. You can also answer INFO and configured topics sent to your own callsign: Settings → Kiosk.")
-     Text("Your kiosk: "+if(preferences.getProperty("kiosk.enabled").toBoolean())"On" else "Off")
+     Text("Replies appear in Messages; returned positioned objects appear on the map. Configure your object groups in Settings → Objects and enable the QRU responder in Settings → Tactical.")
+     Text("QRU object responder: "+if(preferences.getProperty("tactical.qru_enabled").toBoolean())"On" else "Off")
+     Text("Text kiosk: "+if(preferences.getProperty("kiosk.enabled").toBoolean())"On" else "Off")
      names(preferences.getProperty("kiosk.entries")).forEach {Text(it)}
     }
     "Bulletins"->{

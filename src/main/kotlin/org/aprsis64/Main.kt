@@ -160,7 +160,7 @@ fun main(args: Array<String>) {
             val own=beacon.position?.takeIf {account.isNotBlank()}?.let {p -> AprsStation(account,p.fix.latitude,p.fix.longitude,
                 model.settings.getProperty("beacon.symbol_table").single(),model.settings.getProperty("beacon.symbol").single(),"",p.fix.timeMillis,p.course,p.speedKnots,p.altitudeMeters)}
             val localStations=listOfNotNull(own)+beacon.entities
-            key(settingsRevision) {MapPanel(localStations+filtered.filter {remote->localStations.none {it.callsign==remote.callsign}},selected,model,beaconCenter,Modifier.weight(1f).fillMaxHeight()) { selected=it }}
+            key(mapConfigurationKey(model)) {MapPanel(localStations+filtered.filter {remote->localStations.none {it.callsign==remote.callsign}},selected,model,beaconCenter,Modifier.weight(1f).fillMaxHeight()) { selected=it }}
             ChatPanel(account,selected,{selected=it},rows,model,Modifier.width(350.dp).fillMaxHeight())
         }
     }
@@ -187,13 +187,16 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     val data = remember(stations) { GeoJsonData.JsonString(stationJson(stations)) }
     val style = remember { BaseStyle.Json(ServicePreferences.style(mapSettings(model))) }
     val historyRevision by model.archive.revision.collectAsState()
+    val preferencesRevision by model.settingsRevision.collectAsState()
     val selectedPath by remember(selected) {model.tactical.paths.map {it[selected]}.distinctUntilChanged()}.collectAsState(initial=null)
     val warnings by model.weatherAlerts.alerts.collectAsState()
     val weather by model.archive.weather.collectAsState()
     var clock by remember {mutableStateOf(System.currentTimeMillis())}
     var chosenAlert by remember {mutableStateOf<WeatherAlert?>(null)}
     LaunchedEffect(Unit) {while(true) {delay(5000);clock=System.currentTimeMillis()}}
-    val geometry=remember(stations,selected,selectedPath,warnings,clock) {tacticalGeometry(stations,selected,selectedPath?.let {mapOf(it.call to it)}.orEmpty(),warnings,model.settings,clock)}
+    // The timer triggers expiry updates, but newly received packets can be newer
+    // than its last tick. Use the current time when recalculating their age.
+    val geometry=remember(stations,selected,selectedPath,warnings,clock,preferencesRevision) {tacticalGeometry(stations,selected,selectedPath?.let {mapOf(it.call to it)}.orEmpty(),warnings,model.settings,System.currentTimeMillis())}
     var trail by remember(selected) {mutableStateOf<List<AprsFix>>(emptyList())}
     var follow by remember {mutableStateOf(forceFollow || model.settings.getProperty("display.follow").toBoolean())}
     var gotoLat by remember {mutableStateOf("")};var gotoLon by remember {mutableStateOf("")}

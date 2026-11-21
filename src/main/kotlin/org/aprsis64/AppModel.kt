@@ -137,6 +137,14 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
             PortPreferences.validateAll(values,ports,entities)
             settings.clear(); settings.putAll(values); store.entities=entities;store.ports=ports
             store.save(); settingsRevision.value++
+            // Display and tactical preferences are read live. Do not discard heard
+            // stations or restart beacon timers when editing a nickname or layer.
+            val changed= (previous.stringPropertyNames()+values.stringPropertyNames()).filter {previous.getProperty(it)!=values.getProperty(it)}
+            val liveOnly=entities==previousEntities && ports==previousPorts && changed.all {
+                it.startsWith("display.") ||
+                    (it.startsWith("tactical.") && it !in setOf("tactical.qru_enabled","tactical.qru_address"))
+            }
+            if(liveOnly) {error.value="";return true}
             if(client!=null && !demo.value) {
                 val config=AprsIsConfig(account.value,settings.getProperty("passcode").ifBlank {"-1"},
                     AprsEndpoint.parse(settings.getProperty("endpoint")).host,AprsEndpoint.parse(settings.getProperty("endpoint")).port,

@@ -21,6 +21,9 @@ internal fun mapSettings(model:AppModel)=Properties().apply {
   setProperty("map.overlay_enabled","true");setProperty("map.overlay_url",getProperty("weather.radar_url"));setProperty("map.overlay_opacity",getProperty("weather.radar_opacity"))
  }
 }
+internal fun mapConfigurationKey(model:AppModel)=mapSettings(model).let {p->
+ p.stringPropertyNames().filter {it.startsWith("map.") || it in setOf("latitude","longitude")}.associateWith {p.getProperty(it)}
+}
 internal fun trailJson(points:List<AprsFix>):String {
  val segments=mutableListOf<MutableList<AprsFix>>()
  points.forEach {p->if(segments.isEmpty() || abs(segments.last().last().longitude-p.longitude)>180)segments.add(mutableListOf());segments.last().add(p)}
@@ -39,7 +42,7 @@ internal fun navigationSummary(model:AppModel,station:AprsStation):String {
  val stations by model.stations.collectAsState();val revision by model.settingsRevision.collectAsState()
  Window(onCloseRequest=dismiss,title="$call — APRSIS64",state=rememberWindowState(width=900.dp,height=700.dp)) {
   MaterialTheme(colors=darkColors()) {androidx.compose.material.Surface {ProvideMapPresentationHost(host=rememberAwtComposeMapPresentationHost(window)) {
-   key(revision) {MapPanel(stations,call,model,null,Modifier.fillMaxSize(),forceFollow=true) {}}
+   key(mapConfigurationKey(model)) {MapPanel(stations,call,model,null,Modifier.fillMaxSize(),forceFollow=true) {}}
   }}}
  }
 }

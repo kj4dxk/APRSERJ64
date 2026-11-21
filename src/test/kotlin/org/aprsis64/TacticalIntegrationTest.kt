@@ -65,6 +65,12 @@ class TacticalIntegrationTest {
      val login=withContext(Dispatchers.IO){reader.readLine()};assertTrue(login.contains("g/QRU"))
      writer.write("# logresp N0CALL-12 verified, test\r\nN1CALL>APRS:!3500.06N/07730.00W>\r\n");writer.flush()
      withTimeout(10000){while(model.stations.value.none {it.callsign=="N1CALL"})delay(10)}
+     assertTrue(model.updateFeature("tactical.nicknames",encodedNames(listOf("N1CALL=Test mobile"))))
+     assertTrue(model.updateFeature("tactical.phg","false"))
+     delay(100)
+     assertEquals(AprsConnectionState.VERIFIED,model.state.value)
+     assertTrue(model.stations.value.any {it.callsign=="N1CALL"})
+     assertEquals("Test mobile",TacticalPreferences.aliases(SettingsStore(home).values)["N1CALL"])
      writer.write("N1CALL>APRS::N0CALL-12:HOSP 50{Q1\r\n");writer.flush()
      val reply=withContext(Dispatchers.IO) {
       var found:String?=null

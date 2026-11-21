@@ -1,0 +1,80 @@
+APRSIS64 tactical visual QA - 2026-11-20 (continued into Nov 21 UTC)
+
+METHOD
+Interactive Windows checks using the actual portable app, native screenshots,
+mouse and keyboard. Isolated build/Tactical-Visual folder, local TCP APRS-IS and
+simulated TEXT RF port, local HTTP weather fixture. Real pdeffenb raster tiles.
+Synthetic packets stayed on loopback. Desktop user settings/history were isolated.
+Main window normal and maximized; settings and tools inspected with scrolling.
+Local screenshots are in outputs/visual-qa-tactical, excluded from Git.
+
+FIXES
+- Display/tactical preference saves no longer restart APRS/radio connections,
+  discard heard stations or restart initial-beacon timers. Changes affecting the
+  QRU subscription filter still reconfigure the connection.
+- Tactical/display changes retain map camera position and zoom; source/renderer
+  setting changes still recreate the map as necessary, including radar/offline.
+- Overlay layer IDs follow stable style identities instead of changing indexes.
+- Geometry uses actual current time when recalculated, not the last five-second
+  timer tick. Fresh DF/path reports no longer briefly disappear as future-dated.
+- QRU tool distinguishes the object responder from the separate text kiosk and
+  identifies the relevant settings pages.
+- The initial QA startup error was a fixture encoding/newline error, corrected
+  locally. It did not involve the user's Desktop settings.
+
+OBSERVED COVERAGE
+1. Packet paths: selected moving station displayed source -> used digi -> IGate
+   segments; station panel showed last-received path and input source.
+2. Nicknames/labels: saved QATEST nickname through GUI, displayed nickname with
+   callsign, retained it through restarts. Speed, altitude and weather labels
+   rendered; chat addressed the callsign. Dense labels use collision avoidance.
+3. Prediction: moving-station prediction refreshed while reported symbol stayed
+   at its received position. Final fixture used a 10-second prediction lifetime
+   with 20-second updates to exercise expiry and changing overlay groups.
+4. Weather: local severe warning polygon, click-to-open details, headline,
+   description and expiry; Weather tools showed weather and active-alert details.
+5. Geometry: seeded polygon, polyline and classic area objects rendered. Opened
+   polygon editor, inspected vertex/QRU/area fields, changed style j to b, saved
+   and observed solid green become dashed red; local transmitted packet matched.
+6. PHG: selected station's blue offset range circle; tools reported 12.8 km.
+   Toggling it retained stations, verified connection and map zoom.
+7. DX: simulated RF yielded DX1 29.3 km and DX2 46.0 km on Simulated VHF.
+   Internet fixtures did not appear in DX records. Persistence also tested below.
+8. QRU: INFO query sent from tools, acknowledged and response displayed in chat;
+   HOSP query from chat returned a positioned item. Own object responder emitted
+   directed hospital item and summary. Chat/ACK history survived restart.
+9. DF: received beams and DFS contour rendered; invalid empty manual measurement
+   rejected. Valid local bearing saved in GUI, rendered and survived restart.
+10. Altitude/horizon: 111 km/h and 2000 m MSL label; selected moving station's
+    large dashed horizon visible at regional scale.
+Tactical settings scrolled through all new options with Save/Cancel reachable.
+Object geometry choice menu and style menu worked. Warning dialog dismissed.
+Main map selection opened callsign chat; normal/maximized layouts remained usable.
+
+AUTOMATED VALIDATION
+:test :core:test packagePortable passed after final source changes.
+82 tests: 33 Windows, 49 shared core; zero failures, errors or skipped tests.
+Loopback QRU integration additionally changes nickname/PHG during a verified
+session, verifies station retention and persisted nickname, then receives the
+QRU reply on the same socket. Existing tests cover geometry encoding/roundtrip,
+warning/prediction expiry, RF DX exclusions and SQLite maximum-distance persistence.
+
+LIMITS
+Representative interaction paths for each new capability were exercised; this is
+not an exhaustive combination of all settings, geometries, sizes and protocols.
+No physical GPS/TNC/radio was attached. DX uses simulated TEXT input, not measured
+RF propagation. Public QRU servers and live NWS geometry were not used for these
+checks. Estimates do not validate terrain-aware propagation. Upstream LWJGL Unsafe
+and no-provider SLF4J warnings remain nonfatal.
+
+DEPLOYMENT
+Updated C:/Users/paul/Desktop/APRSIS64/APRSIS64.exe, with old EXE/settings backups
+named APRSIS64-before-tactical-update.exe and settings-before-tactical-update.toml.
+SHA-256 matches the tested portable build:
+2C465D9ECAB2998C97DAA1FA1EC145238B85E25A4F948B0E1C808CE135C7F960
+Payload: 980607e4548c12bc68bcbd34. All preexisting parsed TOML values preserved;
+new missing defaults added. Existing chat history remains visible. Desktop app
+started with the user's configured identity, verified against rotate.aprs2.net,
+logged its initial beacon, received stations and rendered pdeffenb map tiles.
+This is local send confirmation, not an independent public-network beacon receipt.
+Isolated app instances and mock servers stopped; Desktop app left running.
