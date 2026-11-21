@@ -38,17 +38,20 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
     val beaconState=MutableStateFlow(BeaconState(settings.getProperty("beacon.enabled").toBoolean()))
     val offline=OfflineMaps(directory,scope) {settings.getProperty(it)}
     val weatherAlerts=WeatherAlerts({settings.getProperty(it)},scope)
-    val activity=ActivityAlerts {settings.getProperty(it)}
+    val activity=ActivityAlerts(directory) {settings.getProperty(it)}
+    val groups=GroupMembership(directory) {settings.getProperty(it)}
     private val kioskReplies=java.util.concurrent.ConcurrentHashMap<String,Long>()
     val archive=StationArchive(directory,scope) {settings.getProperty(it)}
     val tactical=TacticalHistory(directory,scope) {settings.getProperty(it)}
     private val queries=QueryResponder(this,scope) {radio}
     val monitor=PacketMonitor(directory,scope)
     val beaconCenter=MutableStateFlow<AprsFix?>(null)
-    val views=StationViews()
+    val views=StationViews(directory) {settings.getProperty(it)}
+    val imports=MapImports(this,scope)
+    val satellites=SatelliteTracking(this,scope)
     val legacyWeather=LegacyWeather(directory,scope) {settings.getProperty(it)}
     private val automation=OperatingAutomation(this,scope) {radio}
-    init { account.value = settings.getProperty("callsign","");startPorts() }
+    init { account.value = settings.getProperty("callsign","");groups.activate(account.value);startPorts();imports.reload();satellites.reload() }
     private fun startPorts() {
         chat?.close();chat=null
         beaconObserver?.cancel();broadcaster?.close();broadcaster=null
@@ -96,11 +99,11 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         start(AprsIsConfig("N0CALL-12","12345","127.0.0.1",server!!.port,28.536725,-81.242932,application="APRSIS64"))
     }
     private fun start(config: AprsIsConfig) {
-        account.value = config.callsign; error.value = ""
+        account.value = config.callsign;groups.activate(account.value); error.value = ""
         val connection = AprsIsClient(); client = connection
         if(radio?.call==config.callsign && !demo.value) radio?.attach(connection) else startPorts()
         observing = scope.launch {
-            launch { connection.state.collect { state.value=it; println("APRS_CONNECTION ${config.callsign} $it ${connection.activeEndpoint.value?.host}:${connection.activeEndpoint.value?.port}") } }
+            launch { connection.state.collect { if(state.value!=it)activity.event("connection",it.name,"Connection: $it");state.value=it; println("APRS_CONNECTION ${config.callsign} $it ${connection.activeEndpoint.value?.host}:${connection.activeEndpoint.value?.port}") } }
             launch { connection.stations.collect { internetStations.value=it; if(it.size == 1 || it.size % 50 == 0) println("APRS_STATIONS ${it.size}") } }
         }
         connection.start(config)
@@ -149,7 +152,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
             BeaconConfiguration(values,entities); ServicePreferences.validate(values); OperatingPreferences.validate(values); FeaturePreferences.validate(values)
             PortPreferences.validateAll(values,ports,entities)
             settings.clear(); settings.putAll(values); store.entities=entities;store.ports=ports
-            store.save(); settingsRevision.value++
+            store.save(); settingsRevision.value++;imports.reload();satellites.reload()
             // Display and tactical preferences are read live. Do not discard heard
             // stations or restart beacon timers when editing a nickname or layer.
             val changed= (previous.stringPropertyNames()+values.stringPropertyNames()).filter {previous.getProperty(it)!=values.getProperty(it)}
@@ -173,13 +176,16 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
     }
     private fun recordTraffic(port:String,direction:String,line:String) {
         val packet=line.trimEnd('\r','\n');monitor.record(port,direction,packet)
+        if(direction=="RX" || port=="APRS-IS")scope.launch {radio?.publishServices(port,packet)}
         automation.observe(direction,packet)
+        groups.observe(account.value,direction,packet)
         if(direction=="RX" || port=="APRS-IS") archive.offer(packet)
         if(direction=="RX") {
-            views.receive(port,packet);legacyWeather.offer(packet)
-            tactical.offer(port,packet,beaconState.value.position?.takeIf {it.current}?.fix)
+            val rf=ports.any {it.getProperty("name")==port && it.getProperty("protocol") !in PortPreferences.services && it.getProperty("protocol") !in listOf("NMEA","Weather")}
+            views.receive(port,packet,rf=rf);legacyWeather.offer(packet)
+            if(rf || port=="APRS-IS")tactical.offer(port,packet,beaconState.value.position?.takeIf {it.current}?.fix)
             queries.receive(port,packet)
-            activity.incoming(packet,account.value)
+            activity.incoming(packet,account.value,beaconState.value.position?.takeIf {it.current}?.fix)
             val message=AprsMessages.parse(packet)
             if(message!=null && message.recipient==account.value && message.acknowledgement==null && settings.getProperty("kiosk.enabled").toBoolean() && !demo.value &&
                 !(settings.getProperty("tactical.qru_enabled").toBoolean() && (message.text.trim().uppercase().substringBefore(' ')=="INFO" || entities.any {it.getProperty("qru_group","")==message.text.trim().uppercase().substringBefore(' ')} ))) {
@@ -197,6 +203,15 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
             }
         }
     }
+    private val notificationClock=scope.launch {
+        val warned=mutableSetOf<String>()
+        while(isActive){delay(10000);activity.tick()
+            (weatherAlerts.alerts.value+legacyWeather.alerts.value).filter {it.severity in listOf("Severe","Extreme")}.forEach {alert->
+                if(warned.add(alert.id))activity.event("weather",alert.id,"${alert.severity}: ${alert.event}")
+            }
+            if(warned.size>1000)warned.clear()
+        }
+    }
     private val groupRefresh=scope.launch {
         while(isActive) {
             delay(settings.getProperty("groups.keepalive_minutes").toLong()*60000)
@@ -210,6 +225,8 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         val values=Properties().apply {putAll(settings);setProperty(key,value)}
         return savePreferences(values,entities)
     }
+    fun localWeather(name:String)=radio?.weather(name)
+    fun gpsSky()=radio?.sky().orEmpty() + listOfNotNull(broadcaster?.gpsSky()?.let {"Position" to it}).toMap()
     fun transmitBeacon() {broadcaster?.transmit()}
     suspend fun reportDx():Boolean {
         if(!settings.getProperty("beacon.enabled").toBoolean())return false

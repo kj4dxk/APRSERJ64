@@ -276,7 +276,7 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
         catch(_: LinkageError) {scanError=true} finally {scanning=false}
     }}
     LaunchedEffect(Unit) {refresh()}
-    if(values["protocol"]=="AGW") Text("TCP connection",color=WorkspaceMuted)
+    if(values["protocol"]=="AGW" || values["protocol"] in PortPreferences.services) Text("TCP connection",color=WorkspaceMuted)
     else ChoiceField("Connection",values["transport"].orEmpty(),listOf("serial","tcp")) {set("transport",it)}
     if(values["transport"]=="serial") {
         var menu by remember {mutableStateOf(false)}
@@ -294,6 +294,7 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
         if(scanError) Text("Device discovery unavailable. Enter the COM name manually.",fontSize=11.sp,color=WorkspaceMuted)
         OutlinedTextField(values["baud"].orEmpty(),{set("baud",it)},label={Text("Serial baud")},modifier=Modifier.fillMaxWidth(),singleLine=true)
     } else OutlinedTextField(values["endpoint"].orEmpty(),{set("endpoint",it.trim())},label={Text("Host:port")},placeholder={Text("Enter the TNC or GPS address")},modifier=Modifier.fillMaxWidth(),singleLine=true)
+    if(values["protocol"]=="CWOP")OutlinedTextField(values["service_call"].orEmpty(),{set("service_call",it.uppercase())},label={Text("CWOP station identifier")},modifier=Modifier.fillMaxWidth(),singleLine=true)
     if(values["protocol"] in rawRadioProtocols && values["protocol"]!="TEXT")
         OutlinedTextField(values["channel"].orEmpty(),{set("channel",it)},label={Text(if(values["protocol"]=="AGW") "AGW radio number (starts at 0)" else "KISS channel (usually 0)")},modifier=Modifier.fillMaxWidth(),singleLine=true)
 }
@@ -319,7 +320,13 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
             if(!active || !port.enabled) Button(onClick={draft.useGps(port,enable=true)}) {Text(if(port.enabled) "Use this GPS" else "Select & enable GPS")}
             else OutlinedButton(onClick={draft.fixedPosition()}) {Text("Use fixed position instead")}
         }
-        if(port.radio) {
+        if(port.protocol in PortPreferences.services) {
+            RouteSwitch("Service output","Publish packets to this endpoint.",port.values["transmit"]=="true") {draft.set(port.id,"transmit",it.toString())}
+            RouteSwitch("Accept client input","Allow input from verified TCP clients or permitted UDP peers.",port.values["service_input"]=="true") {draft.set(port.id,"service_input",it.toString())}
+            RouteSwitch("Client input → Internet","Forward accepted client packets through your APRS-IS connection.",port.values["rf_to_is"]=="true") {draft.set(port.id,"rf_to_is",it.toString())}
+            RouteSwitch("Client input → RF","Apply each radio's local-message and additional filter rules.",port.values["is_to_rf"]=="true") {draft.set(port.id,"is_to_rf",it.toString())}
+            if(port.protocol=="CWOP")WorkspaceField(PortPreferences.fields.first {it.key=="service_call"},port.values["service_call"].orEmpty()){draft.set(port.id,"service_call",it)}
+        } else if(port.radio) {
             Text("Received stations appear on the map automatically.",color=WorkspaceMuted,fontSize=12.sp)
             RouteSwitch("RF → APRS-IS","Upload eligible packets heard by this radio.",port.values["rf_to_is"]=="true") {draft.set(port.id,"rf_to_is",it.toString())}
             if(port.canTransmit) {
@@ -349,7 +356,7 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
         Divider(Modifier.padding(vertical=6.dp))
         TextButton(onClick={advanced=!advanced}) {Text(if(advanced) "Hide advanced settings" else "Advanced device settings")}
         if(advanced) {
-            PortPreferences.fields.filter {it.key in listOf("provides_nmea","no_gate_me","passall","gate_calls","gate_objects","open_commands","close_commands","command_prompt","command_timeout_ms","command_delay_ms","reconnect_seconds","transmit_per_minute","minimum_transmit_ms","kiss_txdelay","kiss_persistence","kiss_slot","kiss_tail","kiss_duplex")}
+            PortPreferences.fields.filter {it.key in listOf("provides_nmea","no_gate_me","passall","gate_calls","gate_objects","gate_filter","service_input","service_peers","service_max_clients","service_call","agw_user","agw_password","open_commands","close_commands","command_prompt","command_timeout_ms","command_delay_ms","reconnect_seconds","transmit_per_minute","minimum_transmit_ms","kiss_txdelay","kiss_persistence","kiss_slot","kiss_tail","kiss_duplex")}
                 .filter {port.radio || it.key in listOf("open_commands","close_commands","command_prompt","command_timeout_ms","command_delay_ms","reconnect_seconds")}
                 .filter {it.key!="provides_nmea" || port.protocol in PortPreferences.nmeaProtocols}
                 .forEach {f->WorkspaceField(f,port.values[f.key].orEmpty()) {draft.set(port.id,f.key,it)}}

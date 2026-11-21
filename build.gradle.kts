@@ -5,11 +5,12 @@ plugins {
     id("org.jetbrains.compose") version "1.12.1"
 }
 group = "org.aprsfoundation.community"
-version = "0.6.0"
+version = "0.7.0"
 repositories { google(); mavenCentral() }
 kotlin { jvmToolchain(25) }
 dependencies {
     implementation(project(":core"))
+    implementation("com.github.davidmoten:predict4java:1.3.1")
     implementation(compose.desktop.currentOs)
     implementation(compose.material)
     implementation("org.maplibre.compose:maplibre-compose:0.20.0")
@@ -29,7 +30,7 @@ compose.desktop {
         jvmArgs += listOf("--enable-native-access=ALL-UNNAMED", "-Xmx768m")
         nativeDistributions {
             packageName = "APRSIS64"
-            packageVersion = "0.6.0"
+            packageVersion = "0.7.0"
             description = "APRS map and persistent chat prototype"
             vendor = "APRSIS64 contributors"
             appResourcesRootDir.set(layout.buildDirectory.dir("portableResources"))

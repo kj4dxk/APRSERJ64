@@ -17,7 +17,7 @@ internal class PortDraft(val id: String, initial: Map<String,String>) {
     val name get()=values["name"].orEmpty()
     val protocol get()=values["protocol"].orEmpty()
     val enabled get()=values["enabled"]=="true"
-    val radio get()=protocol!="NMEA"
+    val radio get()=protocol !in PortPreferences.services && protocol !in listOf("NMEA","Weather")
     val canTransmit get()=radio && protocol !in PortPreferences.readOnly
 }
 

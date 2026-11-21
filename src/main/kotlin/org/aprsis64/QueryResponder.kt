@@ -7,10 +7,12 @@ import net.osmand.shared.aprs.*
 /** Runs alongside chat; addressed chat ACKs remain owned by ChatSession. */
 internal class QueryResponder(private val model:AppModel,private val scope:CoroutineScope,
  private val radio:()->RadioPorts?) {
+ private val standard=StandardQueries(model,scope,radio)
  private val last=mutableMapOf<String,Long>()
  private val seen=mutableMapOf<String,Long>()
  private val running=mutableSetOf<String>()
  fun receive(port:String,line:String) {
+  if(standard.receive(port,line))return
   if(model.demo.value) return
   val message=AprsMessages.parse(line) ?: return
   if(message.sender==model.account.value || message.acknowledgement!=null) return
@@ -64,7 +66,10 @@ internal class QueryResponder(private val model:AppModel,private val scope:Corou
      if(AdaptiveBeaconPolicy.distance(AprsSpatial.fix(requester),position.fix)>query.radiusKm*1000.0) continue
      val output=radio() ?: break
      if(port=="APRS-IS") {
-      if(e.getProperty("internet").toBoolean() && output.queryItem(message.sender,QruObjects.item(model.account.value,candidate.name,position,current.entityFormat(e),e.getProperty("comment"))))sent++
+      if(e.getProperty("internet").toBoolean() && output.queryItem(message.sender,QruObjects.item(model.account.value,candidate.name,position,current.entityFormat(e),e.getProperty("comment")))) {
+       sent++
+       if(e.getProperty("shape","point")!="point")output.broadcast(BeaconPackets.entity(model.account.value,candidate.name,false,true,position,current.entityFormat(e),ObjectGeometry.comment(e)),true,false)
+      }
      }else if(e.getProperty("radio").toBoolean()) {
       val configured=names(e.getProperty("ports"));if(configured.isNotEmpty() && port !in configured)continue
       val packet=BeaconPackets.entity(model.account.value,candidate.name,false,true,position,current.entityFormat(e),ObjectGeometry.comment(e))

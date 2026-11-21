@@ -1,3 +1,7 @@
+CURRENT: APRSIS64 0.7.0 adds the remaining operational workflows described in
+RELEASE-0.7.0.txt. This version was built only; its runtime tests are pending.
+Desktop deployment was not requested for this version.
+
 APRSIS64 — portable Windows APRS map, chat and beaconing
 
 RELEASE 0.6.0: the twelve reviewed gap areas are implemented. 99 automated

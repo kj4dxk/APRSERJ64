@@ -66,7 +66,7 @@ fun main(args: Array<String>) {
         cacheFile = kotlinx.io.files.Path(home.resolve("cache/tiles.db").toString())
         maximumCacheSizeBytes = model.settings.getProperty("map.cache_megabytes").toLong() * 1024 * 1024
     }
-    println("APRSIS64 0.6.0 | Java ${System.getProperty("java.version")} | Vulkan / Direct3D12 | home=$home")
+    println("APRSIS64 0.7.0 | Java ${System.getProperty("java.version")} | Vulkan / Direct3D12 | home=$home")
     if(demoMode) model.localDemo()
     else model.connectSaved()
     application {
@@ -101,7 +101,7 @@ fun main(args: Array<String>) {
     val metadata by model.views.stations.collectAsState()
     val filtered=stations.filter {station->
         station.callsign.contains(search,true) && System.currentTimeMillis()-station.heardAtMillis<=model.settings.getProperty("display.maximum_age_minutes").toLong()*60000 &&
-        when(kind) {"weather"->station.symbol=='_';"moving"->(AprsSpatial.details(station).speedKnots?:0.0)>0.0;"objects"->station.callsign in model.archive.objects.value;"rf"->metadata[station.callsign]?.rf==true;"message-capable"->metadata[station.callsign]?.messageCapable==true;"frequency"->metadata[station.callsign]?.frequency!=null;"ambiguous"->station.ambiguityDigits>0;"mic-e"->station.micEStatus!=null;else->true}
+        stationKind(station,kind,metadata,model.archive.objects.value)
     }.let {list->when(sort) {"recent"->list.sortedByDescending {it.heardAtMillis};"distance"->list.sortedBy {AdaptiveBeaconPolicy.distance(AprsFix(model.settings.getProperty("position.latitude").toDouble(),model.settings.getProperty("position.longitude").toDouble(),0),AprsFix(it.latitude,it.longitude,0))};else->list.sortedBy {it.callsign}}}
 
     var settings by remember { mutableStateOf(false) }
@@ -141,7 +141,7 @@ fun main(args: Array<String>) {
             Column(Modifier.width(225.dp).fillMaxHeight().background(Panel).padding(14.dp)) {
                 Text("STATIONS",color=Muted,fontSize=12.sp)
                 OutlinedTextField(search,{search=it},label={Text("Find station")},singleLine=true,modifier=Modifier.fillMaxWidth())
-                TextButton(onClick={kind=listOf("all","weather","moving","objects","rf","message-capable","frequency","ambiguous","mic-e").let {it[(it.indexOf(kind)+1)%it.size]}}){Text("Type: $kind")}
+                TextButton(onClick={kind=listOf("all","weather","moving","objects","rf","message-capable","frequency","frequency-issues","telemetry","status","altitude","direct-rf","igates","ambiguous","mic-e").let {it[(it.indexOf(kind)+1)%it.size]}}){Text("Type: $kind")}
                 TextButton(onClick={sort=listOf("callsign","recent","distance").let {it[(it.indexOf(sort)+1)%it.size]}}){Text("Sort: $sort")}
                 TextButton(onClick={val p=java.util.Properties().apply {putAll(model.settings);setProperty("display.search",search);setProperty("display.kind",kind);setProperty("display.sort",sort);setProperty("display.tracking_calls",encodedNames(tracking.toList()))};model.savePreferences(p,model.entities)}){Text("Save view defaults")}
                 Text("${filtered.size} / ${stations.size}",Modifier.padding(vertical=6.dp),fontSize=16.sp)
@@ -171,7 +171,7 @@ fun main(args: Array<String>) {
     if(preferences) PreferencesDialog(model) {preferences=false}
     if(packetMonitor) PacketMonitorWindow(model) {packetMonitor=false}
     if(portWorkspace) PortWorkspaceWindow(model) {portWorkspace=false}
-    if(about) AlertDialog(onDismissRequest={about=false},title={Text("APRSIS64 0.6.0")},text={
+    if(about) AlertDialog(onDismissRequest={about=false},title={Text("APRSIS64 0.7.0")},text={
         Text("Copyright 2026 APRSIS64 contributors.\nAGPL-3.0. No warranty.\n\nContains GPLv3 shared components. Third-party license notices are included in the app folder.")
     },confirmButton={TextButton(onClick={Desktop.getDesktop().browse(URI(model.settings.getProperty("services.source_url")))}) {Text("Source & license")}},dismissButton={TextButton(onClick={about=false}) {Text("Close")}})
 }
@@ -184,9 +184,14 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     } } }
 }.toString()
 
-@Composable internal fun MapPanel(stations: List<AprsStation>, selected: String?, model: AppModel, beaconCenter: AprsFix?, modifier: Modifier, forceFollow:Boolean=false, select: (String)->Unit) {
-    val data = remember(stations) { GeoJsonData.JsonString(stationJson(stations)) }
-    val style = remember { BaseStyle.Json(ServicePreferences.style(mapSettings(model))) }
+@Composable internal fun MapPanel(stations: List<AprsStation>, selected: String?, model: AppModel, beaconCenter: AprsFix?, modifier: Modifier, forceFollow:Boolean=false, viewSettings:java.util.Properties=model.settings, select: (String)->Unit) {
+    val importedPoints by model.imports.content.collectAsState()
+    val orbitPoints by model.satellites.positions.collectAsState()
+    val extraPoints=importedPoints.waypoints.map {AprsStation(it.name.take(9),it.fix.latitude,it.fix.longitude,'/','/',it.name,System.currentTimeMillis())}+orbitPoints.map {AprsStation(it.name.take(9),it.latitude,it.longitude,'/','S',it.name,System.currentTimeMillis())}
+    var chosenPoint by remember {mutableStateOf<AprsStation?>(null)}
+    fun selectPoint(call:String){if(stations.any {it.callsign==call})select(call) else chosenPoint=extraPoints.firstOrNull {it.callsign==call}}
+    val data = remember(stations,extraPoints) { GeoJsonData.JsonString(stationJson(stations+extraPoints)) }
+    val style = remember { BaseStyle.Json(ServicePreferences.style(mapSettings(model,viewSettings))) }
     val historyRevision by model.archive.revision.collectAsState()
     val preferencesRevision by model.settingsRevision.collectAsState()
     val selectedPath by remember(selected) {model.tactical.paths.map {it[selected]}.distinctUntilChanged()}.collectAsState(initial=null)
@@ -199,38 +204,40 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     LaunchedEffect(Unit) {while(true) {delay(5000);clock=System.currentTimeMillis()}}
     // The timer triggers expiry updates, but newly received packets can be newer
     // than its last tick. Use the current time when recalculating their age.
-    val geometry=remember(stations,selected,selectedPath,warnings,clock,preferencesRevision) {tacticalGeometry(stations,selected,selectedPath?.let {mapOf(it.call to it)}.orEmpty(),warnings,model.settings,System.currentTimeMillis())}
+    val imported by model.imports.content.collectAsState()
+    val orbits by model.satellites.positions.collectAsState()
+    val geometry=remember(stations,selected,selectedPath,warnings,clock,preferencesRevision,imported,orbits) {tacticalGeometry(stations,selected,selectedPath?.let {mapOf(it.call to it)}.orEmpty(),warnings,viewSettings,System.currentTimeMillis())+imported.shapes+model.satellites.geometry(System.currentTimeMillis())}
     var trail by remember(selected) {mutableStateOf<List<AprsFix>>(emptyList())}
-    var follow by remember {mutableStateOf(forceFollow || model.settings.getProperty("display.follow").toBoolean())}
+    var follow by remember {mutableStateOf(forceFollow || viewSettings.getProperty("display.follow").toBoolean())}
     var gotoLat by remember {mutableStateOf("")};var gotoLon by remember {mutableStateOf("")}
     var navigationError by remember {mutableStateOf("")}
     val scope=rememberCoroutineScope()
     LaunchedEffect(selected,historyRevision) {trail=selected?.let {model.archive.track(it)} ?: emptyList()}
 
-    val initial=remember {Position(model.settings.getProperty("longitude").toDouble(),model.settings.getProperty("latitude").toDouble())}
-    val state=rememberMapState(baseStyle=style,initialCameraPosition=CameraPosition(center=if(forceFollow) stations.firstOrNull {it.callsign==selected}?.let {Position(it.longitude,it.latitude)} ?: initial else initial,zoom=model.settings.getProperty("map.initial_zoom").toDouble())) {
+    val initial=remember {Position(viewSettings.getProperty("longitude").toDouble(),viewSettings.getProperty("latitude").toDouble())}
+    val state=rememberMapState(baseStyle=style,initialCameraPosition=CameraPosition(center=if(forceFollow) stations.firstOrNull {it.callsign==selected}?.let {Position(it.longitude,it.latitude)} ?: initial else initial,zoom=viewSettings.getProperty("map.initial_zoom").toDouble())) {
         TacticalLayers(geometry) {chosenAlert=it}
-        if(model.settings.getProperty("display.trails").toBoolean() && trail.size>1) {
+        if(viewSettings.getProperty("display.trails").toBoolean() && trail.size>1) {
             val trailSource=rememberGeoJsonSource(GeoJsonData.JsonString(trailJson(trail)))
             LineLayer(id="station-trail",source=trailSource,color=const(Color(0xFFB33E20)),width=const(3.dp))
         }
         val source=rememberGeoJsonSource(data)
         CircleLayer(id="aprs-stations",source=source,radius=const(7.dp),color=const(Color(0xFF006D65)),strokeWidth=const(2.dp),strokeColor=const(Color.White),hitPadding=8.dp,
-            onClick={features -> features.firstOrNull()?.properties?.get("callsign")?.jsonPrimitive?.content?.let(select); ClickResult.Consume})
-        if(model.settings.getProperty("display.symbols").toBoolean()) stations.groupBy {"${it.symbolTable.code}-${it.symbol.code}"}.forEach {(id,group)->key(id) {
+            onClick={features -> features.firstOrNull()?.properties?.get("callsign")?.jsonPrimitive?.content?.let {selectPoint(it)}; ClickResult.Consume})
+        if(viewSettings.getProperty("display.symbols").toBoolean()) (stations+extraPoints).groupBy {"${it.symbolTable.code}-${it.symbol.code}"}.forEach {(id,group)->key(id) {
             val symbols=rememberGeoJsonSource(GeoJsonData.JsonString(stationJson(group)))
             SymbolLayer(id="symbol-$id",source=symbols,iconImage=image(StationSymbols.bitmap(group.first().symbolTable,group.first().symbol)),iconAllowOverlap=const(true),
-                onClick={features->features.firstOrNull()?.properties?.get("callsign")?.jsonPrimitive?.content?.let(select);ClickResult.Consume})
+                onClick={features->features.firstOrNull()?.properties?.get("callsign")?.jsonPrimitive?.content?.let {selectPoint(it)};ClickResult.Consume})
         }}
-        val labels=when(model.settings.getProperty("tactical.labels")) {
-            "all"->stations.sortedBy {if(it.callsign==selected) 0 else 1}.take(model.settings.getProperty("tactical.maximum_labels").toInt())
+        val labels=when(viewSettings.getProperty("tactical.labels")) {
+            "all"->stations.sortedBy {if(it.callsign==selected) 0 else 1}.take(viewSettings.getProperty("tactical.maximum_labels").toInt())
             "selected"->stations.filter {it.callsign==selected}
             else->emptyList()
         }
-        labels.forEach {station->key("label-${station.callsign}") {
+        (labels+extraPoints).distinctBy {it.callsign}.forEach {station->key("label-${station.callsign}") {
             val source=rememberGeoJsonSource(GeoJsonData.JsonString(stationJson(listOf(station))))
-            SymbolLayer(id="label-${station.callsign}",source=source,iconImage=image(StationSymbols.label(stationLabel(station,model.settings,weather[station.callsign]))),
-                iconAllowOverlap=const(false),onClick={select(station.callsign);ClickResult.Consume})
+            SymbolLayer(id="label-${station.callsign}",source=source,iconImage=image(StationSymbols.label(stationLabel(station,viewSettings,weather[station.callsign]))),
+                iconAllowOverlap=const(false),onClick={selectPoint(station.callsign);ClickResult.Consume})
         }}
     }
     val mapReady=state.style.loadState == StyleLoadState.Ready
@@ -259,6 +266,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
         }
     }
     val followed=stations.firstOrNull {it.callsign==selected}
+    chosenPoint?.let {point->AlertDialog(onDismissRequest={chosenPoint=null},title={Text(point.comment)},text={Text("${point.latitude}, ${point.longitude}")},confirmButton={TextButton(onClick={chosenPoint=null}){Text("Close")}})}
     chosenAlert?.let {alert->AlertDialog(onDismissRequest={chosenAlert=null},title={Text("${alert.severity}: ${alert.event}")},
         text={Column(Modifier.heightIn(max=400.dp).verticalScroll(rememberScrollState())) {Text(alert.headline);Text(alert.description);Text("Expires ${alert.expires}")}},
         confirmButton={TextButton(onClick={chosenAlert=null}) {Text("Close")}})}
@@ -266,11 +274,11 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     LaunchedEffect(beaconCenter,mapReady) {if(mapReady) beaconCenter?.let {state.animateCamera(CameraUpdate(center=Position(it.longitude,it.latitude),bearing=0.0,pitch=0.0))}}
     Box(modifier) {
         MaplibreMap(state=state,interactions=MapInteractions {camera {rotate {enabled=false}; pitch {enabled=false}}},
-            cameraConstraints=CameraConstraints {maxPitch=0.0; minZoom=model.settings.getProperty("map.minimum_zoom").toDouble(); maxZoom=model.settings.getProperty("map.maximum_zoom").toDouble()},renderOptions=RenderOptions {maximumFps=model.settings.getProperty("map.maximum_fps").toInt()}, overlay={})
+            cameraConstraints=CameraConstraints {maxPitch=0.0; minZoom=viewSettings.getProperty("map.minimum_zoom").toDouble(); maxZoom=viewSettings.getProperty("map.maximum_zoom").toDouble()},renderOptions=RenderOptions {maximumFps=viewSettings.getProperty("map.maximum_fps").toInt()}, overlay={})
         Column(Modifier.align(Alignment.TopStart).padding(6.dp).background(Panel.copy(alpha=0.94f)).padding(6.dp)) {
             Row {
-                TextButton(onClick={scope.launch {state.animateCamera(CameraUpdate(zoom=(state.cameraPosition.zoom+1).coerceAtMost(model.settings.getProperty("map.maximum_zoom").toDouble())))}}){Text("+")}
-                TextButton(onClick={scope.launch {state.animateCamera(CameraUpdate(zoom=(state.cameraPosition.zoom-1).coerceAtLeast(model.settings.getProperty("map.minimum_zoom").toDouble())))}}){Text("−")}
+                TextButton(onClick={scope.launch {state.animateCamera(CameraUpdate(zoom=(state.cameraPosition.zoom+1).coerceAtMost(viewSettings.getProperty("map.maximum_zoom").toDouble())))}}){Text("+")}
+                TextButton(onClick={scope.launch {state.animateCamera(CameraUpdate(zoom=(state.cameraPosition.zoom-1).coerceAtLeast(viewSettings.getProperty("map.minimum_zoom").toDouble())))}}){Text("−")}
                 TextButton(onClick={scope.launch {state.animateCamera(CameraUpdate(center=initial,bearing=0.0,pitch=0.0))}}){Text("Home")}
                 TextButton(onClick={follow=!follow}){Text(if(follow) "Following" else "Follow")}
             }
@@ -282,8 +290,8 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
             if(followed!=null) Text(navigationSummary(model,followed),fontSize=11.sp)
             if(navigationError.isNotBlank())Text(navigationError,fontSize=11.sp)
         }
-        Text(model.settings.getProperty("map.attribution"),Modifier.align(Alignment.BottomEnd).padding(6.dp).background(Color.White.copy(alpha=0.88f))
-            .clickable {Desktop.getDesktop().browse(URI(model.settings.getProperty("map.attribution_url")))}.padding(5.dp),color=Color(0xFF263740),fontSize=11.sp)
+        Text(viewSettings.getProperty("map.attribution"),Modifier.align(Alignment.BottomEnd).padding(6.dp).background(Color.White.copy(alpha=0.88f))
+            .clickable {Desktop.getDesktop().browse(URI(viewSettings.getProperty("map.attribution_url")))}.padding(5.dp),color=Color(0xFF263740),fontSize=11.sp)
         if(mapError.isNotEmpty()) Text(mapError,Modifier.align(Alignment.TopStart).padding(12.dp).background(Panel).padding(10.dp),color=Accent,fontSize=12.sp)
     }
 }

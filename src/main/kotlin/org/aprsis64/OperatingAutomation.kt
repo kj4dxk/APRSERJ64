@@ -62,15 +62,19 @@ class OperatingAutomation(private val model:AppModel,parent:CoroutineScope,priva
    val call=model.account.value
    val definitions=TelemetryPackets.definitions(call,channels,names(p.getProperty("telemetry.bit_names")),p.getProperty("telemetry.title"))
    for((i,line) in definitions.withIndex())send("definitions:$call:$i:$line",p.getProperty("telemetry.definitions_seconds").toInt(),line,route)
+   val external=if(channels.any {it.source.startsWith("input:")})LocalSensors.telemetry(model,now) else emptyMap()
    val values=channels.map {c-> when(c.source) {
     "rx"->rx.get().toDouble();"tx"->tx.get().toDouble();"stations"->model.stations.value.size.toDouble()
-    "speed"->model.beaconState.value.position?.speedKnots?:0.0;"uptime"->(now-started)/60000.0;else->c.source.toDouble()
+    "speed"->model.beaconState.value.position?.speedKnots?:0.0;"uptime"->(now-started)/60000.0;else->if(c.source.startsWith("input:"))external[c.source.removePrefix("input:")]?:error("Missing telemetry input") else c.source.toDouble()
    }.toInt().coerceIn(0,255)}
    if(send("telemetry:$call",p.getProperty("telemetry.interval_seconds").toInt(),TelemetryPackets.sample(call,sequence,values,p.getProperty("telemetry.bits")),route)) {
     sequence=(sequence+1)%1000
     val temporary=Files.createTempFile(sequenceFile.parent,"telemetry-",".tmp")
     try {Files.writeString(temporary,sequence.toString());Files.move(temporary,sequenceFile,StandardCopyOption.REPLACE_EXISTING)}finally {Files.deleteIfExists(temporary)}
    }
+  }
+  if(p.getProperty("weatherstation.enabled").toBoolean()) {
+   runCatching {send("local-weather",p.getProperty("weatherstation.interval_seconds").toInt(),LocalSensors.weather(model,now),p.getProperty("weatherstation.route"))}.onFailure {model.error.value=it.message?:"Weather input unavailable"}
   }
   if(p.getProperty("qru.advertise").toBoolean() && p.getProperty("tactical.qru_enabled").toBoolean() && p.getProperty("beacon.enabled").toBoolean()) {
    val position=model.beaconState.value.position?.takeIf {it.current} ?: return

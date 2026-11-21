@@ -15,6 +15,8 @@ data class GpsReading(val position: BeaconPosition? = null, val valid: Boolean =
 
 class GpsReceiver(private val config: BeaconConfiguration, scope: CoroutineScope) : AutoCloseable {
     val reading=MutableStateFlow(GpsReading())
+    val sky=MutableStateFlow(GpsSky())
+    private val diagnostics=GpsDiagnostics()
     @Volatile private var resource: AutoCloseable? = null
     private val job=scope.launch(Dispatchers.IO) {
         while(isActive) {
@@ -51,7 +53,9 @@ class GpsReceiver(private val config: BeaconConfiguration, scope: CoroutineScope
                 val c=(buffer[index].toInt() and 255).toChar()
                 if(c=='\n') {
                     if(!overflow) {
-                        val position=decoder.accept(line.toString().trimEnd('\r'),System.currentTimeMillis())
+                        val original=line.toString().trimEnd('\r');val sentence=if('>' !in original && '$' in original) "$"+original.substringAfter('$') else original
+                        diagnostics.accept(sentence,System.currentTimeMillis())?.let {sky.value=it}
+                        val position=decoder.accept(sentence,System.currentTimeMillis())
                         if(position!=null) reading.value=GpsReading(position,true,"GPS fix")
                         else if(!decoder.valid) reading.value=reading.value.copy(valid=false,detail="No GPS fix")
                     }

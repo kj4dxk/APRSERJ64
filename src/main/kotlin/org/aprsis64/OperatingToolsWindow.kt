@@ -52,10 +52,11 @@ import java.time.Instant
  fun send(peer:String,text:String){scope.launch {result=runCatching {model.send(peer,text);"Queued to $peer; see Messages for delivery"}.getOrElse {"Unable to queue: check callsigns and message length"}}}
  Window(onCloseRequest=dismiss,title="Operating tools — APRSIS64",state=rememberWindowState(width=1000.dp,height=800.dp)) {
   MaterialTheme(colors=darkColors()) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
-   FlowRow(Modifier.fillMaxWidth()) {listOf("Station","Weather","Telemetry","Tracks","Offline","Groups","QRU","Bulletins","Alerts","Radio DX","Direction finding","Frequency","Platforms","Email").forEach {name->TextButton(onClick={tab=name;result=""}){Text(if(tab==name) "[$name]" else name)}}}
+   FlowRow(Modifier.fillMaxWidth()) {listOf("Station","Weather","Telemetry","Tracks","Offline","Groups","QRU","Bulletins","Alerts","Radio DX","Direction finding","Frequency","Platforms","Email","GPX import","Satellites","GPS sky","Local sensors","Weather boundaries").forEach {name->TextButton(onClick={tab=name;result=""}){Text(if(tab==name) "[$name]" else name)}}}
    if(result.isNotBlank()) Text(result,Modifier.padding(vertical=8.dp),color=MaterialTheme.colors.primary)
    ScrollableForm(Modifier.weight(1f).fillMaxWidth()) {when(tab) {
-    "Frequency","Platforms","Email"->AdditionalTools(model,tab)
+    "GPX import","Satellites","GPS sky","Local sensors","Weather boundaries"->AdvancedTools(model,tab)
+    "Frequency","Platforms","Email"->{AdditionalTools(model,tab);if(tab=="Frequency")FrequencyEditor(model)}
     "Station","Radio DX","Direction finding"->TacticalTools(model,selected,tab)
     "Weather"->{
      Text("Received APRS weather",fontSize=20.sp)
@@ -122,6 +123,9 @@ import java.time.Instant
      Text("Offline mode disables network overlays. Areas or zoom levels not downloaded remain blank.")
     }
     "Groups"->{
+     val memberships by model.groups.entries.collectAsState();val groupReplies by model.groups.replies.collectAsState()
+     memberships.forEach {m->Text("${m.group}: ${m.state} · ${Instant.ofEpochMilli(m.time)}")}
+     groupReplies.takeLast(8).forEach {Text(it)}
      Text("Announcement server: ${preferences.getProperty("groups.server")}")
      OutlinedTextField(group,{group=it.uppercase()},label={Text("Group")},singleLine=true)
      FlowRow(Modifier.fillMaxWidth()) {names(preferences.getProperty("groups.names")).forEach {g->TextButton(onClick={group=g}){Text(g)}}}
@@ -131,7 +135,7 @@ import java.time.Instant
        if(action in listOf("J","U")){val groups=names(preferences.getProperty("groups.names")).toMutableSet();if(action=="J")groups.add(group) else groups.remove(group);model.updateFeature("groups.names",encodedNames(groups.toList()))}
       }.onFailure {result="Check group and message length"}
      }) {Text(label)}}}
-     Text("Saved groups are requested memberships. Server responses and announcements appear in Messages. Automatic keepalive is opt-in under Settings → Groups.")
+     Text("Membership confirmations show the last server response time. My groups requests a fresh list; unrecognized replies remain visible. Automatic keepalive is opt-in under Settings → Groups.")
     }
     "QRU"->{
      Text("Query destination: ${preferences.getProperty("kiosk.server")}")

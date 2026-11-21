@@ -20,6 +20,10 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
     private val heardForChat=java.util.concurrent.ConcurrentHashMap<String,Pair<String,Long>>()
     private val heardMillis=values.getProperty("radio.heard_seconds").toLong()*1000
     private val devices=linkedMapOf<String,DevicePort>()
+    private val positions=java.util.concurrent.ConcurrentHashMap<String,AprsFix>()
+    private val igates=java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private val filters=configs.associate {it.getProperty("name") to PacketFilter(it.getProperty("gate_filter",""))}
+    private val weatherReadings=java.util.concurrent.ConcurrentHashMap<String,AprsWeather>()
     private val fixes=java.util.concurrent.ConcurrentHashMap<String,GpsReading>()
     private val store=AprsStationStore()
     val stations=MutableStateFlow<List<AprsStation>>(emptyList())
@@ -31,12 +35,26 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
             val config=PortConfig(props)
             devices[config.name]=DevicePort(config,scope,{events.trySend(config.name to it).isSuccess},{reading->
                 fixes[config.name]=if(!reading.valid && reading.position==null) fixes[config.name]?.copy(valid=false,detail=reading.detail) ?: reading else reading
-            },{packet->traffic(config.name,"TX",packet.line())})
+            },{packet->traffic(config.name,"TX",packet.line())},{sample->weatherReadings[config.name]=sample})
         }
         scope.launch {for((name,packet) in events) routing.withLock {
             val now=System.currentTimeMillis();val device=devices[name] ?: return@withLock
             traffic(name,"RX",packet.line())
             store.receive(packet.line(),now);stations.value=store.snapshot(now)
+            AprsProtocol.parse(packet.line(),now)?.let {positions[it.callsign]=AprsSpatial.fix(it)}
+            if(positions.size>10000){positions.entries.removeIf {now-it.value.timeMillis>1800000};while(positions.size>10000)positions.keys.firstOrNull()?.let {positions.remove(it)}}
+            if(!device.config.isRf) {
+                if(device.config.flag("rf_to_is") && client?.canSend()==true && !router.duplicate("local",packet,now)) {
+                    router.toInternet(packet,false)?.let {line->runCatching {client?.sendGated(call,line);traffic("APRS-IS","TX",line);router.transmitted("local",packet,now)}}
+                }
+                if(device.config.flag("is_to_rf"))for((target,rf) in devices.filter {it.value.config.isRf}) {
+                    val action="local:$target"
+                    if(rf.config.flag("is_to_rf") && !rf.config.flag("passall") && !router.duplicate(action,packet,now))
+                        router.toRadio(target,packet,now,rf.config.path("message_path"),rf.config.list("gate_calls"),rf.config.list("gate_objects"),filters[target]?.matches(packet,positions[call],positions,igates)==true)?.let {if(rf.transmit(it)){router.transmitted(action,packet,now);router.gatedToRadio(target,packet,now)}}
+                }
+                AprsMessages.parse(packet.line())?.takeIf {it.recipient==call && it.sender!=call}?.let {incoming.send(it)}
+                return@withLock
+            }
             router.observeRf(name,packet,now)
             if(!packet.payload.startsWith('}')) {
                 heardForChat[packet.source]=name to now
@@ -71,16 +89,33 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
             val packet=RadioPacket.parse(line) ?: return@collect
             routing.withLock {
                 val now=System.currentTimeMillis();router.observeInternet(packet,now)
+                AprsProtocol.parse(line,now)?.let {positions[it.callsign]=AprsSpatial.fix(it)}
+                if(positions.size>10000){positions.entries.removeIf {now-it.value.timeMillis>1800000};while(positions.size>10000)positions.keys.firstOrNull()?.let {positions.remove(it)}}
+                packet.path.indexOfFirst {it in listOf("qAR","qAr","qAo")}.takeIf {it>=0}?.let {index->packet.path.getOrNull(index+1)?.let {if(igates.size<4096)igates.add(it)}}
                 if(!RadioPacket.address(call)) return@withLock
                 for((name,device) in devices) {
                     val config=device.config;val action="is:$name"
-                    if(!config.flag("is_to_rf") || !config.canTransmit || config.flag("passall") || router.duplicate(action,packet,now)) continue
-                    router.toRadio(name,packet,now,config.path("message_path"),config.list("gate_calls"),config.list("gate_objects"))?.let {
+                    if(!config.isRf || !config.flag("is_to_rf") || !config.canTransmit || config.flag("passall") || router.duplicate(action,packet,now)) continue
+                    router.toRadio(name,packet,now,config.path("message_path"),config.list("gate_calls"),config.list("gate_objects"),filters[name]?.matches(packet,positions[call],positions,igates)==true)?.let {
                         if(device.transmit(it)) {router.transmitted(action,packet,now);router.gatedToRadio(name,packet,now)}
                     }
                 }
             }
         } }
+    }
+    fun weather(name:String)=weatherReadings[name]
+    fun sky()=devices.mapValues {it.value.gpsSky.value}.filterValues {it.time>0}
+    fun heardCalls()=heardForChat.filterValues {System.currentTimeMillis()-it.second in 0..heardMillis}.keys.sorted()
+    fun positions()=positions.toMap()
+    suspend fun answer(port:String,line:String):Boolean {
+        if(port=="APRS-IS")return broadcast(line,true,false)
+        val device=devices[port]?.takeIf {it.config.isRf && it.config.flag("messages")}?:return false
+        val packet=RadioPacket.parse(line.trimEnd('\r','\n'))?:return false
+        return device.transmit(packet.copy(path=device.config.path("message_path")))
+    }
+    suspend fun publishServices(port:String,line:String) {
+        val packet=RadioPacket.parse(line)?:return
+        devices.filter {it.key!=port && it.value.config.protocol in PortPreferences.services && it.value.config.protocol!="CWOP"}.values.forEach {it.transmit(packet)}
     }
     fun gps(name: String)=fixes[name] ?: GpsReading(detail="Waiting for GPS port")
     override fun canSend()=client?.canSend()==true || RadioPacket.address(call) && devices.values.any {it.ready && it.config.canTransmit && it.config.flag("messages")}
@@ -97,7 +132,7 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
     }
     private suspend fun sendChat(recipient: String, line: String, route:String="best") {
         require(route in listOf("best","rf","is"))
-        val candidates=devices.values.filter {route!="is" && it.ready && it.config.canTransmit && it.config.flag("messages")}
+        val candidates=devices.values.filter {it.config.isRf && route!="is" && it.ready && it.config.canTransmit && it.config.flag("messages")}
         val heard=heardForChat[recipient]?.takeIf {System.currentTimeMillis()-it.second in 0..heardMillis}
         val device=candidates.firstOrNull {it.config.name==heard?.first}
         val packet=requireNotNull(RadioPacket.parse(line.trimEnd('\r','\n')))
@@ -120,6 +155,7 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
     /** A report can target IS, selected RF ports, or both. Empty ports means all eligible RF ports. */
     suspend fun broadcast(line: String, useIs: Boolean=true, useRf: Boolean=true, selected: List<String> = emptyList(), rfPath: String?=null): Boolean {
         val packet=RadioPacket.parse(line.trimEnd('\r','\n')) ?: return false
+        AprsProtocol.parse(packet.line(),System.currentTimeMillis())?.let {positions[it.callsign]=AprsSpatial.fix(it)}
         var sent=false
         val connection=client
         if(useIs && connection?.state?.value==AprsConnectionState.VERIFIED) {

@@ -5,10 +5,10 @@ import java.net.URI
 import net.osmand.shared.aprs.*
 
 object FeaturePreferences {
- val fields=AdditionalPreferences.fields+TacticalPreferences.fields+listOf(
+ val fields=AdvancedPreferences.fields+AdditionalPreferences.fields+TacticalPreferences.fields+listOf(
   BeaconField("connectivity.failover","Try other saved APRS-IS presets on failure","false",SettingKind.BOOLEAN),
   BeaconField("display.search","Station search",""),
-  BeaconField("display.kind","Station type","all",choices=listOf("all","weather","moving","objects","rf","message-capable","frequency","ambiguous","mic-e")),
+  BeaconField("display.kind","Station type","all",choices=listOf("all","weather","moving","objects","rf","message-capable","frequency","frequency-issues","telemetry","status","altitude","direct-rf","igates","ambiguous","mic-e")),
   BeaconField("display.sort","Station sorting","callsign",choices=listOf("callsign","recent","distance")),
   BeaconField("display.maximum_age_minutes","Station age limit (minutes)","30",SettingKind.INTEGER),
   BeaconField("display.symbols","Show APRS symbols","true",SettingKind.BOOLEAN),
@@ -42,6 +42,7 @@ object FeaturePreferences {
   BeaconField("alerts.minimum_seconds","Minimum sound interval","30",SettingKind.INTEGER)
  )
  fun validate(p: Properties) {
+  AdvancedPreferences.validate(p)
   TacticalPreferences.validate(p)
   AdditionalPreferences.validate(p)
   fun n(k:String)=p.getProperty(k).toInt()

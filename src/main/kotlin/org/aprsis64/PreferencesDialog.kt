@@ -28,7 +28,7 @@ import kotlinx.serialization.json.*
     DialogWindow(onCloseRequest=dismiss,title="Settings",state=rememberDialogState(width=780.dp,height=790.dp)) {
         MaterialTheme(colors=darkColors()) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
             FlowRow(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
-                listOf("Beacon","Position","Status","Objects","Map","Services","Operating","Display","History","Offline","Weather","Groups","Kiosk","Alerts","Connectivity","Tactical","Messaging","Bulletins","Telemetry","Logging","Legacyweather","Qru").forEach {tab ->
+                listOf("Beacon","Position","Status","Objects","Map","Services","Operating","Display","History","Offline","Weather","Groups","Kiosk","Alerts","Connectivity","Tactical","Messaging","Bulletins","Telemetry","Logging","Legacyweather","Qru","Queries","Satellites","Imports","Platforms","Weatherstation","Multitrack").forEach {tab ->
                     val label=when(tab){"Legacyweather"->"APRS weather";"Qru"->"QRU server";else->tab}
                     TextButton(onClick={selected=tab}) {Text(if(selected==tab) "[$label]" else label)}
                 }
@@ -49,7 +49,7 @@ import kotlinx.serialization.json.*
                         Text("Range uses the connection coordinates; moving follows your last APRS-IS position. Custom uses only your filter terms plus delivery to your callsign. Example: b/N1CALL d/RS0ISS*")
                     }
                     val section=selected.lowercase()
-                    val schema=when(selected) {"Display","History","Offline","Weather","Groups","Kiosk","Alerts","Connectivity","Tactical","Messaging","Bulletins","Telemetry","Logging","Legacyweather","Qru"->FeaturePreferences.fields;"Operating"->OperatingPreferences.fields;"Map","Services"->ServicePreferences.fields;"Radio"->PortPreferences.global;else->BeaconPreferences.fields}
+                    val schema=when(selected) {"Display","History","Offline","Weather","Groups","Kiosk","Alerts","Connectivity","Tactical","Messaging","Bulletins","Telemetry","Logging","Legacyweather","Qru","Queries","Satellites","Imports","Platforms","Weatherstation","Multitrack"->FeaturePreferences.fields;"Operating"->OperatingPreferences.fields;"Map","Services"->ServicePreferences.fields;"Radio"->PortPreferences.global;else->BeaconPreferences.fields}
                     schema.filter {it.key.startsWith("$section.") || selected=="Beacon" && it.key.startsWith("odometer.")}.forEach {field -> SettingField(field,values)}
                     if(selected=="Beacon") {
                         Row {TextButton(onClick={model.reportOdometer()}) {Text("Report odometer")}; TextButton(onClick={model.reportOdometer(true)}) {Text("Report and reset")}}

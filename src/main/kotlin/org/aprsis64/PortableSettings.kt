@@ -130,7 +130,7 @@ class SettingsStore(private val root: Path) {
         }
         require(portPresets.size<=64);portPresets.forEach {PortConfig(it)}
         val completeContents=(if(portPresets.isEmpty()) "port_presets = []\n" else "")+contents+
-            BeaconPreferences.write(values,OperatingPreferences.fields)+BeaconPreferences.write(values,FeaturePreferences.fields)+portPresets.joinToString("") {
+            BeaconPreferences.write(values,OperatingPreferences.fields)+BeaconPreferences.write(values,FeaturePreferences.fields.sortedBy {it.key.substringBefore('.')})+portPresets.joinToString("") {
                 "\n[[port_presets]]\n"+BeaconPreferences.write(it,PortPreferences.fields,sections=false)
             }
         val temp = Files.createTempFile(root, ".settings-", ".tmp")

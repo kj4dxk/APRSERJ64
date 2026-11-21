@@ -1,0 +1,101 @@
+APRSIS64 0.7.0 — additional APRSIS32 workflows
+2026-11-20
+
+Build-only delivery requested by the user. No automated tests, UI testing, live
+transmission checks, application launch or Desktop replacement were performed
+for this version. The 99-test result in RELEASE-0.6.0.txt is historical and does
+not validate these changes. The portable output is build/portable/APRSIS64.exe.
+
+Implemented additions
+
+1. Local IS-to-RF filters: r/a/b/p/o/os/d/D/e/g/u/t/s/q/m/f terms, wildcard
+   matching, negative exclusions and required (+) terms. Extra subscriptions
+   remain subordinate to duplicate, source, path, PASSALL and RF eligibility
+   checks. Each radio has its own gate_filter. Blank preserves previous gating.
+2. Service ports: CWOP weather output, Dummy sink, IS-Server/Local-Server TCP,
+   UDP-Listen and Syslog-UDP. TCP serves APRS login/filter clients and verifies
+   callsign/passcode before accepting that client's packets. UDP permits loopback
+   or configured source IPs. Input forwarding is explicitly enabled separately
+   for Internet and RF. Service input never populates RF heard tables or digis.
+   TCP clients have bounded queues and stalled writers are disconnected. CWOP
+   only accepts weather reports; received remote weather is never relabeled and
+   forwarded as the local station's observation. AGW username/password supported.
+3. Standard addressed APRS queries: position, status, trace/ping, version, RF-heard
+   stations, message-capable stations, owned-object list, IGate and CPU summary.
+   Replies use the ingress route, with a per-station cooldown and result limit.
+4. Satellites: local/downloaded TLEs, checksum and age validation, selectable
+   satellites, SGP4/SDP4 propagation via predict4java, live map positions and
+   footprints, azimuth/elevation/range and bounded pass predictions. Download
+   URL and all operational settings are in TOML. Satellite tracking starts off.
+5. GPS sky: checksummed GSV/GSA, constellation/PRN, azimuth/elevation, SNR, used
+   satellites and DOP values. Sky plot and stale-data indication. Local NMEA
+   echo prefixes are removed only on local input lines without an RF header.
+6. GPX import: tracks, routes and named waypoints; XML external entities/DTDs
+   disabled; file and point limits. Imported layers persist through a TOML list.
+7. Telemetry: base-91 comment telemetry and Mic-E hex telemetry in addition to
+   classic T#. External named sensor values can feed own telemetry via a fresh
+   JSON file (input:key channel sources). Existing definitions and graphs apply.
+8. Weather: Peet Bros ULTW/!!/|| decoding, serial/TCP Weather input ports, fresh
+   SI JSON or APRS/Ultimeter file input, own station/weather-object transmission.
+   Since-midnight rain stays distinct from rolling-24-hour rain. Tools include
+   SHP/DBF or ZIP boundary import, validation and portable copying. Projected
+   boundary datasets are rejected rather than silently drawn in the wrong place.
+9. Frequency: locate stations, incomplete/malformed report view, and a frequency
+   object editor with location, MHz, tone, offset and range. New objects are
+   saved disabled so the user can select their outputs before enabling them.
+10. Platforms/views: bundled APRS device identification database, longest/exact
+    tocall matching, Mic-E identities, optional replacement JSON and TOML prefix
+    overrides. Added telemetry/status/altitude/direct-RF/IGate/frequency-issue
+    filters. The database has its own CC BY-SA attribution in THIRD-PARTY.txt.
+11. MultiTrack: independent saved map URL, initial zoom, trail/prediction and
+    display preferences per tracked callsign. All maps remain north-up.
+12. Messaging: longer email composition splits into separate numbered gateway
+    messages, each retaining the email address and the 67-character wire limit;
+    all parts enter SQLite in one transaction. Group views persist server
+    evidence and distinguish requested membership from received confirmation.
+13. QRU: point item replies remain compatible; requested multiline objects also
+    publish their full standard object geometry on an eligible Internet output.
+14. Dead reckoning: UTC position timestamps are reconstructed across day/month
+    boundaries. Old positions do not become fresh simply because they arrived
+    late. Unknown/local-time timestamps retain the receive-time fallback.
+15. Notifications: per-event WAV files, watched-station proximity and lost-station
+    rules, connection changes and severe-weather notices, with dedup/cooldowns.
+
+Settings and portability
+Existing endpoints, server lists, radio paths and user settings are preserved.
+New fields are seeded on load. Feature sections are grouped before TOML output
+so a table is never reopened. No user settings, credentials, databases or
+runtime logs are included in source control. New schema defaults are shown in
+settings.example.toml. Local input/configuration filenames may be relative to
+the executable folder. Network/service features require their explicit setup.
+
+Scope and remaining interoperability limits
+This is an implementation of the listed workflows, not a claim that every
+historical APRSIS32 behavior or vendor dialect is reproduced. Neither a compiler
+success nor the previous release's tests certify this version's runtime behavior.
+
+- Physical GPS, TNC, weather hardware, CWOP, live QRU/group/email peers and the
+  newly added windows still need testing. No hardware was exercised in this task.
+- Pass rise/set and maximum elevation are sampled every 30 seconds. Orbital data
+  must be current; this does not add automatic radio tuning or rotator control.
+- Weather hardware support covers standard APRS and listed Peet Bros formats;
+  other collectors can supply the documented SI JSON bridge. It is not a driver
+  for every proprietary weather/sensor device. Peet rain assumes 0.01-inch ticks.
+- Boundary import accepts geographic coordinates; it does not reproject data.
+- Group membership uses recognized server reply forms and shows raw evidence for
+  others. APRS replies can be lost; a locally requested join is never proof of
+  membership. Last-confirmed timestamps remain visible rather than claiming an
+  always-current server state.
+- Full QRU geometry is a normal object broadcast, not arbitrary-length geometry
+  inside a 67-byte directed item message. Reception depends on the peer's filter.
+- Local server filters are subscriptions; this is not an APRS-IS backbone router.
+  Local service queue counters are accepted writes/queue entries, not RF receipt.
+
+Protocol/library sources
+https://www.aprs-is.net/javAPRSFilter.aspx
+https://www.aprs.org/doc/APRS101.PDF
+https://www.peetbros.com/shop/custom.aspx?recid=29
+https://aprsisce.wikidot.com/doc:ansrvr
+https://github.com/davidmoten/predict4java
+https://github.com/aprsorg/aprs-deviceid
+User's APRSIS32 source was read for behavior comparison, not copied into this repo.

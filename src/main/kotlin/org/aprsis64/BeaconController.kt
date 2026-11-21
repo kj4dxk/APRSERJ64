@@ -158,5 +158,6 @@ class BeaconController(private val account: String, private val ports: RadioPort
             ports.broadcast(BeaconPackets.position(account,p,config.format,"Odometer=${(traveled/10).toInt()/100.0}km","Exit"),config.bool("beacon.internet"),config.bool("beacon.radio"))
         }
     }
+    fun gpsSky()=gps?.sky?.value
     override fun close() {gps?.close();scope.cancel()}
 }

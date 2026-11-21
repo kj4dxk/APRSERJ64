@@ -51,9 +51,10 @@ class ChatDatabase(path: Path, private val now: () -> Long = System::currentTime
         require(options.route in listOf("best","rf","is"))
         execute("INSERT OR REPLACE INTO conversations(account,peer,route,request_ack) VALUES(?,?,?,?)",account,peer,options.route,options.requestAck);changed()
     }
-    suspend fun enqueue(account: String, peer: String, text: String) = access {
+    suspend fun enqueue(account: String, peer: String, text: String) = enqueueParts(account,peer,AprsMessages.split(text))
+    suspend fun enqueueParts(account:String,peer:String,parts:List<String>) = access {
         require(AprsProtocol.validCallsign(account) && AprsProtocol.validCallsign(peer) && account != peer)
-        val parts=AprsMessages.split(text)
+        require(parts.isNotEmpty() && parts.size<=40 && parts.all {AprsMessages.validText(it)})
         val options=optionsNow(account,peer)
         db.autoCommit=false
         try {for(part in parts) {

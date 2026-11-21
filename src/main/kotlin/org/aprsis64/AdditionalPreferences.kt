@@ -26,7 +26,7 @@ object AdditionalPreferences {
   BeaconField("telemetry.interval_seconds","Telemetry interval (seconds)","600",SettingKind.INTEGER),
   BeaconField("telemetry.definitions_seconds","Definition interval (seconds)","3600",SettingKind.INTEGER),
   BeaconField("telemetry.route","Telemetry route","is",choices=listOf("is","rf","both")),
-  BeaconField("telemetry.channels","Five channels: name|unit|source|a|b|c; sources rx, tx, stations, speed, uptime, or a number","[\"Rx|pkts|rx|0|1|0\",\"Tx|pkts|tx|0|1|0\",\"Sta|count|stations|0|1|0\",\"Spd|knots|speed|0|1|0\",\"Up|min|uptime|0|1|0\"]",SettingKind.STRINGS),
+  BeaconField("telemetry.channels","Five channels: name|unit|source|a|b|c; sources rx, tx, stations, speed, uptime, input:key, or a number","[\"Rx|pkts|rx|0|1|0\",\"Tx|pkts|tx|0|1|0\",\"Sta|count|stations|0|1|0\",\"Spd|knots|speed|0|1|0\",\"Up|min|uptime|0|1|0\"]",SettingKind.STRINGS),
   BeaconField("telemetry.bits","Eight digital bits","00000000"),
   BeaconField("telemetry.bit_names","Eight digital channel names","[\"Bit1\",\"Bit2\",\"Bit3\",\"Bit4\",\"Bit5\",\"Bit6\",\"Bit7\",\"Bit8\"]",SettingKind.STRINGS),
   BeaconField("telemetry.title","Telemetry project title","Station telemetry"),
@@ -64,7 +64,7 @@ data class TelemetryChannel(val name:String,val unit:String,val source:String,va
  companion object {fun parse(line:String):TelemetryChannel {
   val p=line.split('|');require(p.size==6)
   require(p.take(2).all {it.matches(Regex("[A-Za-z0-9 _-]{1,8}"))})
-  require(p[2] in listOf("rx","tx","stations","speed","uptime") || p[2].toIntOrNull() in 0..255)
+  require(p[2] in listOf("rx","tx","stations","speed","uptime") || p[2].matches(Regex("input:[A-Za-z0-9_]{1,32}")) || p[2].toIntOrNull() in 0..255)
   return TelemetryChannel(p[0],p[1],p[2],p[3].toDouble(),p[4].toDouble(),p[5].toDouble()).also {require(listOf(it.a,it.b,it.c).all {v->v.isFinite()})}
  }}
 }

@@ -41,3 +41,17 @@ Bundled license and native-library notices must accompany distributions.
 
 APRS symbol sheets APRS1.png and APRS2.png are reused from APRSFoundation/APRSISMO,
 https://github.com/APRSFoundation/APRSISMO, under that project's AGPL-3.0 license.
+
+APRS device identification database (src/main/resources/tocalls.json)
+Maintained by Hessu OH7LZB and APRS identifier allocation contributors.
+Unmodified generated dataset, retrieved 2026-11-20.
+Source: https://github.com/aprsorg/aprs-deviceid
+License: CC BY-SA 2.0, https://creativecommons.org/licenses/by-sa/2.0/
+This data remains under its own license, separate from application code.
+
+predict4java 1.3.1 (SGP4/SDP4 satellite propagation)
+David A. B. Johnson G4DPZ, John A. Magliacane KD2BD, contributors;
+Maven packaging maintained by David Moten.
+https://github.com/davidmoten/predict4java
+GPL-2.0-or-later; distributed under GPL-3.0-compatible terms with this AGPL app.
+Dependency license notices are included in the portable payload.

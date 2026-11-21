@@ -7,8 +7,9 @@ import net.osmand.shared.aprs.*
 import org.tomlj.TomlTable
 
 object PortPreferences {
-    val protocols=listOf("NMEA","Simply(KISS)","KISS","AGW","KWD700(KISS)","KWD700(RO+GPS)","KWD710(APRS)","KWD710(Pkt)","CONVerse","TEXT","FTM350v1.3(RO)")
-    val readOnly=setOf("NMEA","KWD700(RO+GPS)","FTM350v1.3(RO)")
+    val protocols=listOf("Weather","NMEA","Simply(KISS)","KISS","AGW","KWD700(KISS)","KWD700(RO+GPS)","KWD710(APRS)","KWD710(Pkt)","CONVerse","TEXT","FTM350v1.3(RO)","CWOP","Dummy","IS-Server","Local-Server","UDP-Listen","Syslog-UDP")
+    val services=setOf("CWOP","Dummy","IS-Server","Local-Server","UDP-Listen","Syslog-UDP")
+    val readOnly=setOf("Weather","NMEA","KWD700(RO+GPS)","FTM350v1.3(RO)")
     val nmeaProtocols=setOf("NMEA","TEXT","CONVerse","KWD700(RO+GPS)","KWD710(APRS)","KWD710(Pkt)","FTM350v1.3(RO)")
     private val b=SettingKind.BOOLEAN; private val i=SettingKind.INTEGER
     val fields=listOf(
@@ -37,6 +38,13 @@ object PortPreferences {
         BeaconField("digi_transforms","Digipeater transforms (one per line)","[\"WIDE1-1=\"]",SettingKind.STRINGS),
         BeaconField("gate_calls","Additional Internet source calls to RF","[]",SettingKind.STRINGS),
         BeaconField("gate_objects","Additional Internet object names to RF","[]",SettingKind.STRINGS),
+        BeaconField("gate_filter","Additional IS-to-RF filter (e.g. r/28/-81/30 -b/TEST*)",""),
+        BeaconField("service_input","Accept local service input","false",b),
+        BeaconField("service_peers","Allowed UDP source IPs (loopback is always allowed)","[]",SettingKind.STRINGS),
+        BeaconField("service_max_clients","Maximum local server clients","8",i),
+        BeaconField("service_call","CWOP station identifier",""),
+        BeaconField("agw_user","AGW username (empty: no authentication)",""),
+        BeaconField("agw_password","AGW password",""),
         BeaconField("passall","TNC PASSALL is enabled (blocks IGating)","false",b),
         BeaconField("open_commands","Open commands (JSON strings; command|response)","[]",SettingKind.STRINGS),
         BeaconField("close_commands","Close commands (JSON strings)","[]",SettingKind.STRINGS),
@@ -63,7 +71,14 @@ object PortPreferences {
         fields.forEach {setProperty(it.key,it.default)};setProperty("protocol",protocol)
         if(protocol in readOnly) {setProperty("transmit","false");setProperty("is_to_rf","false")}
         if(protocol !in listOf("Simply(KISS)","KISS","KWD700(KISS)","AGW","TEXT")) setProperty("digipeater","false")
-        if(protocol=="AGW") setProperty("transport","tcp")
+        if(protocol=="AGW" || protocol in services) setProperty("transport","tcp")
+        if(protocol in services) {
+            setProperty("rf_to_is","false");setProperty("is_to_rf","false");setProperty("digipeater","false")
+            setProperty("endpoint",if(protocol=="CWOP")"cwop.aprs.net:14580" else "127.0.0.1:14582")
+            setProperty("beacon_path","");setProperty("message_path","")
+            if(protocol=="CWOP")setProperty("messages","false")
+        }
+        if(protocol=="Weather") {setProperty("baud","2400");listOf("rf_to_is","is_to_rf","beacon","messages","objects").forEach {setProperty(it,"false")}}
         if(protocol=="NMEA") {
             setProperty("baud","4800");setProperty("provides_nmea","true")
             listOf("rf_to_is","is_to_rf","beacon","messages","objects").forEach {setProperty(it,"false")}
@@ -114,6 +129,7 @@ class PortConfig(val values: Properties) {
     fun number(key: String)=text(key).toInt()
     fun list(key: String)=Json.parseToJsonElement(text(key)).jsonArray.map {it.jsonPrimitive.content}
     val name=text("name");val protocol=text("protocol")
+    val isRf=protocol !in PortPreferences.services && protocol !in listOf("NMEA","Weather")
     val canTransmit=flag("transmit") && protocol !in PortPreferences.readOnly
     fun path(key: String)=text(key).split(',').map {it.trim()}.filter {it.isNotEmpty()}
     init {
@@ -123,7 +139,12 @@ class PortConfig(val values: Properties) {
             if(text("transport")=="serial") require(text("device").isNotBlank())
             else {require(text("endpoint").contains(':'));AprsEndpoint.parse(text("endpoint"))}
         }
-        require(protocol!="AGW" || text("transport")=="tcp")
+        require(protocol!="AGW" && protocol !in PortPreferences.services || text("transport")=="tcp")
+        PacketFilter(text("gate_filter"))
+        require(number("service_max_clients") in 1..32)
+        require(text("agw_user").length<=255 && text("agw_password").length<=255)
+        if(protocol=="CWOP" && flag("enabled"))require(text("service_call").matches(Regex("[A-Z0-9]{3,9}")))
+        require(list("service_peers").all {it.matches(Regex("[0-9a-fA-F:.]{2,45}"))})
         require(!flag("provides_nmea") || protocol in PortPreferences.nmeaProtocols) {"This protocol cannot carry standalone NMEA sentences"}
         require(!flag("digipeater") || protocol in listOf("Simply(KISS)","KISS","KWD700(KISS)","AGW","TEXT")) {"Digipeating requires a raw-frame TNC"}
         require(number("baud") in 1200..921600 && number("channel") in 0..(if(protocol=="AGW") 255 else 15))

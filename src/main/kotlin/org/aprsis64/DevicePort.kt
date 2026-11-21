@@ -20,7 +20,7 @@ data class PortStatus(val name: String, val detail: String, val received: Long=0
 class DevicePort(val config: PortConfig, parent: CoroutineScope,
                  private val packet: suspend (RadioPacket)->Boolean,
                  private val nmea: (GpsReading)->Unit,
-                 private val transmitted: (RadioPacket)->Unit = {}) : AutoCloseable {
+                 private val transmitted: (RadioPacket)->Unit = {}, private val weather:(AprsWeather)->Unit = {}) : AutoCloseable {
     private val scope=CoroutineScope(parent.coroutineContext+SupervisorJob(parent.coroutineContext[Job]))
     val status=MutableStateFlow(PortStatus(config.name,"Opening"))
     private val writes=Mutex()
@@ -30,6 +30,8 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
     @Volatile private var expected: Pair<String,CompletableDeferred<Unit>>?=null
     private val transmissions=ArrayDeque<Long>()
     private var lastTransmit=0L
+    private var service:ServicePort?=null
+    val gpsSky=MutableStateFlow(GpsSky())
     init {scope.launch(Dispatchers.IO) {
         while(isActive) {
             try {session()} catch(cancelled: CancellationException) {throw cancelled}
@@ -39,6 +41,11 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
         }
     }}
     private suspend fun session()=coroutineScope {
+        if(config.protocol in PortPreferences.services) {
+            val endpoint=ServicePort(config,this,{value->status.value=status.value.copy(received=status.value.received+1);if(!packet(value))status.value=status.value.copy(dropped=status.value.dropped+1)},{detail->ready=true;status.value=status.value.copy(detail=detail)})
+            service=endpoint;resource=endpoint
+            try {endpoint.run()}finally{endpoint.close();service=null};return@coroutineScope
+        }
         val input: InputStream
         if(config.text("transport")=="serial") {
             val port=SerialPort.getCommPort(config.text("device"));resource=AutoCloseable {port.closePort()}
@@ -55,6 +62,12 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
         try {
             writes.withLock {
                 config.list("open_commands").forEach {command(it)}
+                if(config.protocol=="AGW" && config.text("agw_user").isNotEmpty()) {
+                    val credentials=ByteArray(510)
+                    config.text("agw_user").toByteArray(Charsets.US_ASCII).copyInto(credentials,0)
+                    config.text("agw_password").toByteArray(Charsets.US_ASCII).copyInto(credentials,255)
+                    raw(Agw.encode(config.number("channel"),'P',credentials))
+                }
                 if(config.protocol=="AGW") raw(Agw.encode(config.number("channel"),'k'))
                 if(isKiss()) listOf("kiss_txdelay","kiss_persistence","kiss_slot","kiss_tail","kiss_duplex").forEachIndexed {index,key->
                     if(config.number(key)>=0) raw(Kiss.command(config.number("channel"),index+1,byteArrayOf(config.number(key).toByte())))
@@ -78,6 +91,11 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
     }
     suspend fun transmit(value: RadioPacket): Boolean=withContext(Dispatchers.IO) {writes.withLock {
         if(!ready || !config.canTransmit) return@withLock false
+        if(config.protocol in PortPreferences.services) {
+            val sent=runCatching {service?.send(value)==true}.getOrDefault(false)
+            if(sent){transmitted(value);status.value=status.value.copy(transmitted=status.value.transmitted+1)}
+            return@withLock sent
+        }
         if(!RadioPacket.address(value.source) || !RadioPacket.address(value.destination) || value.path.size>8 ||
             value.path.any {!RadioPacket.address(it.trimEnd('*')) || it.trimEnd('*') in listOf("TCPIP","TCPXX")} ||
             value.payload.length>256) return@withLock false
@@ -109,7 +127,7 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
         catch(_: Exception) {ready=false;runCatching {resource?.close()};status.value=status.value.copy(detail="Transmit failed; reconnecting");false}
     } }
     private suspend fun read(input: InputStream) {
-        val kiss=KissDecoder(config.number("channel").coerceAtMost(15));val agw=AgwDecoder();val text=TncTextDecoder();val gps=NmeaPositionDecoder()
+        val kiss=KissDecoder(config.number("channel").coerceAtMost(15));val agw=AgwDecoder();val text=TncTextDecoder();val gps=NmeaPositionDecoder();val diagnostics=GpsDiagnostics()
         val line=StringBuilder();val response=StringBuilder();var overflow=false;val buffer=ByteArray(512)
         var lastWaiting: CompletableDeferred<Unit>?=null
         suspend fun received(p: RadioPacket) {status.value=status.value.copy(received=status.value.received+1)
@@ -129,8 +147,12 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
                 expected?.let {(match,waiting)->if(response.contains(match)) {response.clear();waiting.complete(Unit)}}
                 if(c=='\r' || c=='\n') {
                     if(line.isNotEmpty() && !overflow && !isKiss() && config.protocol!="AGW") {
-                        val value=line.toString()
-                        if(value.startsWith('$') && (config.protocol=="NMEA" || config.flag("provides_nmea"))) {
+                        val original=line.toString()
+                        val value=if('>' !in original && '$' in original) "$"+original.substringAfter('$') else original
+                        if(config.protocol=="Weather") {
+                            (UltimeterWeather.decode(config.text("service_call").ifBlank {"LOCAL"},value,System.currentTimeMillis()) ?: AprsObservations.weather(value,System.currentTimeMillis()))?.let(weather)
+                        } else if(value.startsWith('$') && (config.protocol=="NMEA" || config.flag("provides_nmea"))) {
+                            diagnostics.accept(value,System.currentTimeMillis())?.let {gpsSky.value=it}
                             val fix=gps.accept(value,System.currentTimeMillis())
                             if(fix!=null) nmea(GpsReading(fix,true,"GPS fix")) else if(!gps.valid) nmea(GpsReading(detail="No GPS fix"))
                         } else if(config.protocol!="NMEA") text.accept(value)?.let {received(it)}

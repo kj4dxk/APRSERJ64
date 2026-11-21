@@ -12,8 +12,8 @@ import net.osmand.shared.aprs.*
 import java.util.Properties
 import kotlin.math.*
 
-internal fun mapSettings(model:AppModel)=Properties().apply {
- putAll(model.settings)
+internal fun mapSettings(model:AppModel,values:Properties=model.settings)=Properties().apply {
+ putAll(values)
  if(getProperty("offline.enabled").toBoolean()) {
   setProperty("map.tile_url",model.offline.template());setProperty("map.online_enabled","true")
   setProperty("map.overlay_enabled","false");setProperty("map.underlay_enabled","false")
@@ -40,9 +40,34 @@ internal fun navigationSummary(model:AppModel,station:AprsStation):String {
 }
 @Composable fun TrackingWindow(model:AppModel,call:String,dismiss:()->Unit) {
  val stations by model.stations.collectAsState();val revision by model.settingsRevision.collectAsState()
- Window(onCloseRequest=dismiss,title="$call — APRSIS64",state=rememberWindowState(width=900.dp,height=700.dp)) {
-  MaterialTheme(colors=darkColors()) {androidx.compose.material.Surface {ProvideMapPresentationHost(host=rememberAwtComposeMapPresentationHost(window)) {
-   key(mapConfigurationKey(model)) {MapPanel(stations,call,model,null,Modifier.fillMaxSize(),forceFollow=true) {}}
+ var editing by remember {mutableStateOf(false)}
+ var preferences by remember {mutableStateOf(ViewOverrides.settings(model,call))}
+ var source by remember {mutableStateOf(preferences.getProperty("map.tile_url"))}
+ var zoom by remember {mutableStateOf(preferences.getProperty("map.initial_zoom"))}
+ var search by remember {mutableStateOf(preferences.getProperty("display.search"))}
+ var trails by remember {mutableStateOf(preferences.getProperty("display.trails").toBoolean())}
+ var prediction by remember {mutableStateOf(preferences.getProperty("tactical.dead_reckoning").toBoolean())}
+ var error by remember {mutableStateOf("")}
+ Window(onCloseRequest=dismiss,title=call,state=rememberWindowState(width=900.dp,height=700.dp)) {
+  MaterialTheme(colors=darkColors()) {androidx.compose.material.Surface {Column(Modifier.fillMaxSize()) {
+   Row {TextButton(onClick={editing=!editing}){Text("View settings")};Text(call,Modifier.padding(12.dp))}
+   if(editing) {
+    OutlinedTextField(source,{source=it},label={Text("Map tile URL")},modifier=Modifier.fillMaxWidth())
+    Row {OutlinedTextField(zoom,{zoom=it},Modifier.weight(1f),label={Text("Initial zoom")});OutlinedTextField(search,{search=it},Modifier.weight(1f),label={Text("Station search")})}
+    Row {Checkbox(trails,{trails=it});Text("Trails");Checkbox(prediction,{prediction=it});Text("Dead reckoning")}
+    TextButton(onClick={runCatching {
+     val next=Properties().apply {putAll(preferences);setProperty("map.tile_url",source);setProperty("map.initial_zoom",zoom);setProperty("display.search",search);setProperty("display.trails",trails.toString());setProperty("tactical.dead_reckoning",prediction.toString())}
+     ServicePreferences.validate(next)
+     val encoded=call+"|"+ViewOverrides.keys.joinToString("|"){"$it=${next.getProperty(it)}"};ViewOverrides.parse(encoded)
+     val entries=names(model.settings.getProperty("multitrack.views")).filterNot {it.substringBefore('|')==call}+encoded
+     check(model.updateFeature("multitrack.views",encodedNames(entries)));preferences=next;editing=false;error=""
+    }.onFailure {error=it.message?:"Check view settings"}}){Text("Save this view")}
+    if(error.isNotEmpty())Text(error,color=MaterialTheme.colors.error)
+   }
+   ProvideMapPresentationHost(host=rememberAwtComposeMapPresentationHost(window)) {
+    val visible=stations.filter {it.callsign==call || it.callsign.contains(preferences.getProperty("display.search"),true) && System.currentTimeMillis()-it.heardAtMillis<=preferences.getProperty("display.maximum_age_minutes").toLong()*60000 && stationKind(it,preferences.getProperty("display.kind"),model.views.stations.value,model.archive.objects.value)}
+    key(preferences) {MapPanel(visible,call,model,null,Modifier.weight(1f).fillMaxWidth(),forceFollow=true,viewSettings=preferences) {}}
+   }
   }}}
  }
 }
