@@ -1,10 +1,11 @@
 Additional ten APRSIS32-inspired capabilities - source update 2026-11-20
 
 STATUS
-Implemented in source only at the user's request. No compilation, automated test
-execution, visual testing or Desktop EXE replacement was performed for this change.
-New protocol regression fixtures are present but have NOT been run. The earlier
-70 passing tests and visual report describe the preceding build only.
+Initially delivered as source only. Subsequently built and tested at the user's
+request: 82 tests pass, portable packaging succeeds, and the isolated demo reaches
+VERIFIED and renders a native Vulkan map with a north-up station-hit probe.
+No Desktop EXE replacement or full visual interaction sweep was performed in this
+test pass. The earlier 70-test visual report describes the preceding build only.
 
 CAPABILITIES
 1. Received packet paths: orange map segments join located, used digipeaters and
@@ -73,8 +74,9 @@ locations with comments fitting 67 characters, not full multiline geometry; grou
 object names must be valid item names without spaces. Automatic QRU server-location
 advertisements, NWS legacy shapefile lookup, DF auto-triangulation and hardware
 compatibility certification are not part of these ten implementations.
-Live QRU peers, real RF/GPS, rendered polygons, labels and restart behavior need
-build/runtime verification before treating this source update as a tested release.
+Live QRU peers, real RF/GPS, and visual interaction with polygons/labels still need
+verification. Loopback QRU item delivery, DX database restart, object/settings
+roundtrip, and expired warning/prediction removal now have passing integration tests.
 
 PROTOCOL REFERENCES (independent implementations; no proprietary code copied)
 https://www.aprs.org/doc/APRS101.PDF (data extensions, objects, PHG and DF)

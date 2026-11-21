@@ -1,3 +1,18 @@
+APRSIS64 tactical additions verification - 2026-11-20
+PASS: test :core:test packagePortable, followed by the expanded full test suite.
+82 tests: 49 shared core and 33 Windows; zero failures/errors.
+New integration coverage: TOML nicknames/DF/object roundtrip and transmitted polygon;
+direct RF DX exclusion of Internet/repeated traffic and maximum-distance persistence;
+warning/prediction expiry; actual verified TCP QRU query and item-in-message reply.
+The QRU mock initially omitted the mandatory server greeting; corrected the fixture,
+then reran the full suites successfully. No production-code failures were found.
+Portable isolated --demo --probe run reached VERIFIED, emitted its local beacon,
+rendered a Vulkan frame, reached map idle, and reported bearing 0 with station hits.
+Closed only the isolated smoke instance afterward; Desktop EXE/settings untouched.
+Known nonfatal warnings: unnecessary TomlTable !! and upstream LWJGL Unsafe use.
+Full visual interaction with new tools, physical hardware and external QRU peers
+remain unverified. The earlier visual sweep below applies to the previous build.
+
 APRSIS64 0.5.0 visual regression fixes - 2026-11-20
 PASS: test :core:test packagePortable. 70 tests: 41 shared core, 29 Windows.
 Completed keyboard-driven visual QA using window screenshots, including settings,
