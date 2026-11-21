@@ -114,8 +114,6 @@ fun main(args: Array<String>) {
     LaunchedEffect(account) { selected=null }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colors.background)) {
         Row(Modifier.fillMaxWidth().background(Panel).padding(18.dp,12.dp),verticalAlignment=Alignment.CenterVertically) {
-            Text("APRSIS64",fontSize=24.sp,fontWeight=FontWeight.Bold,color=Accent)
-            Spacer(Modifier.width(28.dp))
             Text(if(demo) "Demo · $account" else account,color=Muted)
             Spacer(Modifier.weight(1f))
             Text(connection.name,color=if(connection==AprsConnectionState.VERIFIED) Accent else Muted)
