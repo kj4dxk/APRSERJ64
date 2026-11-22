@@ -2,7 +2,7 @@
 
 Portable Windows APRS mapping, conversations, beaconing, radio ports and operating tools.
 
-**Android user? [Get APRSISOSM and its APK](https://github.com/kj4dxk/APRSISOSM).** Prefer the classic Windows interface? [APRSIS32 downloads and manual](https://github.com/kj4dxk/APRSIS32).
+**Android · [Download APRSISOSM.apk](https://github.com/kj4dxk/APRSISOSM/releases/latest/download/APRSISOSM.apk)** · [Android setup and release information](https://github.com/kj4dxk/APRSISOSM). Prefer the classic Windows interface? [APRSIS32 downloads and manual](https://github.com/kj4dxk/APRSIS32).
 
 ## Get online
 
