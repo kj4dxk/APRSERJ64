@@ -94,6 +94,11 @@ fun main(args: Array<String>) {
     val beaconCenter by model.beaconCenter.collectAsState()
     var selected by remember { mutableStateOf<String?>(null) }
     var tools by remember {mutableStateOf(false)}
+    var toolPage by remember {mutableStateOf("Station")}
+    var toolRequest by remember {mutableStateOf(0)}
+    var appMenu by remember {mutableStateOf(false)}
+    var listMenu by remember {mutableStateOf(false)}
+    fun openTool(page:String) {toolPage=page;toolRequest++;tools=true}
     val tracking=remember {mutableStateListOf<String>().apply {addAll(names(model.settings.getProperty("display.tracking_calls")))}}
     var search by remember {mutableStateOf(model.settings.getProperty("display.search"))}
     var kind by remember {mutableStateOf(model.settings.getProperty("display.kind"))}
@@ -118,37 +123,60 @@ fun main(args: Array<String>) {
     LaunchedEffect(account) { selected=null }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colors.background)) {
         Row(Modifier.fillMaxWidth().background(Panel).padding(18.dp,12.dp),verticalAlignment=Alignment.CenterVertically) {
-            Text(if(demo) "Demo · $account" else account,color=Muted)
-            Spacer(Modifier.weight(1f))
-            Text(when(connection) { AprsConnectionState.VERIFIED->"Connected · transmit ready"; AprsConnectionState.RECEIVING->"Connected · receive only"; AprsConnectionState.STOPPED->"Disconnected"; else->connection.name.lowercase().replaceFirstChar {it.uppercase()} },color=if(connection==AprsConnectionState.VERIFIED) Accent else Muted)
-            Spacer(Modifier.width(14.dp))
-            OutlinedButton(onClick={ settings=true }) { Text("Connection") }
-            TextButton(onClick={preferences=true}) {Text("Settings")}
-            TextButton(onClick={portWorkspace=true}) {Text("Ports")}
-            TextButton(onClick={packetMonitor=true}) {Text("Packets")}
-            TextButton(onClick={tools=true}) {Text("Tools")}
-            Button(onClick={model.transmitBeacon()},enabled=beacon.enabled && account.isNotBlank()) {Text("Transmit")}
-            Spacer(Modifier.width(8.dp))
-            if(connection==AprsConnectionState.STOPPED) Button(onClick={ model.localDemo() }) { Text("Local demo") }
-            else OutlinedButton(onClick={ model.disconnect(remember=true) }) { Text("Disconnect IS") }
-            TextButton(onClick={about=true}) {Text("About")}
+            Column(Modifier.weight(1f)) {
+                Text(if(demo) "Practice · $account" else account.ifBlank {"Set up your station"},color=Accent,fontWeight=FontWeight.Bold)
+                Text(when(connection) { AprsConnectionState.VERIFIED->"Connected · transmit ready"; AprsConnectionState.RECEIVING->"Connected · receive only"; AprsConnectionState.STOPPED->"Disconnected"; else->connection.name.lowercase().replaceFirstChar {it.uppercase()} },color=Muted,fontSize=12.sp)
+            }
+            OutlinedButton(onClick={settings=true}) {Text(if(connection==AprsConnectionState.STOPPED) "Connect" else "Connection")}
+            Spacer(Modifier.width(10.dp))
+            Button(onClick={model.transmitBeacon()},enabled=beacon.enabled && account.isNotBlank()) {Icon(AppIcons.Send,null,Modifier.size(16.dp));Spacer(Modifier.width(6.dp));Text("Beacon now")}
+            Spacer(Modifier.width(10.dp))
+            OutlinedButton(onClick={preferences=true}) {Icon(AppIcons.Settings,null,Modifier.size(18.dp));Spacer(Modifier.width(6.dp));Text("Settings")}
+            Box {
+                TextButton(onClick={appMenu=true}) {Icon(AppIcons.Menu,null);Spacer(Modifier.width(6.dp));Text("Menu")}
+                DropdownMenu(expanded=appMenu,onDismissRequest={appMenu=false}) {
+                    DropdownMenuItem(onClick={appMenu=false;openTool("Station")}) {Text("Station details")}
+                    DropdownMenuItem(onClick={appMenu=false;openTool("Weather")}) {Text("Weather reports")}
+                    DropdownMenuItem(onClick={appMenu=false;openTool("Offline")}) {Text("Download maps")}
+                    DropdownMenuItem(onClick={appMenu=false;openTool("Station")}) {Text("All tools…")}
+                    Divider()
+                    DropdownMenuItem(onClick={appMenu=false;portWorkspace=true}) {Text("Radio & GPS ports…")}
+                    DropdownMenuItem(onClick={appMenu=false;packetMonitor=true}) {Text("Packet monitor…")}
+                    Divider()
+                    if(connection==AprsConnectionState.STOPPED) DropdownMenuItem(onClick={appMenu=false;model.localDemo()}) {Text("Practice with local demo")}
+                    else DropdownMenuItem(onClick={appMenu=false;model.disconnect(remember=true)}) {Text(if(demo) "Stop practice" else "Disconnect APRS-IS")}
+                    DropdownMenuItem(onClick={appMenu=false;about=true}) {Text("About & license")}
+                }
+            }
         }
         if(error.isNotBlank()) Text(error,Modifier.fillMaxWidth().background(Color(0xFF6B332B)).padding(10.dp))
         if(notices.isNotEmpty()) Row(Modifier.fillMaxWidth().background(Panel).padding(horizontal=12.dp)) {
             Text(notices.last().text,Modifier.weight(1f),fontSize=12.sp)
-            TextButton(onClick={tools=true}) {Text("View alerts")};TextButton(onClick={model.activity.dismiss()}){Text("Dismiss")}
+            TextButton(onClick={openTool("Alerts")}) {Text("View alerts")};TextButton(onClick={model.activity.dismiss()}){Text("Dismiss")}
         }
         Row(Modifier.weight(1f)) {
             Column(Modifier.width(225.dp).fillMaxHeight().background(Panel).padding(14.dp)) {
-                Text("STATIONS",color=Muted,fontSize=12.sp)
+                Row(verticalAlignment=Alignment.CenterVertically) {
+                    Text("STATIONS",Modifier.weight(1f),color=Muted,fontSize=12.sp)
+                    Box {
+                        ActionIcon(AppIcons.MoreVert,"Station list options") {listMenu=true}
+                        DropdownMenu(expanded=listMenu,onDismissRequest={listMenu=false}) {
+                            DropdownMenuItem(onClick={listMenu=false;val p=java.util.Properties().apply {putAll(model.settings);setProperty("display.search",search);setProperty("display.kind",kind);setProperty("display.sort",sort);setProperty("display.tracking_calls",encodedNames(tracking.toList()))};model.savePreferences(p,model.entities)}) {Text("Save as my starting view")}
+                            DropdownMenuItem(onClick={listMenu=false;search="";kind="all"}) {Text("Clear filters")}
+                        }
+                    }
+                }
                 OutlinedTextField(search,{search=it},label={Text("Find station")},singleLine=true,modifier=Modifier.fillMaxWidth())
-                TextButton(onClick={kind=listOf("all","weather","moving","objects","rf","message-capable","frequency","frequency-issues","telemetry","status","altitude","direct-rf","igates","ambiguous","mic-e").let {it[(it.indexOf(kind)+1)%it.size]}}){Text("Type: $kind")}
-                TextButton(onClick={sort=listOf("callsign","recent","distance").let {it[(it.indexOf(sort)+1)%it.size]}}){Text("Sort: $sort")}
-                TextButton(onClick={val p=java.util.Properties().apply {putAll(model.settings);setProperty("display.search",search);setProperty("display.kind",kind);setProperty("display.sort",sort);setProperty("display.tracking_calls",encodedNames(tracking.toList()))};model.savePreferences(p,model.entities)}){Text("Save view defaults")}
+                ChoiceMenu("Show",kind,listOf("all" to "All stations","weather" to "Weather","moving" to "Moving stations","objects" to "Objects & items","rf" to "Heard on radio","message-capable" to "Messaging stations","frequency" to "Repeaters / frequency","frequency-issues" to "Frequency issues","telemetry" to "Telemetry","status" to "Status reports","altitude" to "Altitude reports","direct-rf" to "Direct radio","igates" to "IGates","ambiguous" to "Approximate positions","mic-e" to "Mic-E"),Modifier.fillMaxWidth()) {kind=it}
+                ChoiceMenu("Sort by",sort,listOf("callsign" to "Callsign","recent" to "Most recent","distance" to "Nearest first"),Modifier.fillMaxWidth()) {sort=it}
                 Text("${filtered.size} / ${stations.size}",Modifier.padding(vertical=6.dp),fontSize=16.sp)
                 if(search.isNotBlank() || kind!="all") TextButton(onClick={search="";kind="all"}) {Text("Clear filters")}
-                if(account.isBlank()) Text("Open Connection to enter your callsign, or try Local demo.",fontSize=12.sp,color=Muted)
-                if(selected!=null) TextButton(onClick={if(selected !in tracking && tracking.size<8)tracking.add(selected!!)}){Text("Open tracking window")}
+                if(account.isBlank()) {
+                    Text("Start with your callsign and location, or explore without going online.",fontSize=12.sp,color=Muted)
+                    OutlinedButton(onClick={model.localDemo()},modifier=Modifier.fillMaxWidth()) {Text("Try practice mode")}
+                }
+                if(stations.isNotEmpty() && filtered.isEmpty()) Text("No matching stations. Clear filters to see everyone.",fontSize=12.sp,color=Muted)
+                if(selected!=null) TextButton(onClick={if(selected !in tracking && tracking.size<8)tracking.add(selected!!)}){Text("Track selected station")}
 
                 LazyColumn(Modifier.weight(1f)) { items(filtered,key={it.callsign}) { station ->
                     Column(Modifier.fillMaxWidth().clickable { selected=station.callsign }.padding(vertical=10.dp)) {
@@ -169,7 +197,7 @@ fun main(args: Array<String>) {
         }
     }
     tracking.toList().forEach {call->key(call) {TrackingWindow(model,call) {tracking.remove(call)}}}
-    if(tools) OperatingToolsWindow(model,selected) {tools=false}
+    if(tools) OperatingToolsWindow(model,selected,toolPage,toolRequest) {tools=false}
     if(settings) ConnectionDialog(model) {settings=false}
     if(preferences) PreferencesDialog(model) {preferences=false}
     if(packetMonitor) PacketMonitorWindow(model) {packetMonitor=false}
@@ -214,6 +242,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     var follow by remember {mutableStateOf(forceFollow || viewSettings.getProperty("display.follow").toBoolean())}
     var gotoLat by remember {mutableStateOf("")};var gotoLon by remember {mutableStateOf("")}
     var navigationError by remember {mutableStateOf("")}
+    var showCoordinates by remember {mutableStateOf(false)}
     val scope=rememberCoroutineScope()
     LaunchedEffect(selected,historyRevision) {trail=selected?.let {model.archive.track(it)} ?: emptyList()}
 
@@ -280,18 +309,19 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
             cameraConstraints=CameraConstraints {maxPitch=0.0; minZoom=viewSettings.getProperty("map.minimum_zoom").toDouble(); maxZoom=viewSettings.getProperty("map.maximum_zoom").toDouble()},renderOptions=RenderOptions {maximumFps=viewSettings.getProperty("map.maximum_fps").toInt()}, overlay={})
         Column(Modifier.align(Alignment.TopStart).padding(6.dp).background(Panel.copy(alpha=0.94f)).padding(6.dp)) {
             Row {
-                TextButton(onClick={scope.launch {state.animateCamera(CameraUpdate(zoom=(state.cameraPosition.zoom+1).coerceAtMost(viewSettings.getProperty("map.maximum_zoom").toDouble())))}}){Text("+")}
-                TextButton(onClick={scope.launch {state.animateCamera(CameraUpdate(zoom=(state.cameraPosition.zoom-1).coerceAtLeast(viewSettings.getProperty("map.minimum_zoom").toDouble())))}}){Text("−")}
+                ActionIcon(AppIcons.Add,"Zoom in") {scope.launch {state.animateCamera(CameraUpdate(zoom=(state.cameraPosition.zoom+1).coerceAtMost(viewSettings.getProperty("map.maximum_zoom").toDouble())))}}
+                ActionIcon(AppIcons.Remove,"Zoom out") {scope.launch {state.animateCamera(CameraUpdate(zoom=(state.cameraPosition.zoom-1).coerceAtLeast(viewSettings.getProperty("map.minimum_zoom").toDouble())))}}
                 TextButton(onClick={scope.launch {state.animateCamera(CameraUpdate(center=initial,bearing=0.0,pitch=0.0))}}){Text("Home")}
-                TextButton(onClick={follow=!follow}){Text(if(follow) "Following" else "Follow")}
+                TextButton(onClick={follow=!follow},enabled=followed!=null || follow){Text(if(follow) "Following" else "Follow station")}
+                ActionIcon(AppIcons.Search,"Go to coordinates") {showCoordinates=!showCoordinates;navigationError=""}
             }
-            Row {
+            if(showCoordinates) Row {
                 OutlinedTextField(gotoLat,{gotoLat=it},Modifier.width(100.dp),label={Text("Latitude")},singleLine=true)
                 OutlinedTextField(gotoLon,{gotoLon=it},Modifier.width(110.dp),label={Text("Longitude")},singleLine=true)
-                TextButton(onClick={runCatching {AprsFix(gotoLat.toDouble(),gotoLon.toDouble(),0)}.onSuccess {p->follow=false;navigationError="";scope.launch {state.animateCamera(CameraUpdate(center=Position(p.longitude,p.latitude),bearing=0.0,pitch=0.0))}}.onFailure {navigationError="Check coordinates"}}){Text("Go")}
+                TextButton(onClick={runCatching {AprsFix(gotoLat.toDouble(),gotoLon.toDouble(),0)}.onSuccess {p->follow=false;navigationError="";scope.launch {state.animateCamera(CameraUpdate(center=Position(p.longitude,p.latitude),bearing=0.0,pitch=0.0))}}.onFailure {navigationError="Enter latitude -90 to 90 and longitude -180 to 180."}}){Text("Go")}
             }
             if(followed!=null) Text(navigationSummary(model,followed),fontSize=11.sp)
-            if(navigationError.isNotBlank())Text(navigationError,fontSize=11.sp)
+            if(navigationError.isNotBlank())Text(navigationError,Modifier.widthIn(max=320.dp),fontSize=11.sp,color=MaterialTheme.colors.error)
         }
         Text(viewSettings.getProperty("map.attribution"),Modifier.align(Alignment.BottomEnd).padding(6.dp).background(Color.White.copy(alpha=0.88f))
             .clickable {Desktop.getDesktop().browse(URI(viewSettings.getProperty("map.attribution_url")))}.padding(5.dp),color=Color(0xFF263740),fontSize=11.sp)
@@ -302,10 +332,19 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
 @Composable private fun ChatPanel(account: String, peer: String?, select: (String?)->Unit, all: List<ChatRow>,model: AppModel,modifier: Modifier) {
     val scope=rememberCoroutineScope()
     var recipient by remember {mutableStateOf("")}
-    var draft by remember(account,peer) {mutableStateOf("")}
+    val drafts=remember {mutableStateMapOf<Pair<String,String?>,String>()}
+    val draftKey=account to peer
+    val draft=drafts[draftKey].orEmpty()
+    var deliveryOptions by remember(account,peer) {mutableStateOf(false)}
     var sending by remember {mutableStateOf(false)}
     var chatOptions by remember(account,peer) {mutableStateOf(ChatOptions())}
     LaunchedEffect(account,peer) {if(peer!=null)chatOptions=model.database.options(account,peer)}
+    val canSubmit=peer!=null && !sending && AprsMessages.validLongText(draft) && AprsProtocol.validCallsign(account) && AprsProtocol.validCallsign(peer) && account!=peer
+    fun submitDraft() {
+        if(!canSubmit)return
+        val submitted=draft;val key=draftKey;sending=true
+        scope.launch {try {model.database.enqueue(account,peer,submitted);if(drafts[key]==submitted) drafts.remove(key)} catch(_:Exception){model.error.value="Unable to save this message."} finally {sending=false}}
+    }
     val focusManager=LocalFocusManager.current
     val history=all.filter {it.peer==peer}
     val list=rememberLazyListState()
@@ -313,7 +352,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     Column(modifier.background(Panel).padding(16.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {
             Text(if(peer==null) "MESSAGES" else peer,fontSize=18.sp,fontWeight=FontWeight.Bold,color=Accent)
-            Spacer(Modifier.weight(1f)); if(peer!=null) TextButton(onClick={select(null)}) {Text("Inbox")}
+            Spacer(Modifier.weight(1f)); if(peer!=null) TextButton(onClick={select(null)}) {Text("Chats")}
         }
         if(peer==null) {
             Row(Modifier.padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -329,9 +368,10 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
             } }
         } else {
             Text("As ${account.ifBlank {"—"}}",fontSize=12.sp,color=Muted)
-            Row(verticalAlignment=Alignment.CenterVertically) {
-                TextButton(onClick={scope.launch {val routes=listOf("best","rf","is");val next=chatOptions.copy(route=routes[(routes.indexOf(chatOptions.route)+1)%3]);model.database.saveOptions(account,peer,next);chatOptions=next}}) {Text("Route: ${chatOptions.route.uppercase()}")}
-                Checkbox(chatOptions.requestAck,{checked->scope.launch {val next=chatOptions.copy(requestAck=checked);model.database.saveOptions(account,peer,next);chatOptions=next}});Text("ACK")
+            TextButton(onClick={deliveryOptions=!deliveryOptions}) {Text(if(deliveryOptions) "Hide delivery options" else "Delivery: "+when(chatOptions.route){"rf"->"Radio only";"is"->"Internet only";else->"Automatic"})}
+            if(deliveryOptions) {
+                ChoiceMenu("Send via",chatOptions.route,listOf("best" to "Automatic (recommended)","rf" to "Radio only","is" to "Internet only"),Modifier.fillMaxWidth()) {route->scope.launch {val next=chatOptions.copy(route=route);model.database.saveOptions(account,peer,next);chatOptions=next}}
+                Row(verticalAlignment=Alignment.CenterVertically) {Checkbox(chatOptions.requestAck,{checked->scope.launch {val next=chatOptions.copy(requestAck=checked);model.database.saveOptions(account,peer,next);chatOptions=next}});Text("Request acknowledgment",fontSize=12.sp)}
             }
             LazyColumn(Modifier.weight(1f).padding(vertical=12.dp),state=list,verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 items(history,key={it.id}) {row -> Column(Modifier.fillMaxWidth().background(if(row.outgoing) Color(0xFF24473F) else Color(0xFF263740)).padding(10.dp)) {
@@ -351,17 +391,16 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
                     }
                     Text(deliveryStatus,fontSize=12.sp,color=if(row.status=="ACKNOWLEDGED") Accent else Muted)
                     Text(DateTimeFormatter.ofPattern("MMM d HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(row.time))+
-                        if(row.outgoing && row.attempts>0) " · ${row.attempts} send attempt${if(row.attempts==1) "" else "s"}" else "",
+                        if(row.outgoing && row.attempts>0) " · ${row.attempts} delivery attempt${if(row.attempts==1) "" else "s"}" else "",
                         fontSize=10.sp,color=Muted)
                 } }
             }
-            OutlinedTextField(draft,{draft=it},Modifier.fillMaxWidth().onPreviewKeyEvent {event->if(event.type==KeyEventType.KeyDown && event.key==Key.Tab) {focusManager.moveFocus(if(event.isShiftPressed) FocusDirection.Previous else FocusDirection.Next);true} else false}.padding(top=8.dp),label={Text("Message")},maxLines=3)
+            OutlinedTextField(draft,{drafts[draftKey]=it},Modifier.fillMaxWidth().onPreviewKeyEvent {event->if(event.type==KeyEventType.KeyDown && event.key==Key.Enter && event.isCtrlPressed) {submitDraft();true} else if(event.type==KeyEventType.KeyDown && event.key==Key.Tab) {focusManager.moveFocus(if(event.isShiftPressed) FocusDirection.Previous else FocusDirection.Next);true} else false}.padding(top=8.dp),label={Text("Message")},maxLines=3)
             if(draft.isNotEmpty() && !AprsMessages.validLongText(draft)) Text("Use 1–300 printable English characters; no line breaks, {, | or ~.",fontSize=12.sp,color=MaterialTheme.colors.error)
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                Text("${draft.length}/300",color=Muted,fontSize=10.sp)
+                Text("${draft.length}/300 · Ctrl+Enter to send",color=Muted,fontSize=10.sp)
                 Spacer(Modifier.weight(1f))
-                Button(onClick={val submitted=draft; sending=true; scope.launch {try {model.send(peer,submitted); if(draft==submitted) draft=""} catch(_:Exception){model.error.value="Unable to save this message."} finally {sending=false}}},
-                    enabled=!sending&&AprsMessages.validLongText(draft)&&AprsProtocol.validCallsign(account)&&AprsProtocol.validCallsign(peer)&&account!=peer) {Text("Send")}
+                Button(onClick={submitDraft()},enabled=canSubmit) {Icon(AppIcons.Send,null,Modifier.size(16.dp));Spacer(Modifier.width(6.dp));Text("Send")}
             }
         }
     }
@@ -392,7 +431,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
             }
             OutlinedTextField(pass,{pass=it},label={Text("Passcode (blank = receive only)")},visualTransformation=PasswordVisualTransformation(),singleLine=true,modifier=Modifier.fillMaxWidth())
             Box {
-                OutlinedButton(onClick={menu=true},modifier=Modifier.fillMaxWidth()) {Text(if(preset>=0) presets[preset].name else "Custom server")}
+                OutlinedButton(onClick={menu=true},modifier=Modifier.fillMaxWidth()) {Text(if(preset>=0) presets[preset].name else "Custom server",Modifier.weight(1f));Icon(AppIcons.ArrowDropDown,null)}
                 DropdownMenu(expanded=menu,onDismissRequest={menu=false}) {
                     presets.forEachIndexed { index, server -> DropdownMenuItem(onClick={preset=index; host=server.endpoint; menu=false}) {Text(server.name)} }
                     DropdownMenuItem(onClick={preset=-1; menu=false}) {Text("Custom server")}

@@ -4,7 +4,7 @@ There are three different filtering decisions: what the server sends you, what y
 
 ## Receive-area filter
 
-Use **Settings → Operating**:
+Use **Settings → Receive area & filters**:
 
 - `range`: receive around the connection/filter coordinates.
 - `moving`: follow your last known APRS-IS position; a fresh published position is needed for meaningful movement.

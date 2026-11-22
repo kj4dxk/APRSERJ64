@@ -2,7 +2,7 @@
 
 ## View a station's telemetry
 
-1. Open **Tools → Telemetry** and enter the station callsign.
+1. Open **Tools → Telemetry charts** and enter the station callsign.
 2. Select an analog channel and inspect its samples, labels and units.
 3. Check whether the station has sent `PARM`, `UNIT`, `EQNS` and `BITS` definitions.
 

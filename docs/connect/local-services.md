@@ -14,11 +14,11 @@
 
 ## Share a receive-only feed
 
-Open **Settings → Operating**, enable **Share received packets with local apps**, and select an unused local port. This feed does not provide an alternate radio transmitter. Configure the consuming application for the corresponding local TCP endpoint.
+Open **Settings → Receive area & filters**, enable **Share received packets with local apps**, and select an unused local port. This feed does not provide an alternate radio transmitter. Configure the consuming application for the corresponding local TCP endpoint.
 
 ## Set up a local server port
 
-1. Add an **IS-Server** or **Local-Server** port through **Ports**.
+1. Add an **IS-Server** or **Local-Server** port through **Menu → Radio & GPS ports…**.
 2. Set the bind endpoint; a loopback address limits access to this PC.
 3. Decide whether to enable **Accept local service input**. It defaults off.
 4. Configure forwarding separately: accepting a local client's packet does not by itself enable RF or IS output.

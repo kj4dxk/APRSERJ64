@@ -9,7 +9,7 @@ This manual targets APRSIS64 **0.8.0**. The APRSIS32 manual supplies topic cover
 - Message retries use APRSIS64's five-attempt/30-second eligibility/15-minute age policy; see [messages](../operate/messages.md).
 - Digipeater transforms and output selection are configured per port. New profiles include useful paths, but existing user choices remain authoritative.
 - Object query-only behavior has an explicit field. Removing a settings entry is different from sending a kill.
-- The Digital settings tab is empty in this version. [Configure the digital importer in TOML](../tools/digital.md).
+- The updated Settings window includes [digital-mode import controls](../tools/digital.md); older builds had an empty Digital tab.
 - The satellite UI says “30-second sampling”; the current calculation brackets at 10 seconds and refines crossings to approximately one second. See [satellites](../tools/satellites.md).
 - Tracks exports stored observations; there is no interactive time-slider replay control in this version.
 - Heard-list query responses are not a reproduction of every APRSIS32 I/G/D counter or display. See [queries](queries.md).

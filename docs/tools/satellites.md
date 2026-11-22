@@ -2,7 +2,7 @@
 
 ## Load satellite orbital data
 
-1. Open **Tools → Satellites**.
+1. Open **Tools → Satellite passes**.
 2. Use **Download TLEs**, or enter a local TLE file path and select **Load file**.
 3. Review source URL, selected names, maximum age and prediction window in **Settings → Satellites**.
 4. Enable **Show tracked satellites** and check the plotted positions and footprints.
@@ -20,6 +20,6 @@ This workflow does not automatically tune a radio or control a rotator. Confirm 
 
 ## Inspect GPS reception
 
-Open **Tools → GPS sky** after connecting a named NMEA-capable port. The view shows available satellites, elevation/azimuth, signal strength, used-in-fix flags and DOP information when the receiver supplies GSV/GSA sentences.
+Open **Tools → GPS reception** after connecting a named NMEA-capable port. The view shows available satellites, elevation/azimuth, signal strength, used-in-fix flags and DOP information when the receiver supplies GSV/GSA sentences.
 
 Multiple constellations and signal IDs are combined without treating the same satellite's different signals as separate satellites. A connected port with no current sentences is not a valid fix. For actual beacon eligibility, inspect the selected position source and its freshness limits.

@@ -2,14 +2,14 @@
 
 ## Read received weather
 
-Open **Tools → Weather**. APRS observations are decoded into temperatures, wind, humidity, pressure and rainfall where supplied. Missing values remain missing. A weather object keeps its own identity rather than replacing its owner's observation.
+Open **Tools → Weather reports**. APRS observations are decoded into temperatures, wind, humidity, pressure and rainfall where supplied. Missing values remain missing. A weather object keeps its own identity rather than replacing its owner's observation.
 
 Received weather, Internet alert fetching, radar overlays, APRS NWS warning messages and your own weather transmitter are separate features. Enable only the ones you intend to use.
 
 ## Transmit local weather
 
 1. Arrange for your collector to provide fresh SI JSON, an APRS weather packet, supported Peet/Ultimeter text, or `wxnow.txt`; alternatively configure a named **Weather** port.
-2. Open **Settings → Weatherstation** and choose `file` or `port` as the input source.
+2. Open **Settings → My weather station** and choose `file` or `port` as the input source.
 3. Set the filename or port name, maximum observation age, interval, output route and optional weather object name.
 4. Make sure your station has a valid current position. This version's weather object uses that position, not a separate weather-object coordinate field.
 5. Open **Tools → Local sensors → Read weather input**. Resolve format/freshness problems before enabling transmission.
@@ -38,11 +38,11 @@ For Tempest, Davis or another collector, use a compatible external program that 
 
 ## Weather warnings and boundaries
 
-For Internet alerts, enable **Settings → Weather** and confirm the alert URL/location. For APRS NWS messages, enable **Settings → APRS weather** and inspect its filter (seeded `g/NWS*`).
+For Internet alerts, enable **Settings → Weather alerts** and confirm the alert URL/location. For APRS NWS messages, enable **Settings → APRS weather** and inspect its filter (seeded `g/NWS*`).
 
 To add warning boundaries:
 
-1. Open **Tools → Weather boundaries**.
+1. Open **Tools → Weather reports boundaries**.
 2. Browse to a geographic SHP/DBF dataset or its ZIP, then **Import boundaries**.
 3. Configure the DBF code field under **Settings → APRS weather**. It must contain complete zone/county codes that match the warnings.
 4. Confirm that warnings have matching geometry and valid expiration times.

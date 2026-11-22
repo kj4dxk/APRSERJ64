@@ -2,9 +2,11 @@
 
 **Goal:** display stations decoded by your digital-mode program and optionally publish APRS objects for them. APRSIS64 reads logs; it does not decode audio or run the digital-mode radio software.
 
-## Configure the importer in 0.8.0
+## Configure the importer
 
-The 0.8.0 Settings window has a **Digital** tab, but its field selection is incomplete and the tab may be empty. Use `settings.toml` for this version:
+Open **Settings**, search for **digital**, then select **Digital-mode imports**. Enter your receive-log paths, enable importing, leave transmission off initially, and **Save**. The formerly empty section now exposes its settings.
+
+You can also edit `settings.toml`:
 
 1. Close APRSIS64 and copy `settings.toml` as a backup.
 2. Find its existing `[digital]` table; edit it rather than adding a duplicate table.

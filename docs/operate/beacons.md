@@ -4,7 +4,7 @@ A beacon publishes your selected current position. Its position does not come fr
 
 ## Choose a fixed position
 
-1. Open **Settings → Position**.
+1. Open **Settings → My position**.
 2. Select `fixed` and enter latitude/longitude in decimal degrees. North/east are positive; south/west are negative.
 3. Set altitude in meters if you use it.
 4. Save and check the beacon status before transmitting.
@@ -15,11 +15,11 @@ The default fixed coordinate is a seeded example location, not a location servic
 
 The recommended device workflow is a named NMEA-capable port:
 
-1. In **Ports**, add an NMEA port and select the COM device/baud rate or TCP endpoint.
+1. In **Menu → Radio & GPS ports…**, add an NMEA port and select the COM device/baud rate or TCP endpoint.
 2. Apply the port configuration and check that it is connected.
-3. In **Settings → Position**, select source `port` and select the named port.
+3. In **Settings → My position**, select source `port` and select the named port.
 4. Save. Wait for a valid current fix, not just an open port.
-5. Inspect **Tools → GPS sky** for available satellite diagnostics.
+5. Inspect **Tools → GPS reception** for available satellite diagnostics.
 
 Direct `gps_serial`, `gps_tcp`, and `gpsd` sources also exist. Do not open the same serial receiver both directly and through a named port. USB/Bluetooth devices must expose a usable Windows COM port for serial operation.
 
@@ -27,7 +27,7 @@ GPS freshness and accuracy limits default to 30 seconds and 100 meters. A stale 
 
 ## Choose how often to beacon
 
-Open **Settings → Beacon**. The adaptive policy can react to time, start/stop transitions, heading changes, distance and forecast error. **Use time only** selects interval-driven behavior. **Use speed-based SmartBeaconing** enables the separate speed/turn settings.
+Open **Settings → Beaconing**. The adaptive policy can react to time, start/stop transitions, heading changes, distance and forecast error. **Use time only** selects interval-driven behavior. **Use speed-based SmartBeaconing** enables the separate speed/turn settings.
 
 Forecast error compares the current position with where the last reported speed and course would predict it. This concept follows the GeniusBeaconing™ work described by Lynn W. Deffenbaugh, KJ4ERJ; APRSIS64's UI and implementation are its own. Do not transfer old XML timing values without checking the units here.
 
@@ -41,6 +41,6 @@ Choose a symbol table/code, comments and timestamp. Compressed and Mic-E reports
 
 ## Status and odometer
 
-**Settings → Status** controls periodic status text, interval, timestamp/grid representation. **Settings → Beacon** also exposes odometer-related fields through the preference schema where applicable; consult the searchable [settings catalog](../reference/settings.md) for `odometer` keys. Exit odometer reporting is optional.
+**Settings → Station status** controls periodic status text, interval, timestamp/grid representation. **Settings → Beaconing** also exposes odometer-related fields through the preference schema where applicable; consult the searchable [settings catalog](../reference/settings.md) for `odometer` keys. Exit odometer reporting is optional.
 
-Select **Transmit** on the toolbar for a manual station beacon request. Review the timestamp, reason and **Packets** view. To stop or limit output, see [routing controls](../connect/routing.md#stop-or-limit-transmissions).
+Select **Beacon now** on the toolbar for a manual station beacon request. Review the timestamp, reason and **Menu → Packet monitor…** view. To stop or limit output, see [routing controls](../connect/routing.md#stop-or-limit-transmissions).

@@ -1,29 +1,29 @@
 # Control locator
 
-Use the main toolbar to open an editor or operating tool. Settings changes require **Save**; port changes require **Apply**.
+Use **Settings** for preferences and **Menu → All tools…** for operating tools. Both windows have grouped navigation and a **Find a section** search that also recognizes the former short section names. **Radio & GPS ports…** and **Packet monitor…** are in Menu. Settings changes require **Save**; port changes require **Apply**.
 
 | Location | Tasks |
 | --- | --- |
 | Connection | Callsign-SSID, passcode, APRS-IS server and radius |
-| Settings → Position, Beacon, Status | [Position and beaconing](../operate/beacons.md) |
-| Settings → Objects | [Objects, items and companion stations](../operate/objects.md) |
-| Settings → Map, Services, Display, Multitrack | [Maps and tracking windows](../operate/maps.md) |
-| Settings → Operating, Connectivity | [Receive filters](filters.md) and connection preferences |
-| Settings → Messaging, Groups, Kiosk, Bulletins | [Chats](../operate/messages.md), [group services](../operate/services.md) |
-| Settings → History, Logging, Imports | [Recorded tracks and GPX](../tools/tracks.md) |
-| Settings → Weather, APRS weather, Weatherstation, Alerts | [Weather inputs and boundaries](../tools/weather.md) |
+| Settings → My position, Beaconing, Station status | [Position and beaconing](../operate/beacons.md) |
+| Settings → Objects & items | [Objects, items and companion stations](../operate/objects.md) |
+| Settings → Map appearance, Service addresses, Station display, Tracking windows | [Maps and tracking windows](../operate/maps.md) |
+| Settings → Receive area & filters, Connection recovery | [Receive filters](filters.md) and connection preferences |
+| Settings → Messages, Group messages, Unattended operation, Bulletins | [Chats](../operate/messages.md), [group services](../operate/services.md) |
+| Settings → History storage, Track logging, GPX imports | [Recorded tracks and GPX](../tools/tracks.md) |
+| Settings → Weather alerts, APRS weather, My weather station, Notifications | [Weather inputs and boundaries](../tools/weather.md) |
 | Settings → Telemetry | [Local telemetry](../tools/telemetry.md) |
-| Settings → Tactical, QRU server, Queries | [QRU objects](../operate/objects.md) and [query responses](queries.md) |
-| Settings → Offline, Satellites, Platforms | [Offline maps](../operate/maps.md), [satellites](../tools/satellites.md), platform preferences |
-| Settings → Digital | Empty in 0.8.0; use the [TOML procedure](../tools/digital.md) |
+| Settings → Tactical overlays, QRU server, Query replies | [QRU objects](../operate/objects.md) and [query responses](queries.md) |
+| Settings → Offline maps, Satellites, Device identification | [Offline maps](../operate/maps.md), [satellites](../tools/satellites.md), platform preferences |
+| Settings → Digital-mode imports | [Digital-mode log imports](../tools/digital.md) |
 | Ports | [Device setup](../connect/ports.md), [wiring and gating](../connect/routing.md) |
 | Packets | Packet diagnostics and filtering |
-| Tools → Station, Weather, Telemetry | Inspect received station information |
-| Tools → Tracks, GPX import, Offline | Exports, map layers and tile downloads |
-| Tools → Groups, QRU, Bulletins, Email | Group subscriptions, nearby objects and APRS messaging services |
-| Tools → Alerts, Radio DX, Direction finding | Alert records, heard-distance and direction information |
-| Tools → Frequency, Platforms | Repeater objects and platform information |
-| Tools → Satellites, GPS sky | Orbital predictions and receiver sky information |
+| Tools → Selected station, Weather reports, Telemetry charts | Inspect received station information |
+| Tools → Export a track, Import GPX, Download maps | Exports, map layers and tile downloads |
+| Tools → Group messages, Find nearby objects, Bulletins, Send APRS email | Group subscriptions, nearby objects and APRS messaging services |
+| Tools → Notifications, Radio reach, Direction finding | Alert records, heard-distance and direction information |
+| Tools → Repeater objects, Device identification | Repeater objects and platform information |
+| Tools → Satellite passes, GPS reception | Orbital predictions and receiver sky information |
 | Tools → Local sensors, Weather boundaries | Read input files and manage boundary data |
 
 For exact configuration keys and defaults see the [settings catalog](settings.md). A toolbar action is not necessarily a saved preference.

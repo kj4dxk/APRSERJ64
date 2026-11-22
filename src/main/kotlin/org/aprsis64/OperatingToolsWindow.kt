@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 import net.osmand.shared.aprs.*
 import java.time.Instant
 
-@Composable fun OperatingToolsWindow(model:AppModel,selected:String?,dismiss:()->Unit) {
+@Composable fun OperatingToolsWindow(model:AppModel,selected:String?,initialTab:String="Station",requestId:Int=0,dismiss:()->Unit) {
  val scope=rememberCoroutineScope()
  val weather by model.archive.weather.collectAsState()
  val telemetry by model.archive.telemetry.collectAsState()
@@ -32,7 +32,7 @@ import java.time.Instant
  val preferences=remember(revision) {java.util.Properties().apply {putAll(model.settings)}}
  val archiveStatus by model.archive.status.collectAsState()
  val dropped by model.archive.dropped.collectAsState()
- var tab by remember {mutableStateOf("Weather")}
+ var tab by remember {mutableStateOf(initialTab)}
  var result by remember {mutableStateOf("")}
  var call by remember {mutableStateOf(selected.orEmpty())}
  var channel by remember {mutableStateOf(0)}
@@ -50,9 +50,14 @@ import java.time.Instant
  var zoomMin by remember {mutableStateOf("10")};var zoomMax by remember {mutableStateOf("13")}
  var plan by remember {mutableStateOf<List<Tile>>(emptyList())}
  fun send(peer:String,text:String){scope.launch {result=runCatching {model.send(peer,text);"Queued to $peer; see Messages for delivery"}.getOrElse {"Unable to queue: check callsigns and message length"}}}
- Window(onCloseRequest=dismiss,title="Operating tools — APRSIS64",state=rememberWindowState(width=1000.dp,height=800.dp)) {
-  MaterialTheme(colors=darkColors()) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
-   FlowRow(Modifier.fillMaxWidth()) {listOf("Station","Weather","Telemetry","Tracks","Offline","Groups","QRU","Bulletins","Alerts","Radio DX","Direction finding","Frequency","Platforms","Email","GPX import","Satellites","GPS sky","Local sensors","Weather boundaries").forEach {name->TextButton(onClick={tab=name;result=""}){Text(if(tab==name) "[$name]" else name)}}}
+ Window(onCloseRequest=dismiss,title="Tools",state=rememberWindowState(width=1100.dp,height=800.dp)) {
+  LaunchedEffect(initialTab,requestId) {tab=initialTab;result="";window.toFront();window.requestFocus()}
+  MaterialTheme(colors=MaterialTheme.colors) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
+   Row(Modifier.weight(1f)) {
+    SectionNavigator(toolSections,tab,Modifier.width(230.dp).fillMaxHeight()) {tab=it;result=""}
+    Divider(Modifier.fillMaxHeight().width(1.dp))
+    Column(Modifier.weight(1f).padding(start=18.dp)) {
+     Text(toolSections.first {it.id==tab}.title,style=MaterialTheme.typography.h5)
    if(result.isNotBlank()) Text(result,Modifier.padding(vertical=8.dp),color=MaterialTheme.colors.primary)
    ScrollableForm(Modifier.weight(1f).fillMaxWidth()) {when(tab) {
     "GPX import","Satellites","GPS sky","Local sensors","Weather boundaries"->AdvancedTools(model,tab)
@@ -70,7 +75,7 @@ import java.time.Instant
      Text(weatherStatus,fontSize=16.sp)
      if(legacyStatus.isNotBlank())Text(legacyStatus)
      Row {Checkbox(preferences.getProperty("weather.enabled").toBoolean(),{model.updateFeature("weather.enabled",it.toString())});Text("Fetch alerts for the configured fixed location",Modifier.padding(top=12.dp))}
-     Text("Alert source and radar XYZ overlay are configurable in Settings → Weather.")
+     Text("Alert source and radar XYZ overlay are configurable in Settings → Weather alerts.")
      alerts.forEach {a->Text("${a.severity}: ${a.event}",color=Color(0xFFFFC078));Text(a.headline);Text(a.description);Text("Expires ${a.expires}");Divider()}
     }
     "Telemetry"->{
@@ -98,7 +103,7 @@ import java.time.Instant
      } else Text("No classic T# telemetry received for this station.")
     }
     "Tracks"->{
-     Text("Automatic CSV: ${preferences.getProperty("logging.csv")} · GPX: ${preferences.getProperty("logging.gpx")}. Configure under Settings → Logging.")
+     Text("Automatic CSV: ${preferences.getProperty("logging.csv")} · GPX: ${preferences.getProperty("logging.gpx")}. Configure under Settings → Track logging.")
      if(archiveStatus.isNotBlank())Text(archiveStatus)
      if(dropped>0)Text("$dropped packets omitted from history because the input queue filled")
      OutlinedTextField(call,{call=it.uppercase()},label={Text("Station or object name")},singleLine=true)
@@ -135,14 +140,14 @@ import java.time.Instant
        if(action in listOf("J","U")){val groups=names(preferences.getProperty("groups.names")).toMutableSet();if(action=="J")groups.add(group) else groups.remove(group);model.updateFeature("groups.names",encodedNames(groups.toList()))}
       }.onFailure {result="Check group and message length"}
      }) {Text(label)}}}
-     Text("Membership confirmations show the last server response time. My groups requests a fresh list; unrecognized replies remain visible. Automatic keepalive is opt-in under Settings → Groups.")
+     Text("Membership confirmations show the last server response time. My groups requests a fresh list; unrecognized replies remain visible. Automatic keepalive is opt-in under Settings → Group messages.")
     }
     "QRU"->{
      Text("Query destination: ${preferences.getProperty("kiosk.server")}")
      OutlinedTextField(qru,{qru=it.uppercase()},label={Text("Object group (INFO lists groups)")},singleLine=true)
      OutlinedTextField(radius,{radius=it},label={Text("Radius in km")},singleLine=true)
      Button(onClick={runCatching {AprsServices.qru(qru,radius.toInt())}.onSuccess {send(preferences.getProperty("kiosk.server"),it)}.onFailure {result="Check group and radius"}}){Text("Send QRU query")}
-     Text("Replies appear in Messages; returned positioned objects appear on the map. Configure your object groups in Settings → Objects and enable the QRU responder in Settings → Tactical.")
+     Text("Replies appear in Messages; returned positioned objects appear on the map. Configure your object groups in Settings → Objects & items and enable the QRU responder in Settings → Tactical overlays.")
      Text("QRU object responder: "+if(preferences.getProperty("tactical.qru_enabled").toBoolean())"On" else "Off")
      Text("Text kiosk: "+if(preferences.getProperty("kiosk.enabled").toBoolean())"On" else "Off")
      names(preferences.getProperty("kiosk.entries")).forEach {Text(it)}
@@ -166,8 +171,10 @@ import java.time.Instant
      }
      bulletins.asReversed().forEach {b->Text("${b.destination} · ${b.sender} · ${Instant.ofEpochMilli(b.time)}",color=MaterialTheme.colors.primary);Text(b.text);Divider()}
     }
-    else->{TextButton(onClick={model.activity.dismiss()}){Text("Dismiss notifications")};notices.asReversed().forEach {Text("${Instant.ofEpochMilli(it.time)}  ${it.text}");Divider()};Text("Message and watched-callsign alerts, sound and cooldown settings are under Settings → Alerts.")}
+    else->{TextButton(onClick={model.activity.dismiss()}){Text("Dismiss notifications")};notices.asReversed().forEach {Text("${Instant.ofEpochMilli(it.time)}  ${it.text}");Divider()};Text("Message and watched-callsign alerts, sound and cooldown settings are under Settings → Notifications.")}
    }}
+    }
+   }
   }}}
  }
 }

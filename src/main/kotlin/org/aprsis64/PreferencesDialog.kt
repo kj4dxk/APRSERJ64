@@ -22,18 +22,19 @@ import kotlinx.serialization.json.*
     val baselineSettings=remember {model.settings.entriesMap()}
     val baselinePorts=remember {model.ports.map {it.entriesMap()}}
     val baselineObjects=remember {model.entities.map {it.entriesMap()}}
-    var selected by remember {mutableStateOf("Beacon")}
+    var selected by remember {mutableStateOf("Position")}
     var entity by remember {mutableStateOf(0)}
     var failure by remember {mutableStateOf("")}
     fun properties(values: Map<String,String>)=Properties().apply {values.forEach {(key,value)->setProperty(key,value)}}
-    DialogWindow(onCloseRequest=dismiss,title="Settings",state=rememberDialogState(width=780.dp,height=790.dp)) {
-        MaterialTheme(colors=darkColors()) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
-            FlowRow(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
-                listOf("Beacon","Position","Status","Objects","Map","Services","Operating","Display","History","Offline","Weather","Groups","Kiosk","Alerts","Connectivity","Tactical","Messaging","Bulletins","Telemetry","Logging","Legacyweather","Qru","Queries","Satellites","Imports","Platforms","Weatherstation","Multitrack","Digital").forEach {tab ->
-                    val label=when(tab){"Legacyweather"->"APRS weather";"Qru"->"QRU server";else->tab}
-                    TextButton(onClick={selected=tab}) {Text(if(selected==tab) "[$label]" else label)}
-                }
-            }
+    DialogWindow(onCloseRequest=dismiss,title="Settings",state=rememberDialogState(width=1000.dp,height=790.dp)) {
+        MaterialTheme(colors=MaterialTheme.colors) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
+            Text("Settings",style=MaterialTheme.typography.h5)
+            Spacer(Modifier.height(12.dp))
+            Row(Modifier.weight(1f)) {
+                SectionNavigator(settingsSections,selected,Modifier.width(245.dp).fillMaxHeight()) {selected=it}
+                Divider(Modifier.fillMaxHeight().width(1.dp))
+                Column(Modifier.weight(1f).padding(start=18.dp)) {
+                    Text(settingsSections.first {it.id==selected}.title,style=MaterialTheme.typography.h6)
             if(failure.isNotEmpty()) Text(failure,color=MaterialTheme.colors.error)
             key(selected,entity) {ScrollableForm(Modifier.weight(1f).fillMaxWidth()) {
                 if(selected=="Objects") {
@@ -50,14 +51,18 @@ import kotlinx.serialization.json.*
                         Text("Range uses the connection coordinates; moving follows your last APRS-IS position. Custom uses only your filter terms plus delivery to your callsign. Example: b/N1CALL d/RS0ISS*")
                     }
                     val section=selected.lowercase()
-                    val schema=when(selected) {"Display","History","Offline","Weather","Groups","Kiosk","Alerts","Connectivity","Tactical","Messaging","Bulletins","Telemetry","Logging","Legacyweather","Qru","Queries","Satellites","Imports","Platforms","Weatherstation","Multitrack"->FeaturePreferences.fields;"Operating"->OperatingPreferences.fields;"Map","Services"->ServicePreferences.fields;"Radio"->PortPreferences.global;else->BeaconPreferences.fields}
-                    schema.filter {it.key.startsWith("$section.") || selected=="Beacon" && it.key.startsWith("odometer.")}.forEach {field -> SettingField(field,values)}
+                    val schema=when(selected) {"Display","History","Offline","Weather","Groups","Kiosk","Alerts","Connectivity","Tactical","Messaging","Bulletins","Telemetry","Logging","Legacyweather","Qru","Queries","Satellites","Imports","Platforms","Weatherstation","Multitrack","Digital"->FeaturePreferences.fields;"Operating"->OperatingPreferences.fields;"Map","Services"->ServicePreferences.fields;"Radio"->PortPreferences.global;else->BeaconPreferences.fields}
+                    schema.filter {it.key.startsWith("$section.") || selected=="Beacon" && it.key.startsWith("odometer.")}
+                        .filter {selected!="Position" || positionFieldVisible(it.key,values["position.source"].orEmpty())}
+                        .forEach {field -> SettingField(field,values)}
                     if(selected=="Beacon") {
                         Row {TextButton(onClick={model.reportOdometer()}) {Text("Report odometer")}; TextButton(onClick={model.reportOdometer(true)}) {Text("Report and reset")}}
                     }
                     if(selected=="Status") TextButton(onClick={model.transmitStatus()}) {Text("Send status")}
                 }
             } }
+                }
+            }
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
                 TextButton(onClick=dismiss) {Text("Cancel")}
                 Button(onClick={
@@ -94,13 +99,7 @@ import kotlinx.serialization.json.*
             Checkbox(value.toBoolean(),{values[field.key]=it.toString()}); Text(field.label)
         }
         field.choices.isNotEmpty() -> {
-            var menu by remember {mutableStateOf(false)}
-            Box {
-                OutlinedButton(onClick={menu=true},modifier=Modifier.fillMaxWidth()) {Text("${field.label}: ${value.ifBlank {"None"}}")}
-                DropdownMenu(expanded=menu,onDismissRequest={menu=false}) {field.choices.forEach {choice ->
-                    DropdownMenuItem(onClick={values[field.key]=choice;menu=false}) {Text(choice.ifBlank {"None"})}
-                } }
-            }
+            ChoiceMenu(field.label,value,field.choices.map {it to if(field.key=="position.source") positionSourceLabel(it) else it.ifBlank {"None"}}) {values[field.key]=it}
             if(field.key=="beacon.status_tag") OutlinedTextField(value,{values[field.key]=it},label={Text("Custom status tag")},modifier=Modifier.fillMaxWidth())
         }
         field.kind==SettingKind.STRINGS -> {
@@ -109,4 +108,18 @@ import kotlinx.serialization.json.*
         }
         else -> OutlinedTextField(value,{values[field.key]=it},label={Text(field.label)},modifier=Modifier.fillMaxWidth(),singleLine=true)
     }
+}
+
+private fun positionSourceLabel(source:String)=when(source) {
+    "fixed"->"Fixed location"; "port"->"GPS from a configured port"; "gps_serial"->"Serial GPS"; "gps_tcp"->"Network GPS (NMEA)"; "gpsd"->"GPSd service"; else->source
+}
+
+private fun positionFieldVisible(key:String,source:String)=when(key) {
+    "position.port_name"->source=="port"
+    "position.latitude","position.longitude","position.altitude_meters"->source=="fixed"
+    "position.gps_endpoint"->source=="gps_tcp"
+    "position.gpsd_endpoint"->source=="gpsd"
+    "position.serial_port","position.serial_baud"->source=="gps_serial"
+    "position.maximum_age_seconds","position.maximum_accuracy_meters"->source!="fixed"
+    else->true
 }

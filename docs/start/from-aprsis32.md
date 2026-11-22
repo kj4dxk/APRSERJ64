@@ -10,7 +10,7 @@ Use the old manual for concepts and the table below to locate the APRSIS64 workf
 | Port Configuration, Open/CloseCmds | [Ports workspace](../connect/ports.md) |
 | Enables / Ports, DigiXform, IGate | [Per-port routing and rules](../connect/routing.md) |
 | Messages / Chat / Pending Messages | [Persistent conversation panel](../operate/messages.md) |
-| Announcements / ANSRVR | [Tools → Groups](../operate/services.md) |
+| Announcements / ANSRVR | [Tools → Group messages](../operate/services.md) |
 | Configure Objects / Multiline / QRU | [Objects and QRU](../operate/objects.md) |
 | Tile Sets / Map Prefetch / MultiTrack | [Maps and offline use](../operate/maps.md) |
 | Save Posits / Tracks | [Tracks and GPX](../tools/tracks.md) |

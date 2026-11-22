@@ -1,23 +1,23 @@
 # Troubleshooting
 
-Start with the symptom, change one thing, and check the result in **Packets** and the relevant status area.
+Start with the symptom, change one thing, and check the result in **Menu → Packet monitor…** and the relevant status area.
 
 ## Map is blank
 
 1. Check whether stations still arrive. Map tiles and APRS-IS are separate connections.
-2. Confirm **Settings → Map** has the intended URL with `{z}`, `{x}`, `{y}`, a supported zoom range and online tiles enabled when needed.
+2. Confirm **Settings → Map appearance** has the intended URL with `{z}`, `{x}`, `{y}`, a supported zoom range and online tiles enabled when needed.
 3. If offline-only mode is on, check that the current area/provider was downloaded successfully.
 4. Check reachability of the configured pdeffenb/custom tile service. Changing the APRS server does not repair a tile server.
 
 ## No stations appear
 
-Open **Packets**. If RX records arrive, clear **Find station**, the Type filter and age restrictions. Check that the map is centered on the received region. If no RX records arrive, inspect connection state, endpoint, filter center/radius, custom filters and network access. Demo data is not public reception.
+Open **Menu → Packet monitor…**. If RX records arrive, clear **Find station**, the Show filter and age restrictions. Check that the map is centered on the received region. If no RX records arrive, inspect connection state, endpoint, filter center/radius, custom filters and network access. Demo data is not public reception.
 
 ## Connected but not transmitting
 
 Check for **VERIFIED**, not merely connected. Check callsign/SSID, passcode, the selected current position, feature enable switch and output route. `-1` is receive-only on IS. A stale GPS fix, disabled port output or per-port rate limit can also block a send.
 
-**Transmit** requests a station beacon; it does not repair every scheduled feature's configuration. For objects, check Enabled, Alive, query-only mode, interval and destinations.
+**Beacon now** requests a station beacon; it does not repair every scheduled feature's configuration. For objects, check Enabled, Alive, query-only mode, interval and destinations.
 
 ## Message stays queued or NO_ACK
 
@@ -27,7 +27,7 @@ Inspect the saved conversation route. RF needs an eligible message-enabled radio
 
 Check COM name, baud, protocol, device mode and the TCP endpoint where applicable. Close another application that owns the same serial device. A Bluetooth receiver must expose a usable COM port. Inspect profile command responses and timeout settings; do not keep changing radio paths to fix a physical connection problem.
 
-An open NMEA port with no valid fixes is a reception/format issue, not proof that positioning works. Use **Tools → GPS sky** and the beacon source/detail.
+An open NMEA port with no valid fixes is a reception/format issue, not proof that positioning works. Use **Tools → GPS reception** and the beacon source/detail.
 
 ## A wire is visible but packets do not flow
 
@@ -56,6 +56,6 @@ Check PC clock/time zone, observing location, selected satellite names, TLE file
 
 ## Collect a useful diagnostic record
 
-Use **Packets** to narrow port, direction and text, pause the display if useful, and **Export TNC2**. Pausing that display does not stop radio reception. Include the app version, reproducible steps, relevant redacted settings, expected behavior and a short packet sample. Keep callsign/passcode secrets and private message/location information out of public reports as appropriate.
+Use **Menu → Packet monitor…** to narrow port, direction and text, pause the display if useful, and **Export TNC2**. Pausing that display does not stop radio reception. Include the app version, reproducible steps, relevant redacted settings, expected behavior and a short packet sample. Keep callsign/passcode secrets and private message/location information out of public reports as appropriate.
 
 See [compatibility limits](../reference/compatibility.md) before treating a known unsupported behavior as a device failure.
