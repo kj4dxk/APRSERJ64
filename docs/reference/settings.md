@@ -2,7 +2,7 @@
 
 Generated from `settings.example.toml` and the application field schema. These are **new-install example defaults**, not a promise that an existing installation has these values. See [editing TOML](files.md) before changing a file. Exact keys are searchable.
 
-Tables containing records (server presets, ports and objects) are explained separately. Service addresses are configurable; a default address does not guarantee service availability.
+Tables containing records (server presets, ports and objects) are explained separately. Service addresses are configurable; a default address does not guarantee service availability. Routing and setup endpoints are omitted from this catalog; use their configured values in your local `settings.toml`.
 
 ## aprs
 
@@ -62,10 +62,10 @@ Each `[[aprs.servers]]` entry is a separate record. The example contains 12 entr
 | --- | --- | --- |
 | `services.satellite_status_url` | `"https://www.ariss.org/current-status-of-iss-stations.html"` | satellite status url |
 | `services.base_url` | `"http://pdeffenb.homeip.net:82"` | base url |
-| `services.routing_url` | `"http://pdeffenb.homeip.net:82/osmand/route/v1/"` | routing url |
+| `services.routing_url` | See local `settings.toml` | routing url |
 | `services.search_url` | `"http://pdeffenb.homeip.net:82/api/search"` | search url |
 | `services.map_page_url` | `"http://pdeffenb.homeip.net:82/raster.html"` | map page url |
-| `services.setup_url` | `"http://pdeffenb.homeip.net:82/osmand-setup.html"` | setup url |
+| `services.setup_url` | See local `settings.toml` | setup url |
 | `services.monitor_url` | `"http://pdeffenb.homeip.net:82/monitor.html"` | monitor url |
 | `services.source_url` | `"https://github.com/kj4dxk/APRSIS64"` | source url |
 
