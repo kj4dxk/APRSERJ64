@@ -131,7 +131,7 @@ fun main(args: Array<String>) {
             destination=="action:about"->about=true
             destination=="action:alltools"->openTool("Station")
             destination=="action:practice"->model.localDemo()
-            destination=="action:disconnect"->model.disconnect()
+            destination=="action:disconnect"->model.disconnect(remember=!demo)
         }
     }
     var rows by remember { mutableStateOf<List<ChatRow>>(emptyList()) }
@@ -173,7 +173,7 @@ fun main(args: Array<String>) {
                     HelpMenuItem(UiHelp.action("Packet monitor…"),onClick={appMenu=false;packetMonitor=true}) {HelpText("Packet monitor…")}
                     Divider()
                     if(connection==AprsConnectionState.STOPPED) HelpMenuItem(UiHelp.action("Practice with local demo"),onClick={appMenu=false;model.localDemo()}) {HelpText("Practice with local demo")}
-                    else HelpMenuItem(UiHelp.action(if(demo) "Stop practice" else "Disconnect APRS-IS"),onClick={appMenu=false;model.disconnect()}) {HelpText(if(demo) "Stop practice" else "Disconnect APRS-IS")}
+                    else HelpMenuItem(UiHelp.action(if(demo) "Stop practice" else "Disconnect APRS-IS"),onClick={appMenu=false;model.disconnect(remember=!demo)}) {HelpText(if(demo) "Stop practice" else "Disconnect APRS-IS")}
                     HelpMenuItem(UiHelp.action("About & license"),onClick={appMenu=false;about=true}) {HelpText("About & license")}
                     }
                 }
@@ -464,7 +464,12 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     val presets=model.servers
     var preset by remember {mutableStateOf(presets.indexOfFirst {it.endpoint==host})}
     var menu by remember {mutableStateOf(false)}
-    var autoConnect by remember {mutableStateOf(model.settings.getProperty("autoConnect","true").toBoolean())}
+    val connectionScope=rememberCoroutineScope()
+    val clipboard=remember {java.awt.Toolkit.getDefaultToolkit().systemClipboard}
+    var testing by remember {mutableStateOf(false)}
+    var testResult by remember {mutableStateOf("")}
+    var testJob by remember {mutableStateOf<kotlinx.coroutines.Job?>(null)}
+    LaunchedEffect(call,pass,receiveOnly,host) {testJob?.cancel();testing=false;testResult=""}
     var lat by remember {mutableStateOf(model.settings.getProperty("latitude","28.536725"))}
     var lon by remember {mutableStateOf(model.settings.getProperty("longitude","-81.242932"))}
     DialogWindow(icon=AppIcon.window,onCloseRequest=dismiss,title="My callsign & passcode",state=rememberDialogState(width=640.dp,height=800.dp)) {
@@ -492,7 +497,27 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
             }
             if(showPasscodeHelp) {
                 HelpText("Already used APRS-IS? Use the same passcode for your callsign; it works across clients and SSIDs. This is not your website password.")
-                HelpText("The APRSISCE/32 wiki directs licensed APRSISCE/32 users to email APRSISCE+owner@groups.io with their licensed name, callsign and passcode request. That service is specifically for APRSISCE/32 users. If you only use APRSIS64, ask its maintainer for passcode assistance and identify the software accurately. You can choose Receive only while arranging a passcode.")
+                HelpText("The APRSISCE/32 wiki asks licensed APRSISCE/32 users to email their licensed name and callsign. That service is specifically for APRSISCE/32 users; the draft accurately identifies APRSIS64. You can choose Receive only while arranging a passcode.")
+                val email=model.settings.getProperty("services.passcode_request_email")
+                androidx.compose.foundation.text.selection.SelectionContainer {
+                    Text(email,modifier=Modifier.clickable {
+                        runCatching {Desktop.getDesktop().mail(PasscodeRequest.mailto(email,call))}.onFailure {validation="No email application could be opened. Use Copy request and paste it into your email service."}
+                    },color=MaterialTheme.colors.primary,textDecoration=androidx.compose.ui.text.style.TextDecoration.Underline)
+                }
+                Row {
+                    HelpTextButton("Copy the passcode-request email address.",onClick={clipboard.setContents(java.awt.datatransfer.StringSelection(email),null)}) {HelpText("Copy address")}
+                    HelpTextButton("Copy the recipient, subject and message for your email application.",onClick={clipboard.setContents(java.awt.datatransfer.StringSelection("To: "+email+"\nSubject: "+PasscodeRequest.subject(call)+"\n\n"+PasscodeRequest.body(call)),null)}) {HelpText("Copy request")}
+                    HelpTextButton("Open an email draft with a bold name placeholder. Requires an email application that supports .eml drafts; nothing is sent automatically.",onClick={
+                        runCatching {
+                            val draft=model.directory.resolve("data/passcode-request.eml")
+                            java.nio.file.Files.writeString(draft,PasscodeRequest.formattedDraft(email,call))
+                            Desktop.getDesktop().open(draft.toFile())
+                        }.onFailure {validation="Unable to open a formatted email draft. Use the email link or Copy request instead."}
+                    }) {HelpText("Formatted draft")}
+                }
+                HelpText("Before sending, replace the name placeholder:")
+                Text("ENTER YOUR FULL LICENSED NAME HERE",fontWeight=FontWeight.Bold)
+                HelpText("The email includes your callsign. Formatted draft makes the name placeholder bold in compatible email apps; the email link and copied request use plain text.",fontSize=12.sp)
                 HelpTextButton("Open the preserved APRSISCE/32 wiki passcode instructions.",onClick={runCatching {Desktop.getDesktop().browse(URI(model.settings.getProperty("services.passcode_help_url")))}}){HelpText("Read APRSISCE/32 passcode instructions")}
                 HelpTextButton("Open the APRSIS64 project for maintainer support.",onClick={runCatching {Desktop.getDesktop().browse(URI(model.settings.getProperty("services.source_url")))}}){HelpText("APRSIS64 project & support")}
             }
@@ -505,16 +530,30 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
             }
             HelpField(UiHelp.field("Server URL or host:port"),host,{host=it},label={HelpText("Server URL or host:port")},enabled=preset<0,singleLine=true,modifier=Modifier.fillMaxWidth(),fill=true)
             LocationField("Receive-area center",lat,lon) {a,b->lat=a;lon=b}
-            Row(verticalAlignment=Alignment.CenterVertically) {HelpCheckbox(UiHelp.action("Connect on startup"),autoConnect,{autoConnect=it}); HelpText("Connect on startup")}
+            HelpText("Save & connect starts your connection and enables reconnect after outages and on restart. Choosing Disconnect keeps it off until you connect again.",fontSize=12.sp)
+            HelpOutlinedButton("Check these credentials with APRS-IS without saving them or sending messages or beacons.",enabled=!testing,onClick={
+                validation=ConnectionSetup.problem(call,if(receiveOnly) "-1" else pass).orEmpty()
+                if(validation.isBlank()) {
+                    testing=true;testResult="Testing APRS-IS login…"
+                    val testCall=call;val testPass=if(receiveOnly) "-1" else pass;val testHost=host
+                    testJob=connectionScope.launch {
+                        try {testResult=ConnectionProbe.test(testCall,testPass,testHost)}
+                        catch(cancelled:kotlinx.coroutines.CancellationException) {throw cancelled}
+                        catch(_:Exception) {testResult="Connection test failed. Check the server address and Internet connection."}
+                        finally {testing=false}
+                    }
+                }
+            }) {HelpText(if(testing) "Testing…" else "Test connection")}
+            if(testResult.isNotBlank()) androidx.compose.foundation.text.selection.SelectionContainer {Text(testResult)}
             HelpText("Your beacon position is separate: check Settings → My position before transmitting.",fontSize=12.sp)
             }
-            Row {HelpTextButton(UiHelp.action("Cancel"),onClick=dismiss){HelpText("Cancel")}; Spacer(Modifier.weight(1f)); HelpButton("Save your login and connect now. The startup preference controls future launches.",onClick={
+            Row {HelpTextButton(UiHelp.action("Cancel"),onClick=dismiss){HelpText("Cancel")}; Spacer(Modifier.weight(1f)); HelpButton("Save your login and connect now. Reconnect automatically until you explicitly disconnect.",enabled=!testing,onClick={
                 val credential=if(receiveOnly) "-1" else pass.trim()
                 validation=ConnectionSetup.problem(call,credential).orEmpty()
                 if(validation.isBlank() && runCatching {AprsEndpoint.parse(host)}.isFailure) validation="Enter a valid APRS-IS server hostname and port, or choose a server from the list."
                 if(validation.isBlank() && runCatching {MapLocation(lat.toDouble(),lon.toDouble())}.isFailure) validation="Enter a valid receive-area center and check its decoded coordinates."
                 if(validation.isBlank()) {
-                    if(model.connect(call,credential,host,lat.toDoubleOrNull()?:Double.NaN,lon.toDoubleOrNull()?:Double.NaN,autoConnect)) dismiss()
+                    if(model.connect(call,credential,host,lat.toDoubleOrNull()?:Double.NaN,lon.toDoubleOrNull()?:Double.NaN,true)) dismiss()
                     else validation=model.error.value
                 }
             }){HelpText("Save & connect")}}

@@ -25,3 +25,5 @@ Configuration policy
 - Keep port wiring edits transactional: maintain references across renames, never
   broaden routes when deleting their last target, and distinguish live status
   from an unapplied draft. Persist all functional choices in settings.toml.
+
+- Explicit user Disconnect must persist across restarts until Save & connect. Unexpected disconnections must retry automatically. A test login must not clear a deliberate disconnect or send beacons.

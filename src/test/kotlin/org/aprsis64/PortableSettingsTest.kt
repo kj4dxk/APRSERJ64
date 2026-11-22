@@ -83,6 +83,11 @@ class PortableSettingsTest {
             AppModel(folder).use { model ->
                 model.connectSaved()
                 assertEquals(AprsConnectionState.STOPPED, model.state.value)
+                assertTrue(model.connect("N1TEST-12", "12345", "127.0.0.1:${server.port}", 28.536725, -81.242932))
+            }
+            AppModel(folder).use {model->
+                model.connectSaved()
+                withTimeout(10_000) {while(model.state.value!=AprsConnectionState.VERIFIED) delay(20)}
             }
         }
     }

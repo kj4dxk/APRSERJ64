@@ -36,6 +36,7 @@ foundation_github_url = "https://github.com/APRSFoundation"
 foundation_legacy_url = "https://github.com/APRSFoundation/APRSISCE"
 legacy_source_url = "https://github.com/kj4dxk/APRSIS32"
 passcode_help_url = "https://github.com/kj4dxk/APRSIS32/blob/main/docs/manual/doc-passcode.md"
+passcode_request_email = "APRSISCE+owner@groups.io"
 
 [gps_defaults]
 tcp_endpoint = "127.0.0.1:10110"

@@ -15,7 +15,7 @@ internal object UiHelp {
   "All tools…" to "Open the searchable collection of station, weather, track, messaging and specialist tools.",
   "Radio & GPS ports…" to "Set up serial/network devices and wire their routes graphically. Changes remain a draft until Apply changes.",
   "Packet monitor…" to "Inspect raw received and transmitted packets. RX means received; TX means accepted by a local output, not confirmed remote reception.",
-  "Disconnect APRS-IS" to "Stop the Internet APRS connection. Separately configured radio/GPS ports remain active.",
+  "Disconnect APRS-IS" to "Stay disconnected, including after restart, until you choose Save & connect again. Separately configured radio/GPS ports remain active.",
   "Stop practice" to "Stop the isolated local demo. Practice messages and beacons do not go to public APRS-IS or RF.",
   "Practice with local demo" to "Explore sample stations, beacons and acknowledged chats on this PC without public APRS or radio transmissions.",
   "Try practice mode" to "Explore sample stations and messages before setting up your callsign. APRS traffic stays on this PC.",

@@ -17,7 +17,7 @@ A map opening at a particular place does not set your transmitting position. The
 2. Enter your **callsign with SSID**, such as your call followed by `-13`. Examples in this manual use `N0CALL`; replace them with your own identity.
 3. Enter your APRS-IS passcode. It is stored as readable text in `settings.toml`. An existing passcode for your callsign works across APRS clients. For a request, follow the [APRSIS32 passcode instructions](https://github.com/kj4dxk/APRSIS32/blob/main/docs/manual/doc-passcode.md), providing your licensed name, callsign and the application you actually use. The legacy service specifies APRSISCE/32 users.
 4. Choose a saved server or enter a custom host and port. The seeded endpoint is `rotate.aprs2.net:14580`.
-5. Check the **Receive-area center** location and its decoded preview. Coordinates, Google Maps coordinate links and Plus Codes are accepted. The radius is under **Settings → Receive area & filters**. **Connect on startup** is enabled by default.
+5. Check the **Receive-area center** location and its decoded preview. Coordinates, Google Maps coordinate links and Plus Codes are accepted. The radius is under **Settings → Receive area & filters**. Saving credentials with **Save & connect** also enables automatic reconnection.
 6. Select **Save & connect**. Wait for the connection state and station list to update.
 
 **Success check:** incoming stations appear, and a transmitting login shows **APRS-IS connected and verified**. Verification means the server permits transmission; it does not confirm delivery of a particular packet. A working socket or a visible map alone does not prove the login is verified. [Connection troubleshooting](../help/troubleshooting.md#connected-but-not-transmitting) explains the difference.
@@ -41,4 +41,9 @@ When APRS-IS is stopped, **Menu → Practice with local demo** supplies local te
 
 Next: [Learn the main window](workspace.md).
 
-Missing or malformed credentials prompt for correction. If the server rejects a numeric passcode, the editor opens with an explanation; receiving may continue, but APRS-IS transmission requires verification. **How do I get a passcode?** shows the preserved wiki instructions and their APRSISCE/32-only request-service limitation. **Disconnect APRS-IS** stops this session without changing the saved startup preference.
+Missing or malformed credentials prompt for correction. If the server rejects a numeric passcode, the editor opens with an explanation; receiving may continue, but APRS-IS transmission requires verification. **How do I get a passcode?** shows the preserved wiki instructions and their APRSISCE/32-only request-service limitation. **Disconnect APRS-IS** stays off across restarts until you choose **Save & connect**. Unexpected network failures retry automatically.
+
+
+**Test connection** checks the entered callsign and passcode with the selected server without saving settings, changing your normal connection preference, or sending beacons. Results distinguish authenticated, unverified/receive-only, and no server response. Editing the inputs clears the previous test result.
+
+The passcode-help email address can be selected, copied, or clicked to compose a request with your callsign. **Copy request** includes recipient, subject and body. **Formatted draft** opens an .eml message with a bold name placeholder in compatible email apps. Replace the name placeholder before sending; the app never sends the email itself.

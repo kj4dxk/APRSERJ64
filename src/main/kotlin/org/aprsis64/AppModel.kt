@@ -89,6 +89,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         } catch (_: Exception) { error.value = "Check connection settings and that this folder is writable."; return false }
     }
     fun connectSaved() {
+        if(!settings.getProperty("autoConnect", "true").toBoolean()) return
         connectionSetupIssue.value=ConnectionSetup.problem(settings.getProperty("callsign",""),settings.getProperty("passcode",""))
         if(connectionSetupIssue.value!=null) return
         if(settings.getProperty("autoConnect", "true").toBoolean())
