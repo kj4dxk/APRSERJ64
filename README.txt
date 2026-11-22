@@ -123,10 +123,12 @@ Do not distribute the internal createDistributable EXE alone: it needs its runti
 The top-level portable EXE contains that runtime and creates the required folders.
 The GitHub Actions workflow builds the portable EXE, not an MSI.
 
-ANDROID SHARING
-APRSISOSM includes the same core's common sources in OsmAnd-shared. Android retains
-its Java 17 toolchain and existing foreground service/database. Windows uses shared
-ChatSession with a JDBC adapter. Android database migration is not part of this work.
+ANDROID COMPANION
+The current APRSISOSM Android application is standalone and implements its own
+map, routing and APRS logic. It follows the Windows station-to-chat workflow,
+full-SSID conversation identity and durable outbox approach. Windows continues
+to use the aprs-core submodule with a JDBC chat adapter. See the Android repository
+for its current feature set, regional map requirements and operating limitations.
 
 GRAPHICS AND DIAGNOSTICS
 MapLibre Vulkan feeds Compose Direct3D12 on Windows. The Intel Iris Xe driver on the
