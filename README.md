@@ -2,7 +2,9 @@
 
 Portable Windows APRS mapping, conversations, beaconing, radio ports and operating tools.
 
-**Android · [Download APRSERJa.apk](https://github.com/kj4dxk/APRSERJa/releases/latest/download/APRSERJa.apk)** · [Android setup and release information](https://github.com/kj4dxk/APRSERJa). Prefer the classic Windows interface? [APRSIS32 downloads and manual](https://github.com/kj4dxk/APRSIS32).
+[Android · APRSERJa](https://github.com/kj4dxk/APRSERJa) · [iPhone, iPad, and Mac · APRSERJi](https://github.com/kj4dxk/APRSERJi)
+
+Prefer the classic Windows interface? [APRSIS32 downloads and manual](https://github.com/kj4dxk/APRSIS32).
 
 ## Get online
 
