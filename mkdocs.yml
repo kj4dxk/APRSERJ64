@@ -50,6 +50,7 @@ nav:
       - Filters: reference/filters.md
       - Query responses: reference/queries.md
       - Files and updates: reference/files.md
+      - Version numbering: reference/versioning.md
       - Compatibility and limits: reference/compatibility.md
       - Sources and credits: reference/credits.md
       - Maintain the manual: reference/maintaining.md

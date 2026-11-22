@@ -33,7 +33,7 @@ Each `[[objects]]` table defines one entry. The default column shows schema valu
 | `qru_group` | (empty) | QRU group (blank: not queryable) |
 | `query_only` | `false` | Transmit only when queried |
 | `shape` | `point` | Object geometry |
-| `vertices` | `[]` | Line/polygon vertices: latitude,longitude per line |
+| `vertices` | `[]` | Line/polygon vertices: coordinates, map link or Plus Code per line |
 | `line_style` | `j` | Multiline style (a–l) |
 | `area_type` | `4` | Area type |
 | `area_color` | `4` | Area color (0–15) |
