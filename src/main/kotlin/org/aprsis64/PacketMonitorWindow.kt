@@ -27,7 +27,7 @@ import java.time.format.DateTimeFormatter
     var paused by remember {mutableStateOf<List<TrafficEntry>?>(null)}
     var result by remember {mutableStateOf("")}
     val displayed=(paused ?: entries).filter {(!satellites || it.satellite) && (it.packet.contains(query,true)||it.port.contains(query,true)) && when(category){"RF"->it.port!="APRS-IS";"Duplicates"->it.duplicate;"Invalid"->it.invalid;else->true}}
-    Window(onCloseRequest=dismiss,title="Packets — APRSIS64",state=rememberWindowState(width=1100.dp,height=760.dp)) {
+    Window(icon=AppIcon.window,onCloseRequest=dismiss,title="Packets — APRSIS64",state=rememberWindowState(width=1100.dp,height=760.dp)) {
         MaterialTheme(colors=darkColors()) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
             Row {
                 OutlinedTextField(query,{query=it},label={Text("Callsign, path or port")},modifier=Modifier.weight(1f),singleLine=true)

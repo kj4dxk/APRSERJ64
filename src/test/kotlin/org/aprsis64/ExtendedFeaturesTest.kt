@@ -87,10 +87,10 @@ class ExtendedFeaturesTest {
    assertTrue((49 * size until size * size).all { alternate[it] == overlaid[it] })
   }
 
-  val tray = StationSymbols.trayIcon(32)
+  val tray = AppIcon.tray(32)
   assertEquals(32, tray.width)
-  assertEquals(0, tray.getRGB(0, 0) ushr 24)
-  assertTrue(0xFF0000CE.toInt() in tray.getRGB(0, 0, 32, 32, null, 0, 32))
+  assertEquals(0xFFFF0000.toInt(), tray.getRGB(0, 0))
+  assertTrue(0xFF0000FF.toInt() in tray.getRGB(0, 0, 32, 32, null, 0, 32))
  }
 
  @Test fun newPreferencesSurviveReloadAndSymbolsCoverTables() {

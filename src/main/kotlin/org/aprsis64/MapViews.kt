@@ -48,7 +48,7 @@ internal fun navigationSummary(model:AppModel,station:AprsStation):String {
  var trails by remember {mutableStateOf(preferences.getProperty("display.trails").toBoolean())}
  var prediction by remember {mutableStateOf(preferences.getProperty("tactical.dead_reckoning").toBoolean())}
  var error by remember {mutableStateOf("")}
- Window(onCloseRequest=dismiss,title=call,state=rememberWindowState(width=900.dp,height=700.dp)) {
+ Window(icon=AppIcon.window,onCloseRequest=dismiss,title=call,state=rememberWindowState(width=900.dp,height=700.dp)) {
   MaterialTheme(colors=darkColors()) {androidx.compose.material.Surface {Column(Modifier.fillMaxSize()) {
    Row {TextButton(onClick={editing=!editing}){Text("View settings")};Text(call,Modifier.padding(12.dp))}
    if(editing) {

@@ -48,7 +48,7 @@ private val DigiColor=Color(0xFFD3A7FF)
     val issues=draft.issues()
     LaunchedEffect(port?.id,port?.protocol) {if(port?.protocol !in rawRadioProtocols) wiring=false}
     fun close() {if(draft.dirty) confirm="close" else dismiss()}
-    Window(onCloseRequest={close()},title="Ports & connections — APRSIS64",
+    Window(icon=AppIcon.window,onCloseRequest={close()},title="Ports & connections — APRSIS64",
         state=rememberWindowState(placement=WindowPlacement.Maximized,width=1500.dp,height=940.dp)) {
         MaterialTheme(colors=darkColors(primary=ReceiveColor,background=WorkspaceBackground,surface=WorkspacePanel)) {
             Surface(Modifier.fillMaxSize()) {Column(Modifier.fillMaxSize()) {
@@ -442,7 +442,7 @@ private fun profileDescription(protocol: String)=when(protocol) {
     val protocol=values["protocol"].orEmpty();val receiveOnly=protocol in PortPreferences.readOnly
     val validName=values["name"].orEmpty().let {it.isNotBlank() && it==it.trim() && it.length<=64 && draft.devices.none {p->p.name==it}}
     val valid=validName && runCatching {PortConfig(values.properties())}.isSuccess
-    DialogWindow(onCloseRequest=dismiss,title="Add a port",state=rememberDialogState(width=650.dp,height=820.dp)) {
+    DialogWindow(icon=AppIcon.window,onCloseRequest=dismiss,title="Add a port",state=rememberDialogState(width=650.dp,height=820.dp)) {
         MaterialTheme(colors=darkColors(primary=ReceiveColor,surface=WorkspacePanel,background=WorkspaceBackground)) {Surface {Column(Modifier.fillMaxSize().padding(24.dp)) {
             Text(listOf("1 · Choose your device","2 · Connect your device","3 · Review its connections")[step],fontSize=23.sp,fontWeight=FontWeight.Bold)
             LinearProgressIndicator((step+1)/3f,Modifier.fillMaxWidth().padding(vertical=16.dp))

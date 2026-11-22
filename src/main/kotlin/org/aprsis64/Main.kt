@@ -71,7 +71,7 @@ fun main(args: Array<String>) {
     else model.connectSaved()
     val qaMetrics=startQaMetrics(model)
     application {
-        Window(onCloseRequest={ qaMetrics?.cancel(); model.close(); exitApplication() }, title="APRSIS64",
+        Window(icon=AppIcon.window,onCloseRequest={ qaMetrics?.cancel(); model.close(); exitApplication() }, title="APRSIS64",
             state=rememberWindowState(width=1480.dp,height=900.dp)) {
             MaterialTheme(colors=darkColors(primary=Accent,background=Color(0xFF0E1B22),surface=Panel)) {
                 Surface(Modifier.fillMaxSize()) { ProvideMapPresentationHost(host=rememberAwtComposeMapPresentationHost(window)) { App(model) } }
@@ -417,7 +417,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     var autoConnect by remember {mutableStateOf(model.settings.getProperty("autoConnect","true").toBoolean())}
     var lat by remember {mutableStateOf(model.settings.getProperty("latitude","28.536725"))}
     var lon by remember {mutableStateOf(model.settings.getProperty("longitude","-81.242932"))}
-    DialogWindow(onCloseRequest=dismiss,title="Connection",state=rememberDialogState(width=560.dp,height=650.dp)) {
+    DialogWindow(icon=AppIcon.window,onCloseRequest=dismiss,title="Connection",state=rememberDialogState(width=560.dp,height=650.dp)) {
         Surface {Column(Modifier.fillMaxSize().padding(22.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             Text("APRS-IS connection",fontSize=22.sp)
             Row {

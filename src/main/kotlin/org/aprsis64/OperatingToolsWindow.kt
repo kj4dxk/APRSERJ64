@@ -50,7 +50,7 @@ import java.time.Instant
  var zoomMin by remember {mutableStateOf("10")};var zoomMax by remember {mutableStateOf("13")}
  var plan by remember {mutableStateOf<List<Tile>>(emptyList())}
  fun send(peer:String,text:String){scope.launch {result=runCatching {model.send(peer,text);"Queued to $peer; see Messages for delivery"}.getOrElse {"Unable to queue: check callsigns and message length"}}}
- Window(onCloseRequest=dismiss,title="Tools",state=rememberWindowState(width=1100.dp,height=800.dp)) {
+ Window(icon=AppIcon.window,onCloseRequest=dismiss,title="Tools",state=rememberWindowState(width=1100.dp,height=800.dp)) {
   LaunchedEffect(initialTab,requestId) {tab=initialTab;result="";window.toFront();window.requestFocus()}
   MaterialTheme(colors=MaterialTheme.colors) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
    Row(Modifier.weight(1f)) {

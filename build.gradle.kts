@@ -36,6 +36,7 @@ compose.desktop {
         // Vulkan shares textures with Compose's Direct3D12 host; Intel WGL import failed in testing.
         jvmArgs += listOf("--enable-native-access=ALL-UNNAMED", "-Xmx768m")
         nativeDistributions {
+            windows { iconFile.set(project.file("assets/aprsis64.ico")) }
             packageName = "APRSIS64"
             packageVersion = "0.8.0"
             description = "Portable APRS mapping, messaging and radio gateway"

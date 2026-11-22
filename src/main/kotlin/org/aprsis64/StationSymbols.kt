@@ -2,16 +2,11 @@
 package org.aprsis64
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
-import org.jetbrains.skia.Data
-import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.Image
-import org.jetbrains.skia.Surface
-import org.jetbrains.skia.svg.SVGDOM
 import java.awt.Color
 import java.awt.Font
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
-import javax.imageio.ImageIO
 
 /** Renders the bundled APRS vectors at the resolution requested by each UI surface. */
 object StationSymbols {
@@ -74,28 +69,8 @@ object StationSymbols {
   }
  }
 
- fun trayIcon(pixels: Int): BufferedImage = render('/', '!'.code, pixels).use { it.toAwtImage() }
-
  private fun render(table: Char, code: Int, pixels: Int): Image {
   val directory = if (table == '/') "primary" else "alternate"
-  val resource = "/aprs-symbols/$directory/${code.toString(16)}.svg"
-  val bytes = checkNotNull(javaClass.getResourceAsStream(resource)) {
-   "Missing APRS symbol resource $resource"
-  }.use { it.readBytes() }
-
-  return Data.makeFromBytes(bytes).use { data ->
-   SVGDOM(data).use { svg ->
-    Surface.makeRasterN32Premul(pixels, pixels).use { surface ->
-     svg.setContainerSize(pixels.toFloat(), pixels.toFloat())
-     svg.render(surface.canvas)
-     surface.makeImageSnapshot()
-    }
-   }
-  }
+  return renderSvg("/aprs-symbols/$directory/${code.toString(16)}.svg", pixels)
  }
-
- private fun Image.toAwtImage(): BufferedImage =
-  checkNotNull(encodeToData(EncodedImageFormat.PNG)).use { png ->
-   ImageIO.read(png.bytes.inputStream())
-  }
 }

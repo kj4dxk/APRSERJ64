@@ -26,7 +26,7 @@ import kotlinx.serialization.json.*
     var entity by remember {mutableStateOf(0)}
     var failure by remember {mutableStateOf("")}
     fun properties(values: Map<String,String>)=Properties().apply {values.forEach {(key,value)->setProperty(key,value)}}
-    DialogWindow(onCloseRequest=dismiss,title="Settings",state=rememberDialogState(width=1000.dp,height=790.dp)) {
+    DialogWindow(icon=AppIcon.window,onCloseRequest=dismiss,title="Settings",state=rememberDialogState(width=1000.dp,height=790.dp)) {
         MaterialTheme(colors=MaterialTheme.colors) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
             Text("Settings",style=MaterialTheme.typography.h5)
             Spacer(Modifier.height(12.dp))
