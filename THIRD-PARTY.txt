@@ -35,6 +35,10 @@ redistribute that framework. The bundled Java runtime retains runtime/legal.
 
 TomlJ 1.1.1: Apache-2.0. https://github.com/tomlj/tomlj/tree/1.1.1
 
+Google Open Location Code 1.0.4 (Plus Code decoding and short-code recovery): Apache-2.0.
+https://github.com/google/open-location-code
+Its dependency license is retained in the portable payload.
+
 jSerialComm 2.11.0: LGPL-3.0 / Apache-2.0 dual license.
 https://github.com/Fazecast/jSerialComm
 Bundled license and native-library notices must accompany distributions.

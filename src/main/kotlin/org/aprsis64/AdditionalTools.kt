@@ -17,25 +17,25 @@ import net.osmand.shared.aprs.*
  var issuesOnly by remember {mutableStateOf(false)}
  var query by remember {mutableStateOf("")};var result by remember {mutableStateOf("")}
  if(tab=="Email") {
-  Text("Gateway: ${model.settings.getProperty("messaging.email_gateway")}")
-  OutlinedTextField(email,{email=it},label={Text("Email address")},singleLine=true,modifier=Modifier.fillMaxWidth())
-  OutlinedTextField(body,{body=it},label={Text("Email text")},modifier=Modifier.fillMaxWidth())
+  HelpText("Gateway: ${model.settings.getProperty("messaging.email_gateway")}")
+  HelpField(UiHelp.field("Email address"),email,{email=it},label={HelpText("Email address")},singleLine=true,modifier=Modifier.fillMaxWidth(),fill=true)
+  HelpField(UiHelp.field("Email text"),body,{body=it},label={HelpText("Email text")},modifier=Modifier.fillMaxWidth(),fill=true)
   val parts=runCatching {EmailMessages.packets(email,body)}.getOrNull()
-  Text("${body.length}/300 characters · ${parts?.size?:0} gateway messages (long text sends separate numbered emails)")
-  Button(onClick={scope.launch {result=runCatching {model.database.enqueueParts(model.account.value,model.settings.getProperty("messaging.email_gateway"),requireNotNull(parts));"Queued; gateway replies appear in Messages"}.getOrElse {"Unable to queue email"}}},enabled=parts!=null){Text("Send email")}
+  HelpText("${body.length}/300 characters · ${parts?.size?:0} gateway messages (long text sends separate numbered emails)")
+  HelpButton(UiHelp.action("Send email"),onClick={scope.launch {result=runCatching {model.database.enqueueParts(model.account.value,model.settings.getProperty("messaging.email_gateway"),requireNotNull(parts));"Queued; gateway replies appear in Messages"}.getOrElse {"Unable to queue email"}}},enabled=parts!=null){HelpText("Send email")}
  }else {
-  OutlinedTextField(query,{query=it},label={Text(if(tab=="Platforms")"Callsign or platform" else "Callsign or frequency")},singleLine=true,modifier=Modifier.fillMaxWidth())
-  if(tab=="Frequency")Row {Checkbox(issuesOnly,{issuesOnly=it});Text("Only incomplete or malformed frequency reports")}
+  HelpField(UiHelp.field(if(tab=="Platforms")"Callsign or platform" else "Callsign or frequency"),query,{query=it},label={HelpText(if(tab=="Platforms")"Callsign or platform" else "Callsign or frequency")},singleLine=true,modifier=Modifier.fillMaxWidth(),fill=true)
+  if(tab=="Frequency")Row {HelpCheckbox(UiHelp.action("Only incomplete or malformed frequency reports"),issuesOnly,{issuesOnly=it});HelpText("Only incomplete or malformed frequency reports")}
   val live=stations.map {it.callsign}.toSet()
   val rows=metadata.values.filter {it.call in live && (tab=="Platforms" || it.frequency!=null || it.frequencyIssue) && (!issuesOnly || it.frequencyIssue) && (it.call.contains(query,true) || it.platform.contains(query,true) || it.frequency?.mhz.toString().contains(query))}.sortedBy {if(tab=="Platforms")it.platform+it.call else it.frequency?.mhz.toString()+it.call}
-  if(rows.isEmpty())Text("No matching received stations")
+  if(rows.isEmpty())HelpText("No matching received stations")
   rows.forEach {entry->
-   Row {Text(entry.call,color=MaterialTheme.colors.primary);TextButton(onClick={stations.firstOrNull {it.callsign==entry.call}?.let {model.beaconCenter.value=AprsSpatial.fix(it)}}){Text("Locate")}}
-   if(tab=="Frequency" && entry.frequencyIssue)Text("Missing tone or malformed MHz specification",color=MaterialTheme.colors.error)
-   if(tab=="Platforms")Text("${entry.platform} · ${if(entry.rf)"Heard on RF" else "APRS-IS"} · ${if(entry.messageCapable)"Messaging advertised" else "Messaging not advertised"}")
-   entry.frequency?.let {f->Text("${"%.3f".format(java.util.Locale.US,f.mhz)} MHz · offset ${f.offsetMhz?.let {"$it MHz"}?:"unspecified"} · tone ${f.tone?:"unspecified"}"+(f.rangeMiles?.let {" · range $it miles"}?:""))}
+   Row {HelpText(entry.call,color=MaterialTheme.colors.primary);HelpTextButton(UiHelp.action("Locate"),onClick={stations.firstOrNull {it.callsign==entry.call}?.let {model.beaconCenter.value=AprsSpatial.fix(it)}}){HelpText("Locate")}}
+   if(tab=="Frequency" && entry.frequencyIssue)HelpText("Missing tone or malformed MHz specification",color=MaterialTheme.colors.error)
+   if(tab=="Platforms")HelpText("${entry.platform} · ${if(entry.rf)"Heard on RF" else "APRS-IS"} · ${if(entry.messageCapable)"Messaging advertised" else "Messaging not advertised"}")
+   entry.frequency?.let {f->HelpText("${"%.3f".format(java.util.Locale.US,f.mhz)} MHz · offset ${f.offsetMhz?.let {"$it MHz"}?:"unspecified"} · tone ${f.tone?:"unspecified"}"+(f.rangeMiles?.let {" · range $it miles"}?:""))}
    Divider()
   }
  }
- if(result.isNotEmpty())Text(result)
+ if(result.isNotEmpty())HelpText(result)
 }

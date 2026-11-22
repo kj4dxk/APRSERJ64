@@ -124,70 +124,70 @@ fun main(args: Array<String>) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colors.background)) {
         Row(Modifier.fillMaxWidth().background(Panel).padding(18.dp,12.dp),verticalAlignment=Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(if(demo) "Practice · $account" else account.ifBlank {"Set up your station"},color=Accent,fontWeight=FontWeight.Bold)
-                Text(when(connection) { AprsConnectionState.VERIFIED->"Connected · transmit ready"; AprsConnectionState.RECEIVING->"Connected · receive only"; AprsConnectionState.STOPPED->"Disconnected"; else->connection.name.lowercase().replaceFirstChar {it.uppercase()} },color=Muted,fontSize=12.sp)
+                HelpText(if(demo) "Practice · $account" else account.ifBlank {"Set up your station"},color=Accent,fontWeight=FontWeight.Bold)
+                HelpText(connectionLabel(connection,demo),color=Muted,fontSize=12.sp)
             }
-            OutlinedButton(onClick={settings=true}) {Text(if(connection==AprsConnectionState.STOPPED) "Connect" else "Connection")}
+            HelpOutlinedButton(UiHelp.action(if(connection==AprsConnectionState.STOPPED) "Connect" else "Connection"),onClick={settings=true}) {HelpText(if(connection==AprsConnectionState.STOPPED) "Connect" else "Connection")}
             Spacer(Modifier.width(10.dp))
-            Button(onClick={model.transmitBeacon()},enabled=beacon.enabled && account.isNotBlank()) {Icon(AppIcons.Send,null,Modifier.size(16.dp));Spacer(Modifier.width(6.dp));Text("Beacon now")}
+            HelpButton(UiHelp.action("Beacon now"),onClick={model.transmitBeacon()},enabled=beacon.enabled && account.isNotBlank()) {Icon(AppIcons.Send,null,Modifier.size(16.dp));Spacer(Modifier.width(6.dp));HelpText("Beacon now")}
             Spacer(Modifier.width(10.dp))
-            OutlinedButton(onClick={preferences=true}) {Icon(AppIcons.Settings,null,Modifier.size(18.dp));Spacer(Modifier.width(6.dp));Text("Settings")}
+            HelpOutlinedButton(UiHelp.action("Settings"),onClick={preferences=true}) {Icon(AppIcons.Settings,null,Modifier.size(18.dp));Spacer(Modifier.width(6.dp));HelpText("Settings")}
             Box {
-                TextButton(onClick={appMenu=true}) {Icon(AppIcons.Menu,null);Spacer(Modifier.width(6.dp));Text("Menu")}
+                HelpTextButton(UiHelp.action("Menu"),onClick={appMenu=true}) {Icon(AppIcons.Menu,null);Spacer(Modifier.width(6.dp));HelpText("Menu")}
                 DropdownMenu(expanded=appMenu,onDismissRequest={appMenu=false}) {
-                    DropdownMenuItem(onClick={appMenu=false;openTool("Station")}) {Text("Station details")}
-                    DropdownMenuItem(onClick={appMenu=false;openTool("Weather")}) {Text("Weather reports")}
-                    DropdownMenuItem(onClick={appMenu=false;openTool("Offline")}) {Text("Download maps")}
-                    DropdownMenuItem(onClick={appMenu=false;openTool("Station")}) {Text("All tools…")}
+                    HelpMenuItem(UiHelp.action("Station details"),onClick={appMenu=false;openTool("Station")}) {HelpText("Station details")}
+                    HelpMenuItem(UiHelp.action("Weather reports"),onClick={appMenu=false;openTool("Weather")}) {HelpText("Weather reports")}
+                    HelpMenuItem(UiHelp.action("Download maps"),onClick={appMenu=false;openTool("Offline")}) {HelpText("Download maps")}
+                    HelpMenuItem(UiHelp.action("All tools…"),onClick={appMenu=false;openTool("Station")}) {HelpText("All tools…")}
                     Divider()
-                    DropdownMenuItem(onClick={appMenu=false;portWorkspace=true}) {Text("Radio & GPS ports…")}
-                    DropdownMenuItem(onClick={appMenu=false;packetMonitor=true}) {Text("Packet monitor…")}
+                    HelpMenuItem(UiHelp.action("Radio & GPS ports…"),onClick={appMenu=false;portWorkspace=true}) {HelpText("Radio & GPS ports…")}
+                    HelpMenuItem(UiHelp.action("Packet monitor…"),onClick={appMenu=false;packetMonitor=true}) {HelpText("Packet monitor…")}
                     Divider()
-                    if(connection==AprsConnectionState.STOPPED) DropdownMenuItem(onClick={appMenu=false;model.localDemo()}) {Text("Practice with local demo")}
-                    else DropdownMenuItem(onClick={appMenu=false;model.disconnect(remember=true)}) {Text(if(demo) "Stop practice" else "Disconnect APRS-IS")}
-                    DropdownMenuItem(onClick={appMenu=false;about=true}) {Text("About & license")}
+                    if(connection==AprsConnectionState.STOPPED) HelpMenuItem(UiHelp.action("Practice with local demo"),onClick={appMenu=false;model.localDemo()}) {HelpText("Practice with local demo")}
+                    else HelpMenuItem(UiHelp.action(if(demo) "Stop practice" else "Disconnect APRS-IS"),onClick={appMenu=false;model.disconnect(remember=true)}) {HelpText(if(demo) "Stop practice" else "Disconnect APRS-IS")}
+                    HelpMenuItem(UiHelp.action("About & license"),onClick={appMenu=false;about=true}) {HelpText("About & license")}
                 }
             }
         }
-        if(error.isNotBlank()) Text(error,Modifier.fillMaxWidth().background(Color(0xFF6B332B)).padding(10.dp))
+        if(error.isNotBlank()) HelpText(error,Modifier.fillMaxWidth().background(Color(0xFF6B332B)).padding(10.dp))
         if(notices.isNotEmpty()) Row(Modifier.fillMaxWidth().background(Panel).padding(horizontal=12.dp)) {
-            Text(notices.last().text,Modifier.weight(1f),fontSize=12.sp)
-            TextButton(onClick={openTool("Alerts")}) {Text("View alerts")};TextButton(onClick={model.activity.dismiss()}){Text("Dismiss")}
+            HelpText(notices.last().text,Modifier.weight(1f),fontSize=12.sp)
+            HelpTextButton(UiHelp.action("View alerts"),onClick={openTool("Alerts")}) {HelpText("View alerts")};HelpTextButton(UiHelp.action("Dismiss"),onClick={model.activity.dismiss()}){HelpText("Dismiss")}
         }
         Row(Modifier.weight(1f)) {
             Column(Modifier.width(225.dp).fillMaxHeight().background(Panel).padding(14.dp)) {
                 Row(verticalAlignment=Alignment.CenterVertically) {
-                    Text("STATIONS",Modifier.weight(1f),color=Muted,fontSize=12.sp)
+                    HelpText("STATIONS",Modifier.weight(1f),color=Muted,fontSize=12.sp)
                     Box {
                         ActionIcon(AppIcons.MoreVert,"Station list options") {listMenu=true}
                         DropdownMenu(expanded=listMenu,onDismissRequest={listMenu=false}) {
-                            DropdownMenuItem(onClick={listMenu=false;val p=java.util.Properties().apply {putAll(model.settings);setProperty("display.search",search);setProperty("display.kind",kind);setProperty("display.sort",sort);setProperty("display.tracking_calls",encodedNames(tracking.toList()))};model.savePreferences(p,model.entities)}) {Text("Save as my starting view")}
-                            DropdownMenuItem(onClick={listMenu=false;search="";kind="all"}) {Text("Clear filters")}
+                            HelpMenuItem(UiHelp.action("Save as my starting view"),onClick={listMenu=false;val p=java.util.Properties().apply {putAll(model.settings);setProperty("display.search",search);setProperty("display.kind",kind);setProperty("display.sort",sort);setProperty("display.tracking_calls",encodedNames(tracking.toList()))};model.savePreferences(p,model.entities)}) {HelpText("Save as my starting view")}
+                            HelpMenuItem(UiHelp.action("Clear filters"),onClick={listMenu=false;search="";kind="all"}) {HelpText("Clear filters")}
                         }
                     }
                 }
-                OutlinedTextField(search,{search=it},label={Text("Find station")},singleLine=true,modifier=Modifier.fillMaxWidth())
+                HelpField(UiHelp.field("Find station"),search,{search=it},label={HelpText("Find station")},singleLine=true,modifier=Modifier.fillMaxWidth(),fill=true)
                 ChoiceMenu("Show",kind,listOf("all" to "All stations","weather" to "Weather","moving" to "Moving stations","objects" to "Objects & items","rf" to "Heard on radio","message-capable" to "Messaging stations","frequency" to "Repeaters / frequency","frequency-issues" to "Frequency issues","telemetry" to "Telemetry","status" to "Status reports","altitude" to "Altitude reports","direct-rf" to "Direct radio","igates" to "IGates","ambiguous" to "Approximate positions","mic-e" to "Mic-E"),Modifier.fillMaxWidth()) {kind=it}
                 ChoiceMenu("Sort by",sort,listOf("callsign" to "Callsign","recent" to "Most recent","distance" to "Nearest first"),Modifier.fillMaxWidth()) {sort=it}
-                Text("${filtered.size} / ${stations.size}",Modifier.padding(vertical=6.dp),fontSize=16.sp)
-                if(search.isNotBlank() || kind!="all") TextButton(onClick={search="";kind="all"}) {Text("Clear filters")}
+                HelpText("${filtered.size} / ${stations.size}",Modifier.padding(vertical=6.dp),fontSize=16.sp,help="${filtered.size} stations match the current list filters out of ${stations.size} received stations. Search, category and age limits affect this count.")
+                if(search.isNotBlank() || kind!="all") HelpTextButton(UiHelp.action("Clear filters"),onClick={search="";kind="all"}) {HelpText("Clear filters")}
                 if(account.isBlank()) {
-                    Text("Start with your callsign and location, or explore without going online.",fontSize=12.sp,color=Muted)
-                    OutlinedButton(onClick={model.localDemo()},modifier=Modifier.fillMaxWidth()) {Text("Try practice mode")}
+                    HelpText("Start with your callsign and location, or explore without going online.",fontSize=12.sp,color=Muted)
+                    HelpOutlinedButton(UiHelp.action("Try practice mode"),onClick={model.localDemo()},modifier=Modifier.fillMaxWidth(),fill=true) {HelpText("Try practice mode")}
                 }
-                if(stations.isNotEmpty() && filtered.isEmpty()) Text("No matching stations. Clear filters to see everyone.",fontSize=12.sp,color=Muted)
-                if(selected!=null) TextButton(onClick={if(selected !in tracking && tracking.size<8)tracking.add(selected!!)}){Text("Track selected station")}
+                if(stations.isNotEmpty() && filtered.isEmpty()) HelpText("No matching stations. Clear filters to see everyone.",fontSize=12.sp,color=Muted)
+                if(selected!=null) HelpTextButton(UiHelp.action("Track selected station"),onClick={if(selected !in tracking && tracking.size<8)tracking.add(selected!!)}){HelpText("Track selected station")}
 
                 LazyColumn(Modifier.weight(1f)) { items(filtered,key={it.callsign}) { station ->
                     Column(Modifier.fillMaxWidth().clickable { selected=station.callsign }.padding(vertical=10.dp)) {
-                        Text(TacticalPreferences.aliases(model.settings)[station.callsign]?.let {"$it (${station.callsign})"} ?: station.callsign,color=if(selected==station.callsign) Accent else Color.White,fontWeight=FontWeight.Bold)
-                        Text("%.3f, %.3f".format(station.latitude,station.longitude),fontSize=11.sp,color=Muted)
+                        HelpText(TacticalPreferences.aliases(model.settings)[station.callsign]?.let {"$it (${station.callsign})"} ?: station.callsign,color=if(selected==station.callsign) Accent else Color.White,fontWeight=FontWeight.Bold)
+                        HelpText("%.3f, %.3f".format(station.latitude,station.longitude),fontSize=11.sp,color=Muted)
                     }; Divider(color=Color(0xFF2B3D46))
                 } }
-                Text(if(beacon.enabled) "Beacon: ${beacon.source}" else "Beacon: Off",fontSize=12.sp,color=Accent)
-                Text(beacon.detail,fontSize=11.sp,color=Muted)
-                portStatuses.forEach {p->Text("${p.name}: ${p.detail} · RX ${p.received} / TX ${p.transmitted}"+(if(p.dropped>0) " / Dropped ${p.dropped}" else ""),fontSize=11.sp,color=Muted)}
-                beacon.sentAt?.let {Text("Last sent "+DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(it)),fontSize=11.sp,color=Muted)}
+                HelpText(if(beacon.enabled) "Beacon position: ${beacon.source.lowercase()}" else "Beaconing off",fontSize=12.sp,color=Accent)
+                HelpText(beaconDetail(beacon.detail),fontSize=11.sp,color=Muted)
+                portStatuses.forEach {p->HelpText("${p.name}: ${p.detail} · RX ${p.received} / TX ${p.transmitted}"+(if(p.dropped>0) " / Dropped ${p.dropped}" else ""),fontSize=11.sp,color=Muted)}
+                beacon.sentAt?.let {HelpText("Last sent "+DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(it)),fontSize=11.sp,color=Muted)}
             }
             val own=beacon.position?.takeIf {account.isNotBlank()}?.let {p -> AprsStation(account,p.fix.latitude,p.fix.longitude,
                 model.settings.getProperty("beacon.symbol_table").single(),model.settings.getProperty("beacon.symbol").single(),"",p.fix.timeMillis,p.course,p.speedKnots,p.altitudeMeters)}
@@ -202,9 +202,9 @@ fun main(args: Array<String>) {
     if(preferences) PreferencesDialog(model) {preferences=false}
     if(packetMonitor) PacketMonitorWindow(model) {packetMonitor=false}
     if(portWorkspace) PortWorkspaceWindow(model) {portWorkspace=false}
-    if(about) AlertDialog(onDismissRequest={about=false},title={Text("APRSIS64 0.8.0")},text={
-        Text("Copyright 2026 APRSIS64 contributors.\nAGPL-3.0. No warranty.\n\nContains GPLv3 shared components. Third-party license notices are included in the app folder.")
-    },confirmButton={TextButton(onClick={Desktop.getDesktop().browse(URI(model.settings.getProperty("services.source_url")))}) {Text("Source & license")}},dismissButton={TextButton(onClick={about=false}) {Text("Close")}})
+    if(about) AlertDialog(onDismissRequest={about=false},title={HelpText("APRSIS64 0.8.0")},text={
+        HelpText("Copyright 2026 APRSIS64 contributors.\nAGPL-3.0. No warranty.\n\nContains GPLv3 shared components. Third-party license notices are included in the app folder.")
+    },confirmButton={HelpTextButton(UiHelp.action("Source & license"),onClick={Desktop.getDesktop().browse(URI(model.settings.getProperty("services.source_url")))}) {HelpText("Source & license")}},dismissButton={HelpTextButton(UiHelp.action("Close"),onClick={about=false}) {HelpText("Close")}})
 }
 
 private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
@@ -240,8 +240,9 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     val geometry=remember(stations,selected,selectedPath,warnings,clock,preferencesRevision,imported,orbits) {tacticalGeometry(stations,selected,selectedPath?.let {mapOf(it.call to it)}.orEmpty(),warnings,viewSettings,System.currentTimeMillis())+imported.shapes+model.satellites.geometry(System.currentTimeMillis())}
     var trail by remember(selected) {mutableStateOf<List<AprsFix>>(emptyList())}
     var follow by remember {mutableStateOf(forceFollow || viewSettings.getProperty("display.follow").toBoolean())}
-    var gotoLat by remember {mutableStateOf("")};var gotoLon by remember {mutableStateOf("")}
-    var navigationError by remember {mutableStateOf("")}
+    var locationInput by remember {mutableStateOf("")}
+    var coordinateReference by remember {mutableStateOf<MapLocation?>(null)}
+    val locationResult=remember(locationInput,coordinateReference) {CoordinateInput.parse(locationInput,coordinateReference)}
     var showCoordinates by remember {mutableStateOf(false)}
     val scope=rememberCoroutineScope()
     LaunchedEffect(selected,historyRevision) {trail=selected?.let {model.archive.track(it)} ?: emptyList()}
@@ -298,10 +299,10 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
         }
     }
     val followed=stations.firstOrNull {it.callsign==selected}
-    chosenPoint?.let {point->AlertDialog(onDismissRequest={chosenPoint=null},title={Text(point.comment)},text={Text("${point.latitude}, ${point.longitude}")},confirmButton={TextButton(onClick={chosenPoint=null}){Text("Close")}})}
-    chosenAlert?.let {alert->AlertDialog(onDismissRequest={chosenAlert=null},title={Text("${alert.severity}: ${alert.event}")},
-        text={Column(Modifier.heightIn(max=400.dp).verticalScroll(rememberScrollState())) {Text(alert.headline);Text(alert.description);Text("Expires ${alert.expires}")}},
-        confirmButton={TextButton(onClick={chosenAlert=null}) {Text("Close")}})}
+    chosenPoint?.let {point->AlertDialog(onDismissRequest={chosenPoint=null},title={HelpText(point.comment)},text={HelpText("${point.latitude}, ${point.longitude}")},confirmButton={HelpTextButton(UiHelp.action("Close"),onClick={chosenPoint=null}){HelpText("Close")}})}
+    chosenAlert?.let {alert->AlertDialog(onDismissRequest={chosenAlert=null},title={HelpText("${alert.severity}: ${alert.event}")},
+        text={Column(Modifier.heightIn(max=400.dp).verticalScroll(rememberScrollState())) {HelpText(alert.headline);HelpText(alert.description);HelpText("Expires ${alert.expires}")}},
+        confirmButton={HelpTextButton(UiHelp.action("Close"),onClick={chosenAlert=null}) {HelpText("Close")}})}
     LaunchedEffect(mapReady,follow,followed?.latitude,followed?.longitude) {if(mapReady && follow && followed!=null) state.animateCamera(CameraUpdate(center=Position(followed.longitude,followed.latitude),bearing=0.0,pitch=0.0))}
     LaunchedEffect(beaconCenter,mapReady) {if(mapReady) beaconCenter?.let {state.animateCamera(CameraUpdate(center=Position(it.longitude,it.latitude),bearing=0.0,pitch=0.0))}}
     Box(modifier) {
@@ -311,21 +312,26 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
             Row {
                 ActionIcon(AppIcons.Add,"Zoom in") {scope.launch {state.animateCamera(CameraUpdate(zoom=(state.cameraPosition.zoom+1).coerceAtMost(viewSettings.getProperty("map.maximum_zoom").toDouble())))}}
                 ActionIcon(AppIcons.Remove,"Zoom out") {scope.launch {state.animateCamera(CameraUpdate(zoom=(state.cameraPosition.zoom-1).coerceAtLeast(viewSettings.getProperty("map.minimum_zoom").toDouble())))}}
-                TextButton(onClick={scope.launch {state.animateCamera(CameraUpdate(center=initial,bearing=0.0,pitch=0.0))}}){Text("Home")}
-                TextButton(onClick={follow=!follow},enabled=followed!=null || follow){Text(if(follow) "Following" else "Follow station")}
-                ActionIcon(AppIcons.Search,"Go to coordinates") {showCoordinates=!showCoordinates;navigationError=""}
+                HelpTextButton(UiHelp.action("Home"),onClick={scope.launch {state.animateCamera(CameraUpdate(center=initial,bearing=0.0,pitch=0.0))}}){HelpText("Home")}
+                HelpTextButton(UiHelp.action(if(follow) "Following" else "Follow station"),onClick={follow=!follow},enabled=followed!=null || follow){HelpText(if(follow) "Following" else "Follow station")}
+                ActionIcon(AppIcons.Search,"Go to coordinates") {showCoordinates=!showCoordinates}
             }
-            if(showCoordinates) Row {
-                OutlinedTextField(gotoLat,{gotoLat=it},Modifier.width(100.dp),label={Text("Latitude")},singleLine=true)
-                OutlinedTextField(gotoLon,{gotoLon=it},Modifier.width(110.dp),label={Text("Longitude")},singleLine=true)
-                TextButton(onClick={runCatching {AprsFix(gotoLat.toDouble(),gotoLon.toDouble(),0)}.onSuccess {p->follow=false;navigationError="";scope.launch {state.animateCamera(CameraUpdate(center=Position(p.longitude,p.latitude),bearing=0.0,pitch=0.0))}}.onFailure {navigationError="Enter latitude -90 to 90 and longitude -180 to 180."}}){Text("Go")}
+            if(showCoordinates) Column(Modifier.width(400.dp)) {
+                Row(verticalAlignment=Alignment.CenterVertically) {
+                    HelpField(UiHelp.field("Location"),locationInput,{locationInput=it;coordinateReference=MapLocation(state.cameraPosition.center.latitude,state.cameraPosition.center.longitude)},Modifier.weight(1f),label={HelpText("Location")},placeholder={HelpText("Coordinates, map link or Plus Code")},singleLine=true,isError=locationInput.isNotBlank() && locationResult.location==null,fill=true)
+                    HelpTextButton(UiHelp.action("Go"),onClick={locationResult.location?.let {p->follow=false;scope.launch {state.animateCamera(CameraUpdate(center=Position(p.longitude,p.latitude),bearing=0.0,pitch=0.0))}}},enabled=locationResult.location!=null){HelpText("Go")}
+                }
+                if(locationInput.isNotBlank()) {
+                    locationResult.location?.let {HelpText("Go to ${it.display()}",fontSize=12.sp,color=Accent)}
+                    if(locationResult.explanation.isNotBlank()) HelpText(locationResult.explanation,fontSize=11.sp,color=Muted)
+                    if(locationResult.error.isNotBlank()) HelpText(locationResult.error,fontSize=11.sp,color=MaterialTheme.colors.error)
+                }
             }
-            if(followed!=null) Text(navigationSummary(model,followed),fontSize=11.sp)
-            if(navigationError.isNotBlank())Text(navigationError,Modifier.widthIn(max=320.dp),fontSize=11.sp,color=MaterialTheme.colors.error)
+            if(followed!=null) HelpText(navigationSummary(model,followed),fontSize=11.sp)
         }
-        Text(viewSettings.getProperty("map.attribution"),Modifier.align(Alignment.BottomEnd).padding(6.dp).background(Color.White.copy(alpha=0.88f))
+        HelpText(viewSettings.getProperty("map.attribution"),Modifier.align(Alignment.BottomEnd).padding(6.dp).background(Color.White.copy(alpha=0.88f))
             .clickable {Desktop.getDesktop().browse(URI(viewSettings.getProperty("map.attribution_url")))}.padding(5.dp),color=Color(0xFF263740),fontSize=11.sp)
-        if(mapError.isNotEmpty()) Text(mapError,Modifier.align(Alignment.TopStart).padding(12.dp).background(Panel).padding(10.dp),color=Accent,fontSize=12.sp)
+        if(mapError.isNotEmpty()) HelpText(mapError,Modifier.align(Alignment.TopStart).padding(12.dp).background(Panel).padding(10.dp),color=Accent,fontSize=12.sp)
     }
 }
 
@@ -351,33 +357,33 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     LaunchedEffect(history.size) {if(history.isNotEmpty()) list.animateScrollToItem(history.lastIndex)}
     Column(modifier.background(Panel).padding(16.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {
-            Text(if(peer==null) "MESSAGES" else peer,fontSize=18.sp,fontWeight=FontWeight.Bold,color=Accent)
-            Spacer(Modifier.weight(1f)); if(peer!=null) TextButton(onClick={select(null)}) {Text("Chats")}
+            HelpText(if(peer==null) "MESSAGES" else peer,fontSize=18.sp,fontWeight=FontWeight.Bold,color=Accent)
+            Spacer(Modifier.weight(1f)); if(peer!=null) HelpTextButton(UiHelp.action("Chats"),onClick={select(null)}) {HelpText("Chats")}
         }
         if(peer==null) {
             Row(Modifier.padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically) {
-                OutlinedTextField(recipient,{recipient=it.trim().uppercase()},Modifier.weight(1f),label={Text("Callsign-SSID")},singleLine=true)
-                TextButton(onClick={select(recipient)},enabled=AprsProtocol.validCallsign(recipient)&&recipient!=account&&account.isNotBlank()) {Text("Chat")}
+                HelpField(UiHelp.field("Callsign-SSID"),recipient,{recipient=it.trim().uppercase()},Modifier.weight(1f),label={HelpText("Callsign-SSID")},singleLine=true,fill=true)
+                HelpTextButton(UiHelp.action("Chat"),onClick={select(recipient)},enabled=AprsProtocol.validCallsign(recipient)&&recipient!=account&&account.isNotBlank()) {HelpText("Chat")}
             }
             val threads=all.groupBy {it.peer}.values.sortedByDescending {it.last().time}
             LazyColumn {items(threads,key={it.last().peer}) {thread ->
                 Column(Modifier.fillMaxWidth().clickable {select(thread.last().peer)}.padding(vertical=12.dp)) {
-                    Text(thread.last().peer+(if(thread.any {it.unread}) "  ●" else ""),fontWeight=FontWeight.Bold)
-                    Text(thread.last().body,maxLines=2,color=Muted,fontSize=12.sp)
+                    HelpText(thread.last().peer+(if(thread.any {it.unread}) "  ●" else ""),fontWeight=FontWeight.Bold)
+                    HelpText(thread.last().body,maxLines=2,color=Muted,fontSize=12.sp)
                 }; Divider()
             } }
         } else {
-            Text("As ${account.ifBlank {"—"}}",fontSize=12.sp,color=Muted)
-            TextButton(onClick={deliveryOptions=!deliveryOptions}) {Text(if(deliveryOptions) "Hide delivery options" else "Delivery: "+when(chatOptions.route){"rf"->"Radio only";"is"->"Internet only";else->"Automatic"})}
+            HelpText("As ${account.ifBlank {"—"}}",fontSize=12.sp,color=Muted)
+            HelpTextButton(UiHelp.action(if(deliveryOptions) "Hide delivery options" else "Delivery: "+when(chatOptions.route){"rf"->"Radio only";"is"->"Internet only";else->"Automatic"}),onClick={deliveryOptions=!deliveryOptions}) {HelpText(if(deliveryOptions) "Hide delivery options" else "Delivery: "+when(chatOptions.route){"rf"->"Radio only";"is"->"Internet only";else->"Automatic"})}
             if(deliveryOptions) {
                 ChoiceMenu("Send via",chatOptions.route,listOf("best" to "Automatic (recommended)","rf" to "Radio only","is" to "Internet only"),Modifier.fillMaxWidth()) {route->scope.launch {val next=chatOptions.copy(route=route);model.database.saveOptions(account,peer,next);chatOptions=next}}
-                Row(verticalAlignment=Alignment.CenterVertically) {Checkbox(chatOptions.requestAck,{checked->scope.launch {val next=chatOptions.copy(requestAck=checked);model.database.saveOptions(account,peer,next);chatOptions=next}});Text("Request acknowledgment",fontSize=12.sp)}
+                Row(verticalAlignment=Alignment.CenterVertically) {HelpCheckbox(UiHelp.action("Request acknowledgment"),chatOptions.requestAck,{checked->scope.launch {val next=chatOptions.copy(requestAck=checked);model.database.saveOptions(account,peer,next);chatOptions=next}});HelpText("Request acknowledgment",fontSize=12.sp)}
             }
             LazyColumn(Modifier.weight(1f).padding(vertical=12.dp),state=list,verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 items(history,key={it.id}) {row -> Column(Modifier.fillMaxWidth().background(if(row.outgoing) Color(0xFF24473F) else Color(0xFF263740)).padding(10.dp)) {
-                    Text(if(row.outgoing) "You" else row.peer,color=Accent,fontSize=11.sp)
-                    Text(row.body,Modifier.padding(vertical=5.dp),fontSize=14.sp)
-                    if(row.outgoing && row.status in listOf("NO_ACK","REJECTED")) TextButton(onClick={scope.launch {model.database.retry(account,row.id)}}) {Text("Retry as new message")}
+                    HelpText(if(row.outgoing) "You" else row.peer,color=Accent,fontSize=11.sp)
+                    HelpText(row.body,Modifier.padding(vertical=5.dp),fontSize=14.sp)
+                    if(row.outgoing && row.status in listOf("NO_ACK","REJECTED")) HelpTextButton(UiHelp.action("Retry as new message"),onClick={scope.launch {model.database.retry(account,row.id)}}) {HelpText("Retry as new message")}
                     val deliveryStatus = when (row.status) {
                         "QUEUED" -> "Queued — waiting for a connection or eligible route"
                         "SENDING" -> "Sending…"
@@ -389,18 +395,18 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
                         "RECEIVED" -> "Received"
                         else -> row.status.replace('_', ' ')
                     }
-                    Text(deliveryStatus,fontSize=12.sp,color=if(row.status=="ACKNOWLEDGED") Accent else Muted)
-                    Text(DateTimeFormatter.ofPattern("MMM d HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(row.time))+
+                    HelpText(deliveryStatus,fontSize=12.sp,color=if(row.status=="ACKNOWLEDGED") Accent else Muted)
+                    HelpText(DateTimeFormatter.ofPattern("MMM d HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(row.time))+
                         if(row.outgoing && row.attempts>0) " · ${row.attempts} delivery attempt${if(row.attempts==1) "" else "s"}" else "",
                         fontSize=10.sp,color=Muted)
                 } }
             }
-            OutlinedTextField(draft,{drafts[draftKey]=it},Modifier.fillMaxWidth().onPreviewKeyEvent {event->if(event.type==KeyEventType.KeyDown && event.key==Key.Enter && event.isCtrlPressed) {submitDraft();true} else if(event.type==KeyEventType.KeyDown && event.key==Key.Tab) {focusManager.moveFocus(if(event.isShiftPressed) FocusDirection.Previous else FocusDirection.Next);true} else false}.padding(top=8.dp),label={Text("Message")},maxLines=3)
-            if(draft.isNotEmpty() && !AprsMessages.validLongText(draft)) Text("Use 1–300 printable English characters; no line breaks, {, | or ~.",fontSize=12.sp,color=MaterialTheme.colors.error)
+            HelpField(UiHelp.field("Message"),draft,{drafts[draftKey]=it},Modifier.fillMaxWidth().onPreviewKeyEvent {event->if(event.type==KeyEventType.KeyDown && event.key==Key.Enter && event.isCtrlPressed) {submitDraft();true} else if(event.type==KeyEventType.KeyDown && event.key==Key.Tab) {focusManager.moveFocus(if(event.isShiftPressed) FocusDirection.Previous else FocusDirection.Next);true} else false}.padding(top=8.dp),label={HelpText("Message")},maxLines=3,fill=true)
+            if(draft.isNotEmpty() && !AprsMessages.validLongText(draft)) HelpText("Use 1–300 printable English characters; no line breaks, {, | or ~.",fontSize=12.sp,color=MaterialTheme.colors.error)
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                Text("${draft.length}/300 · Ctrl+Enter to send",color=Muted,fontSize=10.sp)
+                HelpText("${draft.length}/300 · Ctrl+Enter to send",color=Muted,fontSize=10.sp)
                 Spacer(Modifier.weight(1f))
-                Button(onClick={submitDraft()},enabled=canSubmit) {Icon(AppIcons.Send,null,Modifier.size(16.dp));Spacer(Modifier.width(6.dp));Text("Send")}
+                HelpButton(UiHelp.action("Send"),onClick={submitDraft()},enabled=canSubmit) {Icon(AppIcons.Send,null,Modifier.size(16.dp));Spacer(Modifier.width(6.dp));HelpText("Send")}
             }
         }
     }
@@ -419,29 +425,29 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     var lon by remember {mutableStateOf(model.settings.getProperty("longitude","-81.242932"))}
     DialogWindow(icon=AppIcon.window,onCloseRequest=dismiss,title="Connection",state=rememberDialogState(width=560.dp,height=650.dp)) {
         Surface {Column(Modifier.fillMaxSize().padding(22.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            Text("APRS-IS connection",fontSize=22.sp)
+            HelpText("APRS-IS connection",fontSize=22.sp)
             Row {
-                OutlinedTextField(call,{call=it.uppercase()},label={Text("Callsign-SSID")},singleLine=true,modifier=Modifier.weight(1f))
+                HelpField(UiHelp.field("Callsign-SSID"),call,{call=it.uppercase()},label={HelpText("Callsign-SSID")},singleLine=true,modifier=Modifier.weight(1f),fill=true)
                 Box {
-                    TextButton(onClick={ssidMenu=true}) {Text("SSID")}
+                    HelpTextButton(UiHelp.action("SSID"),onClick={ssidMenu=true}) {HelpText("SSID")}
                     DropdownMenu(expanded=ssidMenu,onDismissRequest={ssidMenu=false}) {(0..15).forEach {ssid->
-                        DropdownMenuItem(onClick={runCatching {call=AprsIdentity.callsign(call.substringBefore('-'),ssid)};ssidMenu=false}) {Text(if(ssid==0) "0 (no suffix)" else "-$ssid")}
+                        HelpMenuItem(UiHelp.action(if(ssid==0) "0 (no suffix)" else "-$ssid"),onClick={runCatching {call=AprsIdentity.callsign(call.substringBefore('-'),ssid)};ssidMenu=false}) {HelpText(if(ssid==0) "0 (no suffix)" else "-$ssid")}
                     }}
                 }
             }
-            OutlinedTextField(pass,{pass=it},label={Text("Passcode (blank = receive only)")},visualTransformation=PasswordVisualTransformation(),singleLine=true,modifier=Modifier.fillMaxWidth())
+            HelpField(UiHelp.field("Passcode (blank = receive only)"),pass,{pass=it},label={HelpText("Passcode (blank = receive only)")},visualTransformation=PasswordVisualTransformation(),singleLine=true,modifier=Modifier.fillMaxWidth(),fill=true)
             Box {
-                OutlinedButton(onClick={menu=true},modifier=Modifier.fillMaxWidth()) {Text(if(preset>=0) presets[preset].name else "Custom server",Modifier.weight(1f));Icon(AppIcons.ArrowDropDown,null)}
+                HelpOutlinedButton(UiHelp.action(if(preset>=0) presets[preset].name else "Custom server"),onClick={menu=true},modifier=Modifier.fillMaxWidth(),fill=true) {HelpText(if(preset>=0) presets[preset].name else "Custom server",Modifier.weight(1f));Icon(AppIcons.ArrowDropDown,null)}
                 DropdownMenu(expanded=menu,onDismissRequest={menu=false}) {
-                    presets.forEachIndexed { index, server -> DropdownMenuItem(onClick={preset=index; host=server.endpoint; menu=false}) {Text(server.name)} }
-                    DropdownMenuItem(onClick={preset=-1; menu=false}) {Text("Custom server")}
+                    presets.forEachIndexed { index, server -> HelpMenuItem(UiHelp.action(server.name),onClick={preset=index; host=server.endpoint; menu=false}) {HelpText(server.name)} }
+                    HelpMenuItem(UiHelp.action("Custom server"),onClick={preset=-1; menu=false}) {HelpText("Custom server")}
                 }
             }
-            OutlinedTextField(host,{host=it},label={Text("Server URL or host:port")},enabled=preset<0,singleLine=true,modifier=Modifier.fillMaxWidth())
-            Row {OutlinedTextField(lat,{lat=it},Modifier.weight(1f),label={Text("Filter latitude")}); Spacer(Modifier.width(8.dp)); OutlinedTextField(lon,{lon=it},Modifier.weight(1f),label={Text("Filter longitude")})}
-            Row(verticalAlignment=Alignment.CenterVertically) {Checkbox(autoConnect,{autoConnect=it}); Text("Connect on startup")}
+            HelpField(UiHelp.field("Server URL or host:port"),host,{host=it},label={HelpText("Server URL or host:port")},enabled=preset<0,singleLine=true,modifier=Modifier.fillMaxWidth(),fill=true)
+            Row {HelpField(UiHelp.field("Filter latitude"),lat,{lat=it},Modifier.weight(1f),label={HelpText("Filter latitude")},fill=true); Spacer(Modifier.width(8.dp)); HelpField(UiHelp.field("Filter longitude"),lon,{lon=it},Modifier.weight(1f),label={HelpText("Filter longitude")},fill=true)}
+            Row(verticalAlignment=Alignment.CenterVertically) {HelpCheckbox(UiHelp.action("Connect on startup"),autoConnect,{autoConnect=it}); HelpText("Connect on startup")}
             Spacer(Modifier.weight(1f))
-            Row {TextButton(onClick=dismiss){Text("Cancel")}; Spacer(Modifier.weight(1f)); Button(onClick={if(model.connect(call,pass,host,lat.toDoubleOrNull()?:Double.NaN,lon.toDoubleOrNull()?:Double.NaN,autoConnect)) dismiss()}){Text("Connect")}}
+            Row {HelpTextButton(UiHelp.action("Cancel"),onClick=dismiss){HelpText("Cancel")}; Spacer(Modifier.weight(1f)); HelpButton(UiHelp.action("Connect"),onClick={if(model.connect(call,pass,host,lat.toDoubleOrNull()?:Double.NaN,lon.toDoubleOrNull()?:Double.NaN,autoConnect)) dismiss()}){HelpText("Connect")}}
         } }
     }
 }

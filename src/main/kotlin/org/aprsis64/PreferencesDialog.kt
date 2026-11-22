@@ -28,27 +28,27 @@ import kotlinx.serialization.json.*
     fun properties(values: Map<String,String>)=Properties().apply {values.forEach {(key,value)->setProperty(key,value)}}
     DialogWindow(icon=AppIcon.window,onCloseRequest=dismiss,title="Settings",state=rememberDialogState(width=1000.dp,height=790.dp)) {
         MaterialTheme(colors=MaterialTheme.colors) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
-            Text("Settings",style=MaterialTheme.typography.h5)
+            HelpText("Settings",style=MaterialTheme.typography.h5)
             Spacer(Modifier.height(12.dp))
             Row(Modifier.weight(1f)) {
                 SectionNavigator(settingsSections,selected,Modifier.width(245.dp).fillMaxHeight()) {selected=it}
                 Divider(Modifier.fillMaxHeight().width(1.dp))
                 Column(Modifier.weight(1f).padding(start=18.dp)) {
-                    Text(settingsSections.first {it.id==selected}.title,style=MaterialTheme.typography.h6)
-            if(failure.isNotEmpty()) Text(failure,color=MaterialTheme.colors.error)
+                    HelpText(settingsSections.first {it.id==selected}.title,style=MaterialTheme.typography.h6)
+            if(failure.isNotEmpty()) HelpText(failure,color=MaterialTheme.colors.error)
             key(selected,entity) {ScrollableForm(Modifier.weight(1f).fillMaxWidth()) {
                 if(selected=="Objects") {
                     Row {
-                        Button(onClick={objects.add(mutableStateMapOf<String,String>().apply {BeaconPreferences.entityFields.forEach {put(it.key,it.default)}});entity=objects.lastIndex},enabled=objects.size<32) {Text("New")}
+                        HelpButton(UiHelp.action("New"),onClick={objects.add(mutableStateMapOf<String,String>().apply {BeaconPreferences.entityFields.forEach {put(it.key,it.default)}});entity=objects.lastIndex},enabled=objects.size<32) {HelpText("New")}
                         Spacer(Modifier.width(12.dp))
-                        TextButton(onClick={if(objects.isNotEmpty()) {objects.removeAt(entity);entity=(entity-1).coerceAtLeast(0)}},enabled=objects.isNotEmpty()) {Text("Remove from settings")}
+                        HelpTextButton(UiHelp.action("Remove from settings"),onClick={if(objects.isNotEmpty()) {objects.removeAt(entity);entity=(entity-1).coerceAtLeast(0)}},enabled=objects.isNotEmpty()) {HelpText("Remove from settings")}
                     }
-                    objects.forEachIndexed {index,obj -> TextButton(onClick={entity=index}) {Text(obj["name"].orEmpty().ifBlank {"New object"})} }
+                    objects.forEachIndexed {index,obj -> HelpTextButton(UiHelp.action(obj["name"].orEmpty().ifBlank {"New object"}),onClick={entity=index}) {HelpText(obj["name"].orEmpty().ifBlank {"New object"})} }
                     objects.getOrNull(entity)?.let {objectValues -> BeaconPreferences.entityFields.forEach {SettingField(it,objectValues)} }
                 } else {
                     if(selected=="Operating") {
                         SettingField(BeaconField("radiusKm","APRS-IS radius (km)","100",SettingKind.INTEGER),values)
-                        Text("Range uses the connection coordinates; moving follows your last APRS-IS position. Custom uses only your filter terms plus delivery to your callsign. Example: b/N1CALL d/RS0ISS*")
+                        HelpText("Range uses the connection coordinates; moving follows your last APRS-IS position. Custom uses only your filter terms plus delivery to your callsign. Example: b/N1CALL d/RS0ISS*")
                     }
                     val section=selected.lowercase()
                     val schema=when(selected) {"Display","History","Offline","Weather","Groups","Kiosk","Alerts","Connectivity","Tactical","Messaging","Bulletins","Telemetry","Logging","Legacyweather","Qru","Queries","Satellites","Imports","Platforms","Weatherstation","Multitrack","Digital"->FeaturePreferences.fields;"Operating"->OperatingPreferences.fields;"Map","Services"->ServicePreferences.fields;"Radio"->PortPreferences.global;else->BeaconPreferences.fields}
@@ -56,16 +56,16 @@ import kotlinx.serialization.json.*
                         .filter {selected!="Position" || positionFieldVisible(it.key,values["position.source"].orEmpty())}
                         .forEach {field -> SettingField(field,values)}
                     if(selected=="Beacon") {
-                        Row {TextButton(onClick={model.reportOdometer()}) {Text("Report odometer")}; TextButton(onClick={model.reportOdometer(true)}) {Text("Report and reset")}}
+                        Row {HelpTextButton(UiHelp.action("Report odometer"),onClick={model.reportOdometer()}) {HelpText("Report odometer")}; HelpTextButton(UiHelp.action("Report and reset"),onClick={model.reportOdometer(true)}) {HelpText("Report and reset")}}
                     }
-                    if(selected=="Status") TextButton(onClick={model.transmitStatus()}) {Text("Send status")}
+                    if(selected=="Status") HelpTextButton(UiHelp.action("Send status"),onClick={model.transmitStatus()}) {HelpText("Send status")}
                 }
             } }
                 }
             }
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
-                TextButton(onClick=dismiss) {Text("Cancel")}
-                Button(onClick={
+                HelpTextButton(UiHelp.action("Cancel"),onClick=dismiss) {HelpText("Cancel")}
+                HelpButton(UiHelp.action("Save"),onClick={
                     try {
                         val props=properties(values); val entityProps=objects.map {properties(it)}
                         BeaconConfiguration(props,entityProps); ServicePreferences.validate(props)
@@ -73,7 +73,7 @@ import kotlinx.serialization.json.*
                             failure="Settings changed in another window. Close and reopen this editor before saving."
                         else if(model.savePreferences(props,entityProps)) dismiss() else failure="Check settings and folder write access."
                     } catch(_: Exception) {failure="Check the selected options, numbers, coordinates and object names."}
-                }) {Text("Save")}
+                }) {HelpText("Save")}
             }
         } } }
     }
@@ -86,27 +86,29 @@ import kotlinx.serialization.json.*
         val table=values[if(field.key=="symbol") "symbol_table" else "beacon.symbol_table"]?.singleOrNull() ?: '/'
         val previewPixels=with(LocalDensity.current) {32.dp.roundToPx().coerceAtLeast(1)}
         val pickerPixels=with(LocalDensity.current) {26.dp.roundToPx().coerceAtLeast(1)}
-        Row {Image(StationSymbols.bitmap(table,value.singleOrNull() ?: '?',previewPixels),"Selected APRS symbol",Modifier.size(32.dp));TextButton(onClick={picker=true}){Text("Choose symbol")}}
+        Row {Image(StationSymbols.bitmap(table,value.singleOrNull() ?: '?',previewPixels),"Selected APRS symbol",Modifier.size(32.dp));HelpTextButton(UiHelp.action("Choose symbol"),onClick={picker=true}){HelpText("Choose symbol")}}
         if(picker) Column(Modifier.height(250.dp).verticalScroll(rememberScrollState())) {
             (33..126).toList().chunked(12).forEach {row->Row {row.forEach {code->
-                Box(Modifier.size(38.dp).clickable {values[field.key]=code.toChar().toString();picker=false}.padding(6.dp)) {Image(StationSymbols.bitmap(table,code.toChar(),pickerPixels),"APRS symbol ${code.toChar()}")}
+                HelpArea("Select APRS symbol $table${code.toChar()} (${if(table=='/') "primary" else "alternate/overlay"} table). Save settings to use this symbol.") {
+                    Box(Modifier.size(38.dp).clickable {values[field.key]=code.toChar().toString();picker=false}.padding(6.dp)) {Image(StationSymbols.bitmap(table,code.toChar(),pickerPixels),"APRS symbol ${code.toChar()}")}
+                }
             }}}
         }
     }
     when {
-        field.key in listOf("open_commands","close_commands") -> OutlinedTextField(value,{values[field.key]=it},label={Text(field.label)},modifier=Modifier.fillMaxWidth(),maxLines=6)
+        field.key in listOf("open_commands","close_commands") -> HelpField(UiHelp.setting(field),value,{values[field.key]=it},label={HelpText(field.label)},modifier=Modifier.fillMaxWidth(),maxLines=6,fill=true)
         field.kind==SettingKind.BOOLEAN -> Row(verticalAlignment=Alignment.CenterVertically) {
-            Checkbox(value.toBoolean(),{values[field.key]=it.toString()}); Text(field.label)
+            HelpCheckbox(UiHelp.setting(field),value.toBoolean(),{values[field.key]=it.toString()}); HelpText(field.label,help=UiHelp.setting(field))
         }
         field.choices.isNotEmpty() -> {
-            ChoiceMenu(field.label,value,field.choices.map {it to if(field.key=="position.source") positionSourceLabel(it) else it.ifBlank {"None"}}) {values[field.key]=it}
-            if(field.key=="beacon.status_tag") OutlinedTextField(value,{values[field.key]=it},label={Text("Custom status tag")},modifier=Modifier.fillMaxWidth())
+            ChoiceMenu(field.label,value,field.choices.map {it to if(field.key=="position.source") positionSourceLabel(it) else it.ifBlank {"None"}},help=UiHelp.setting(field)) {values[field.key]=it}
+            if(field.key=="beacon.status_tag") HelpField(UiHelp.field("Custom status tag"),value,{values[field.key]=it},label={HelpText("Custom status tag")},modifier=Modifier.fillMaxWidth(),fill=true)
         }
         field.kind==SettingKind.STRINGS -> {
             val text=Json.parseToJsonElement(value).jsonArray.joinToString("\n") {it.jsonPrimitive.content}
-            OutlinedTextField(text,{values[field.key]=JsonArray(it.split('\n').map {line->JsonPrimitive(line)}).toString()},label={Text(field.label)},modifier=Modifier.fillMaxWidth(),maxLines=6)
+            HelpField(UiHelp.setting(field),text,{values[field.key]=JsonArray(it.split('\n').map {line->JsonPrimitive(line)}).toString()},label={HelpText(field.label)},modifier=Modifier.fillMaxWidth(),maxLines=6,fill=true)
         }
-        else -> OutlinedTextField(value,{values[field.key]=it},label={Text(field.label)},modifier=Modifier.fillMaxWidth(),singleLine=true)
+        else -> HelpField(UiHelp.setting(field),value,{values[field.key]=it},label={HelpText(field.label)},modifier=Modifier.fillMaxWidth(),singleLine=true,fill=true)
     }
 }
 

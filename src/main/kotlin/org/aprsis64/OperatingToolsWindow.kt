@@ -57,40 +57,40 @@ import java.time.Instant
     SectionNavigator(toolSections,tab,Modifier.width(230.dp).fillMaxHeight()) {tab=it;result=""}
     Divider(Modifier.fillMaxHeight().width(1.dp))
     Column(Modifier.weight(1f).padding(start=18.dp)) {
-     Text(toolSections.first {it.id==tab}.title,style=MaterialTheme.typography.h5)
-   if(result.isNotBlank()) Text(result,Modifier.padding(vertical=8.dp),color=MaterialTheme.colors.primary)
+     HelpText(toolSections.first {it.id==tab}.title,style=MaterialTheme.typography.h5)
+   if(result.isNotBlank()) HelpText(result,Modifier.padding(vertical=8.dp),color=MaterialTheme.colors.primary)
    ScrollableForm(Modifier.weight(1f).fillMaxWidth()) {when(tab) {
     "GPX import","Satellites","GPS sky","Local sensors","Weather boundaries"->AdvancedTools(model,tab)
     "Frequency","Platforms","Email"->{AdditionalTools(model,tab);if(tab=="Frequency")FrequencyEditor(model)}
     "Station","Radio DX","Direction finding"->TacticalTools(model,selected,tab)
     "Weather"->{
-     Text("Received APRS weather",fontSize=20.sp)
+     HelpText("Received APRS weather",fontSize=20.sp)
      weather.values.sortedBy {it.call}.forEach {w->
-      Text("${w.call} · ${Instant.ofEpochMilli(w.time)}",color=MaterialTheme.colors.primary)
+      HelpText("${w.call} · ${Instant.ofEpochMilli(w.time)}",color=MaterialTheme.colors.primary)
       fun f(n:Double?)=n?.let {"%.1f".format(it)} ?: "—"
-      Text("${f(w.temperatureC)} °C · wind ${w.windDegrees ?: "—"}° ${f(w.windKph)} km/h · gust ${f(w.gustKph)} km/h · RH ${w.humidity ?: "—"}% · ${f(w.pressureHpa)} hPa · rain 1h ${f(w.rainHourMm)} mm / 24h ${f(w.rainDayMm)} mm")
+      HelpText("${f(w.temperatureC)} °C · wind ${w.windDegrees ?: "—"}° ${f(w.windKph)} km/h · gust ${f(w.gustKph)} km/h · RH ${w.humidity ?: "—"}% · ${f(w.pressureHpa)} hPa · rain 1h ${f(w.rainHourMm)} mm / 24h ${f(w.rainDayMm)} mm")
       Divider()
      }
-     if(weather.isEmpty())Text("No weather packets received yet.")
-     Text(weatherStatus,fontSize=16.sp)
-     if(legacyStatus.isNotBlank())Text(legacyStatus)
-     Row {Checkbox(preferences.getProperty("weather.enabled").toBoolean(),{model.updateFeature("weather.enabled",it.toString())});Text("Fetch alerts for the configured fixed location",Modifier.padding(top=12.dp))}
-     Text("Alert source and radar XYZ overlay are configurable in Settings → Weather alerts.")
-     alerts.forEach {a->Text("${a.severity}: ${a.event}",color=Color(0xFFFFC078));Text(a.headline);Text(a.description);Text("Expires ${a.expires}");Divider()}
+     if(weather.isEmpty())HelpText("No weather packets received yet.")
+     HelpText(weatherStatus,fontSize=16.sp)
+     if(legacyStatus.isNotBlank())HelpText(legacyStatus)
+     Row {HelpCheckbox(UiHelp.action("Fetch alerts for the configured fixed location"),preferences.getProperty("weather.enabled").toBoolean(),{model.updateFeature("weather.enabled",it.toString())});HelpText("Fetch alerts for the configured fixed location",Modifier.padding(top=12.dp))}
+     HelpText("Alert source and radar XYZ overlay are configurable in Settings → Weather alerts.")
+     alerts.forEach {a->HelpText("${a.severity}: ${a.event}",color=Color(0xFFFFC078));HelpText(a.headline);HelpText(a.description);HelpText("Expires ${a.expires}");Divider()}
     }
     "Telemetry"->{
-     Text("Own telemetry: ${if(preferences.getProperty("telemetry.enabled").toBoolean())"On" else "Off"}. Channels, equations, timing and routing: Settings → Telemetry.")
-     OutlinedTextField(call,{call=it.uppercase()},label={Text("Station callsign")},singleLine=true)
-     FlowRow(Modifier.fillMaxWidth()) {telemetry.keys.sorted().forEach {c->TextButton(onClick={call=c}) {Text(c)}}}
-     Row {(0..4).forEach {i->TextButton(onClick={channel=i}) {Text("A${i+1}")}}}
+     HelpText("Own telemetry: ${if(preferences.getProperty("telemetry.enabled").toBoolean())"On" else "Off"}. Channels, equations, timing and routing: Settings → Telemetry.")
+     HelpField(UiHelp.field("Station callsign"),call,{call=it.uppercase()},label={HelpText("Station callsign")},singleLine=true)
+     FlowRow(Modifier.fillMaxWidth()) {telemetry.keys.sorted().forEach {c->HelpTextButton(UiHelp.action(c),onClick={call=c}) {HelpText(c)}}}
+     Row {(0..4).forEach {i->HelpTextButton(UiHelp.action("A${i+1}"),onClick={channel=i}) {HelpText("A${i+1}")}}}
      val samples=telemetry[call].orEmpty();val defs=definitions[call].orEmpty()
      val label=defs["PARM"]?.values?.getOrNull(channel) ?: "Analog ${channel+1}"
      val unit=defs["UNIT"]?.values?.getOrNull(channel).orEmpty()
      val readings=samples.mapNotNull {sample->AprsObservations.engineering(sample.analog[channel],channel,defs["EQNS"])?.let {sample.time to it}}
      val values=readings.map {it.second}
-     Text("$label $unit · ${samples.size} samples")
+     HelpText("$label $unit · ${samples.size} samples")
      if(values.isNotEmpty()) {
-      val low=values.min();val high=values.max();Text("Latest ${values.last()} · min $low · max $high")
+      val low=values.min();val high=values.max();HelpText("Latest ${values.last()} · min $low · max $high")
       Canvas(Modifier.fillMaxWidth().height(240.dp).background(Color(0xFF14262C))) {
        if(readings.size>1) readings.zipWithNext().forEach {(a,b)->
         fun y(v:Double)=size.height-((v-low)/(high-low).takeIf {it>0}.let {it?:1.0}*size.height).toFloat()
@@ -98,80 +98,80 @@ import java.time.Instant
         drawLine(Color(0xFF72E4C3),Offset(x(a.first),y(a.second)),Offset(x(b.first),y(b.second)),2f)
        }
       }
-      Text("Time: ${Instant.ofEpochMilli(readings.first().first)} to ${Instant.ofEpochMilli(readings.last().first)}")
-      Text("Digital bits: ${samples.last().bits}; sense: ${defs["BITS"]?.values?.firstOrNull() ?: "unspecified"}")
-     } else Text("No classic T# telemetry received for this station.")
+      HelpText("Time: ${Instant.ofEpochMilli(readings.first().first)} to ${Instant.ofEpochMilli(readings.last().first)}")
+      HelpText("Digital bits: ${samples.last().bits}; sense: ${defs["BITS"]?.values?.firstOrNull() ?: "unspecified"}")
+     } else HelpText("No classic T# telemetry received for this station.")
     }
     "Tracks"->{
-     Text("Automatic CSV: ${preferences.getProperty("logging.csv")} · GPX: ${preferences.getProperty("logging.gpx")}. Configure under Settings → Track logging.")
-     if(archiveStatus.isNotBlank())Text(archiveStatus)
-     if(dropped>0)Text("$dropped packets omitted from history because the input queue filled")
-     OutlinedTextField(call,{call=it.uppercase()},label={Text("Station or object name")},singleLine=true)
-     Row {listOf("GPX","CSV").forEach {format->Button(onClick={scope.launch {result=runCatching {"Saved ${model.archive.export(call,format)}"}.getOrElse {it.message ?: "Export failed"}}},modifier=Modifier.padding(end=10.dp)){Text("Export $format")}}}
-     Text("Export the selected station’s saved track. Files are saved in the exports folder beside APRSIS64.exe.")
-     OutlinedTextField(message,{message=it.uppercase()},label={Text("Recipient callsign-SSID")},singleLine=true)
-     Button(onClick={scope.launch {val point=model.archive.track(call).lastOrNull();if(point==null) result="No recorded position" else send(message,"$call ${"%.5f".format(java.util.Locale.US,point.latitude)},${"%.5f".format(java.util.Locale.US,point.longitude)}")}}){Text("Send position in message")}
+     HelpText("Automatic CSV: ${preferences.getProperty("logging.csv")} · GPX: ${preferences.getProperty("logging.gpx")}. Configure under Settings → Track logging.")
+     if(archiveStatus.isNotBlank())HelpText(archiveStatus)
+     if(dropped>0)HelpText("$dropped packets omitted from history because the input queue filled")
+     HelpField(UiHelp.field("Station or object name"),call,{call=it.uppercase()},label={HelpText("Station or object name")},singleLine=true)
+     Row {listOf("GPX","CSV").forEach {format->HelpButton(UiHelp.action("Export $format"),onClick={scope.launch {result=runCatching {"Saved ${model.archive.export(call,format)}"}.getOrElse {it.message ?: "Export failed"}}},modifier=Modifier.padding(end=10.dp)){HelpText("Export $format")}}}
+     HelpText("Export the selected station’s saved track. Files are saved in the exports folder beside APRSIS64.exe.")
+     HelpField(UiHelp.field("Recipient callsign-SSID"),message,{message=it.uppercase()},label={HelpText("Recipient callsign-SSID")},singleLine=true)
+     HelpButton(UiHelp.action("Send position in message"),onClick={scope.launch {val point=model.archive.track(call).lastOrNull();if(point==null) result="No recorded position" else send(message,"$call ${"%.5f".format(java.util.Locale.US,point.latitude)},${"%.5f".format(java.util.Locale.US,point.longitude)}")}}){HelpText("Send position in message")}
     }
     "Offline"->{
-     Text("Download a base-map area",fontSize=20.sp)
-     Text("Uses your configured map provider. Choose a small region and preview the tile count before downloading.")
-     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {OutlinedTextField(south,{south=it;plan=emptyList()},Modifier.weight(1f),label={Text("South")});OutlinedTextField(north,{north=it;plan=emptyList()},Modifier.weight(1f),label={Text("North")})}
-     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {OutlinedTextField(west,{west=it;plan=emptyList()},Modifier.weight(1f),label={Text("West")});OutlinedTextField(east,{east=it;plan=emptyList()},Modifier.weight(1f),label={Text("East")})}
-     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {OutlinedTextField(zoomMin,{zoomMin=it;plan=emptyList()},Modifier.weight(1f),label={Text("Minimum zoom")});OutlinedTextField(zoomMax,{zoomMax=it;plan=emptyList()},Modifier.weight(1f),label={Text("Maximum zoom")})}
+     HelpText("Download a base-map area",fontSize=20.sp)
+     HelpText("Uses your configured map provider. Choose a small region and preview the tile count before downloading.")
+     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {HelpField(UiHelp.field("South"),south,{south=it;plan=emptyList()},Modifier.weight(1f),label={HelpText("South")},fill=true);HelpField(UiHelp.field("North"),north,{north=it;plan=emptyList()},Modifier.weight(1f),label={HelpText("North")},fill=true)}
+     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {HelpField(UiHelp.field("West"),west,{west=it;plan=emptyList()},Modifier.weight(1f),label={HelpText("West")},fill=true);HelpField(UiHelp.field("East"),east,{east=it;plan=emptyList()},Modifier.weight(1f),label={HelpText("East")},fill=true)}
+     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {HelpField(UiHelp.field("Minimum zoom"),zoomMin,{zoomMin=it;plan=emptyList()},Modifier.weight(1f),label={HelpText("Minimum zoom")},fill=true);HelpField(UiHelp.field("Maximum zoom"),zoomMax,{zoomMax=it;plan=emptyList()},Modifier.weight(1f),label={HelpText("Maximum zoom")},fill=true)}
      Row {
-      Button(onClick={runCatching {TilePlan.region(south.toDouble(),west.toDouble(),north.toDouble(),east.toDouble(),zoomMin.toInt(),zoomMax.toInt(),preferences.getProperty("offline.maximum_tiles").toInt())}.onSuccess {plan=it;result="${it.size} tiles"}.onFailure {result=it.message ?: "Check area and zoom range"}}){Text("Preview")}
-      Button(onClick={model.offline.download(plan)},enabled=plan.isNotEmpty()&&!downloading,modifier=Modifier.padding(horizontal=10.dp)){Text("Download")}
-      TextButton(onClick={model.offline.cancel()},enabled=downloading){Text("Cancel download")}
+      HelpButton(UiHelp.action("Preview"),onClick={runCatching {TilePlan.region(south.toDouble(),west.toDouble(),north.toDouble(),east.toDouble(),zoomMin.toInt(),zoomMax.toInt(),preferences.getProperty("offline.maximum_tiles").toInt())}.onSuccess {plan=it;result="${it.size} tiles"}.onFailure {result=it.message ?: "Check area and zoom range"}}){HelpText("Preview")}
+      HelpButton(UiHelp.action("Download"),onClick={model.offline.download(plan)},enabled=plan.isNotEmpty()&&!downloading,modifier=Modifier.padding(horizontal=10.dp)){HelpText("Download")}
+      HelpTextButton(UiHelp.action("Cancel download"),onClick={model.offline.cancel()},enabled=downloading){HelpText("Cancel download")}
      }
-     Text(download)
-     Row {Checkbox(preferences.getProperty("offline.enabled").toBoolean(),{model.updateFeature("offline.enabled",it.toString())});Text("Use downloaded base map only",Modifier.padding(top=12.dp))}
-     Text("Offline mode disables network overlays. Areas or zoom levels not downloaded remain blank.")
+     HelpText(download)
+     Row {HelpCheckbox(UiHelp.action("Use downloaded base map only"),preferences.getProperty("offline.enabled").toBoolean(),{model.updateFeature("offline.enabled",it.toString())});HelpText("Use downloaded base map only",Modifier.padding(top=12.dp))}
+     HelpText("Offline mode disables network overlays. Areas or zoom levels not downloaded remain blank.")
     }
     "Groups"->{
      val memberships by model.groups.entries.collectAsState();val groupReplies by model.groups.replies.collectAsState()
-     memberships.forEach {m->Text("${m.group}: ${m.state} · ${Instant.ofEpochMilli(m.time)}")}
-     groupReplies.takeLast(8).forEach {Text(it)}
-     Text("Announcement server: ${preferences.getProperty("groups.server")}")
-     OutlinedTextField(group,{group=it.uppercase()},label={Text("Group")},singleLine=true)
-     FlowRow(Modifier.fillMaxWidth()) {names(preferences.getProperty("groups.names")).forEach {g->TextButton(onClick={group=g}){Text(g)}}}
-     OutlinedTextField(message,{message=it},label={Text("Announcement text")},modifier=Modifier.fillMaxWidth())
-     Row {listOf("J" to "Join quietly","U" to "Leave","CQ" to "Announce","?" to "List groups","L" to "My groups").forEach {(action,label)->TextButton(onClick={
+     memberships.forEach {m->HelpText("${m.group}: ${m.state} · ${Instant.ofEpochMilli(m.time)}")}
+     groupReplies.takeLast(8).forEach {HelpText(it)}
+     HelpText("Announcement server: ${preferences.getProperty("groups.server")}")
+     HelpField(UiHelp.field("Group"),group,{group=it.uppercase()},label={HelpText("Group")},singleLine=true)
+     FlowRow(Modifier.fillMaxWidth()) {names(preferences.getProperty("groups.names")).forEach {g->HelpTextButton(UiHelp.action(g),onClick={group=g}){HelpText(g)}}}
+     HelpField(UiHelp.field("Announcement text"),message,{message=it},label={HelpText("Announcement text")},modifier=Modifier.fillMaxWidth(),fill=true)
+     Row {listOf("J" to "Join quietly","U" to "Leave","CQ" to "Announce","?" to "List groups","L" to "My groups").forEach {(action,label)->HelpTextButton(UiHelp.action(label),onClick={
       runCatching {AprsServices.group(action,if(action in listOf("?","L")) "" else group,if(action=="CQ")message else "")}.onSuccess {command->send(preferences.getProperty("groups.server"),command)
        if(action in listOf("J","U")){val groups=names(preferences.getProperty("groups.names")).toMutableSet();if(action=="J")groups.add(group) else groups.remove(group);model.updateFeature("groups.names",encodedNames(groups.toList()))}
       }.onFailure {result="Check group and message length"}
-     }) {Text(label)}}}
-     Text("Membership confirmations show the last server response time. My groups requests a fresh list; unrecognized replies remain visible. Automatic keepalive is opt-in under Settings → Group messages.")
+     }) {HelpText(label)}}}
+     HelpText("Membership confirmations show the last server response time. My groups requests a fresh list; unrecognized replies remain visible. Automatic keepalive is opt-in under Settings → Group messages.")
     }
     "QRU"->{
-     Text("Query destination: ${preferences.getProperty("kiosk.server")}")
-     OutlinedTextField(qru,{qru=it.uppercase()},label={Text("Object group (INFO lists groups)")},singleLine=true)
-     OutlinedTextField(radius,{radius=it},label={Text("Radius in km")},singleLine=true)
-     Button(onClick={runCatching {AprsServices.qru(qru,radius.toInt())}.onSuccess {send(preferences.getProperty("kiosk.server"),it)}.onFailure {result="Check group and radius"}}){Text("Send QRU query")}
-     Text("Replies appear in Messages; returned positioned objects appear on the map. Configure your object groups in Settings → Objects & items and enable the QRU responder in Settings → Tactical overlays.")
-     Text("QRU object responder: "+if(preferences.getProperty("tactical.qru_enabled").toBoolean())"On" else "Off")
-     Text("Text kiosk: "+if(preferences.getProperty("kiosk.enabled").toBoolean())"On" else "Off")
-     names(preferences.getProperty("kiosk.entries")).forEach {Text(it)}
+     HelpText("Query destination: ${preferences.getProperty("kiosk.server")}")
+     HelpField(UiHelp.field("Object group (INFO lists groups)"),qru,{qru=it.uppercase()},label={HelpText("Object group (INFO lists groups)")},singleLine=true)
+     HelpField(UiHelp.field("Radius in km"),radius,{radius=it},label={HelpText("Radius in km")},singleLine=true)
+     HelpButton(UiHelp.action("Send QRU query"),onClick={runCatching {AprsServices.qru(qru,radius.toInt())}.onSuccess {send(preferences.getProperty("kiosk.server"),it)}.onFailure {result="Check group and radius"}}){HelpText("Send QRU query")}
+     HelpText("Replies appear in Messages; returned positioned objects appear on the map. Configure your object groups in Settings → Objects & items and enable the QRU responder in Settings → Tactical overlays.")
+     HelpText("QRU object responder: "+if(preferences.getProperty("tactical.qru_enabled").toBoolean())"On" else "Off")
+     HelpText("Text kiosk: "+if(preferences.getProperty("kiosk.enabled").toBoolean())"On" else "Off")
+     names(preferences.getProperty("kiosk.entries")).forEach {HelpText(it)}
     }
     "Bulletins"->{
-     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {OutlinedTextField(slot,{slot=it.uppercase()},Modifier.width(100.dp),label={Text("Slot")});OutlinedTextField(group,{group=it.uppercase()},Modifier.weight(1f),label={Text("Group (0–5 characters)")})}
-     OutlinedTextField(message,{message=it},label={Text("Bulletin text")},modifier=Modifier.fillMaxWidth())
-     Button(onClick={scope.launch {result=runCatching {if(model.sendBulletin(slot,group,message))"Bulletin transmitted" else "No available output"}.getOrElse {"Check slot, group and text"}}}){Text("Transmit bulletin")}
-     OutlinedTextField(interval,{interval=it},label={Text("Repeat interval (seconds)")},singleLine=true)
-     Row {listOf("is","rf","both").forEach {r->TextButton(onClick={route=r}){Text(if(route==r)"[${r.uppercase()}]" else r.uppercase())}}}
-     Button(onClick={runCatching {
+     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {HelpField(UiHelp.field("Slot"),slot,{slot=it.uppercase()},Modifier.width(100.dp),label={HelpText("Slot")},fill=true);HelpField(UiHelp.field("Group (0–5 characters)"),group,{group=it.uppercase()},Modifier.weight(1f),label={HelpText("Group (0–5 characters)")},fill=true)}
+     HelpField(UiHelp.field("Bulletin text"),message,{message=it},label={HelpText("Bulletin text")},modifier=Modifier.fillMaxWidth(),fill=true)
+     HelpButton(UiHelp.action("Transmit bulletin"),onClick={scope.launch {result=runCatching {if(model.sendBulletin(slot,group,message))"Bulletin transmitted" else "No available output"}.getOrElse {"Check slot, group and text"}}}){HelpText("Transmit bulletin")}
+     HelpField(UiHelp.field("Repeat interval (seconds)"),interval,{interval=it},label={HelpText("Repeat interval (seconds)")},singleLine=true)
+     Row {listOf("is","rf","both").forEach {r->HelpTextButton(UiHelp.action(if(route==r)"[${r.uppercase()}]" else r.uppercase()),onClick={route=r}){HelpText(if(route==r)"[${r.uppercase()}]" else r.uppercase())}}}
+     HelpButton(UiHelp.action("Save scheduled bulletin"),onClick={runCatching {
       val entry="$slot|$group|$interval|$route|$message";ScheduledBulletin.parse(entry)
       val saved=names(model.settings.getProperty("bulletins.entries")).filterNot {val b=ScheduledBulletin.parse(it);b.slot==slot && b.group==group}+entry
       check(model.updateFeature("bulletins.entries",encodedNames(saved)));result="Saved bulletin"
-     }.onFailure {result="Check slot, group, interval and text"}}){Text("Save scheduled bulletin")}
-     Row {Checkbox(preferences.getProperty("bulletins.enabled").toBoolean(),{model.updateFeature("bulletins.enabled",it.toString())});Text("Transmit saved bulletins",Modifier.padding(top=12.dp))}
+     }.onFailure {result="Check slot, group, interval and text"}}){HelpText("Save scheduled bulletin")}
+     Row {HelpCheckbox(UiHelp.action("Transmit saved bulletins"),preferences.getProperty("bulletins.enabled").toBoolean(),{model.updateFeature("bulletins.enabled",it.toString())});HelpText("Transmit saved bulletins",Modifier.padding(top=12.dp))}
      names(preferences.getProperty("bulletins.entries")).forEach {entry->
       val b=ScheduledBulletin.parse(entry)
-      Text("${b.slot} ${b.group} · ${b.seconds}s · ${b.route.uppercase()} · ${b.text}")
-      Row {TextButton(onClick={slot=b.slot;group=b.group;interval=b.seconds.toString();route=b.route;message=b.text}){Text("Edit")};TextButton(onClick={model.updateFeature("bulletins.entries",encodedNames(names(model.settings.getProperty("bulletins.entries"))-entry))}){Text("Remove")}}
+      HelpText("${b.slot} ${b.group} · ${b.seconds}s · ${b.route.uppercase()} · ${b.text}")
+      Row {HelpTextButton(UiHelp.action("Edit"),onClick={slot=b.slot;group=b.group;interval=b.seconds.toString();route=b.route;message=b.text}){HelpText("Edit")};HelpTextButton(UiHelp.action("Remove"),onClick={model.updateFeature("bulletins.entries",encodedNames(names(model.settings.getProperty("bulletins.entries"))-entry))}){HelpText("Remove")}}
      }
-     bulletins.asReversed().forEach {b->Text("${b.destination} · ${b.sender} · ${Instant.ofEpochMilli(b.time)}",color=MaterialTheme.colors.primary);Text(b.text);Divider()}
+     bulletins.asReversed().forEach {b->HelpText("${b.destination} · ${b.sender} · ${Instant.ofEpochMilli(b.time)}",color=MaterialTheme.colors.primary);HelpText(b.text);Divider()}
     }
-    else->{TextButton(onClick={model.activity.dismiss()}){Text("Dismiss notifications")};notices.asReversed().forEach {Text("${Instant.ofEpochMilli(it.time)}  ${it.text}");Divider()};Text("Message and watched-callsign alerts, sound and cooldown settings are under Settings → Notifications.")}
+    else->{HelpTextButton(UiHelp.action("Dismiss notifications"),onClick={model.activity.dismiss()}){HelpText("Dismiss notifications")};notices.asReversed().forEach {HelpText("${Instant.ofEpochMilli(it.time)}  ${it.text}");Divider()};HelpText("Message and watched-callsign alerts, sound and cooldown settings are under Settings → Notifications.")}
    }}
     }
    }

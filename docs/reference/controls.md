@@ -2,6 +2,8 @@
 
 Use **Settings** for preferences and **Menu → All tools…** for operating tools. Both windows have grouped navigation and a **Find a section** search that also recognizes the former short section names. **Radio & GPS ports…** and **Packet monitor…** are in Menu. Settings changes require **Save**; port changes require **Apply**.
 
+Pause the pointer over buttons, fields, indicators, navigation entries or menu choices for hover help. Disabled controls also explain their requirements. Settings tips include the corresponding `settings.toml` key. APRS-IS verification, local packet output and remote message acknowledgment are different states; their indicators explain what has actually been confirmed.
+
 | Location | Tasks |
 | --- | --- |
 | Connection | Callsign-SSID, passcode, APRS-IS server and radius |

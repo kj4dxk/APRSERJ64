@@ -11,8 +11,9 @@ kotlin { jvmToolchain(25) }
 dependencies {
     implementation(project(":core"))
     implementation("com.github.davidmoten:predict4java:1.3.1")
+    implementation("com.google.openlocationcode:openlocationcode:1.0.4")
     implementation(compose.desktop.currentOs)
-    implementation(compose.material)
+    implementation("org.jetbrains.compose.material:material:1.12.1")
     implementation("org.maplibre.compose:maplibre-compose:0.20.0")
     runtimeOnly("org.maplibre.compose:maplibre-compose-runtime-vulkan-windows-x64:0.20.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.11.0")

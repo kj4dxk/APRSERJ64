@@ -2,7 +2,25 @@
 
 ## Navigate without changing your beacon position
 
-Pan and zoom the map. Use **+**, **−**, **Home**, or open the magnifying-glass **Go to coordinates** control, enter decimal latitude/longitude and select **Go**. The coordinate fields stay collapsed until needed. **Follow station** is available when the selected station has a map position. North is always up; rotation has no preference. Moving the map does not move your station's configured fixed position.
+Pan and zoom the map. Use **+**, **−**, **Home**, or open the magnifying-glass **Go to coordinates** control. Paste a location in the single **Location** field, check the interpreted latitude/longitude shown below it, then select **Go**. The field stays collapsed until needed. **Follow station** is available when the selected station has a map position. North is always up; rotation has no preference. Moving the map does not move your station's configured fixed position.
+
+### Accepted location formats
+
+| Format | Example |
+| --- | --- |
+| Decimal degrees, latitude first | `28.536725, -81.242932` |
+| Degrees, minutes, seconds | `28°32'12.21"N 81°14'34.56"W` |
+| Degrees and decimal minutes | `28 32.20 N 81 14.58 W` |
+| Compact APRS coordinates | `2832.20N/08114.58W` |
+| Google Maps coordinate URL | `https://www.google.com/maps/search/?api=1&query=28.536725,-81.242932` |
+| Full Open Location Code (Plus Code) | `849VCWC8+R9` |
+| Short Plus Code near a reference | `CWC8+R9`, after centering near Mountain View, California |
+
+Directions may precede or follow numbers. Extra whitespace and common punctuation are tolerated. Within numeric tokens, recognizable typing substitutions such as `O` for zero and `I` or `l` for one are corrected and flagged in the preview. The preview always shows the location that **Go** will use. Invalid ranges, unknown letters and ambiguous input leave **Go** disabled; arbitrary typos cannot be guessed reliably.
+
+A full Plus Code identifies an area; **Go** uses its center. A shortened code uses the map center at the time you enter or edit the code as its nearby reference. The preview names that reference and the recovered full code. Center near the intended place first, or use a full code. A short code with a place name is not geocoded automatically.
+
+Google links containing a pin, coordinate query or `@latitude,longitude` viewport are accepted. When a link contains one explicit pin, its position takes priority over the map viewport. Short sharing links such as `maps.app.goo.gl/...`, street addresses and links with multiple pins require opening Google Maps and copying the intended coordinates. Parsing runs locally and does not resolve links over the network.
 
 Select a station to inspect it, show its trail and received path, or open its chat. Estimated positions and coverage circles are aids: a predicted position is not a newly received fix, and a PHG range circle is not a measured coverage boundary.
 

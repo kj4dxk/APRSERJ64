@@ -30,18 +30,18 @@ import java.time.format.DateTimeFormatter
     Window(icon=AppIcon.window,onCloseRequest=dismiss,title="Packets — APRSIS64",state=rememberWindowState(width=1100.dp,height=760.dp)) {
         MaterialTheme(colors=darkColors()) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
             Row {
-                OutlinedTextField(query,{query=it},label={Text("Callsign, path or port")},modifier=Modifier.weight(1f),singleLine=true)
-                TextButton(onClick={paused=if(paused==null) entries else null}) {Text(if(paused==null) "Pause display" else "Resume")}
-                Button(onClick={val snapshot=displayed.toList();scope.launch {result=runCatching {"Saved ${model.monitor.export(snapshot)}"}.getOrElse {"Export failed"}}}) {Text("Export TNC2")}
+                HelpField(UiHelp.field("Callsign, path or port"),query,{query=it},label={HelpText("Callsign, path or port")},modifier=Modifier.weight(1f),singleLine=true,fill=true)
+                HelpTextButton(UiHelp.action(if(paused==null) "Pause display" else "Resume"),onClick={paused=if(paused==null) entries else null}) {HelpText(if(paused==null) "Pause display" else "Resume")}
+                HelpButton(UiHelp.action("Export TNC2"),onClick={val snapshot=displayed.toList();scope.launch {result=runCatching {"Saved ${model.monitor.export(snapshot)}"}.getOrElse {"Export failed"}}}) {HelpText("Export TNC2")}
             }
-            Row {Checkbox(satellites,{satellites=it});Text("Satellite paths only",Modifier.padding(top=12.dp))}
-            Row {listOf("All","RF","Duplicates","Invalid").forEach {name->TextButton(onClick={category=name}){Text(if(name==category)"[$name]" else name)}}}
-            if(satellites) TextButton(onClick={java.awt.Desktop.getDesktop().browse(java.net.URI(model.settings.getProperty("services.satellite_status_url")))}) {Text("Current ISS radio status")}
-            Text("$feed · ${displayed.size} packets",fontSize=12.sp)
-            if(result.isNotBlank()) Text(result,fontSize=12.sp)
+            Row {HelpCheckbox(UiHelp.action("Satellite paths only"),satellites,{satellites=it});HelpText("Satellite paths only",Modifier.padding(top=12.dp))}
+            Row {listOf("All","RF","Duplicates","Invalid").forEach {name->HelpTextButton(UiHelp.action(if(name==category)"[$name]" else name),onClick={category=name}){HelpText(if(name==category)"[$name]" else name)}}}
+            if(satellites) HelpTextButton(UiHelp.action("Current ISS radio status"),onClick={java.awt.Desktop.getDesktop().browse(java.net.URI(model.settings.getProperty("services.satellite_status_url")))}) {HelpText("Current ISS radio status")}
+            HelpText("$feed · ${displayed.size} packets",fontSize=12.sp)
+            if(result.isNotBlank()) HelpText(result,fontSize=12.sp)
             key(category,satellites,query) {LazyColumn(Modifier.weight(1f).fillMaxWidth()) {items(displayed.asReversed(),key={it.sequence}) {entry ->
                 Column(Modifier.padding(vertical=6.dp)) {
-                    Text("${DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(entry.time))}  ${entry.direction}  ${entry.port}"+(if(entry.satellite) "  Satellite" else ""),color=MaterialTheme.colors.primary,fontSize=11.sp)
+                    HelpText("${DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(entry.time))}  ${entry.direction}  ${entry.port}"+(if(entry.satellite) "  Satellite" else ""),color=MaterialTheme.colors.primary,fontSize=11.sp)
                     SelectionContainerCompat(entry.packet)
                 };Divider()
             }}}
@@ -49,5 +49,5 @@ import java.time.format.DateTimeFormatter
     }
 }
 @Composable private fun SelectionContainerCompat(text: String) {
-    androidx.compose.foundation.text.selection.SelectionContainer {Text(text,fontFamily=FontFamily.Monospace,fontSize=12.sp)}
+    androidx.compose.foundation.text.selection.SelectionContainer {HelpText(text,fontFamily=FontFamily.Monospace,fontSize=12.sp)}
 }

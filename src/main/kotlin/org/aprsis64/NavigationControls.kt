@@ -16,20 +16,20 @@ import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable internal fun ActionIcon(icon:ImageVector,label:String,enabled:Boolean=true,onClick:()->Unit) {
- TooltipArea(tooltip={Surface(elevation=6.dp,shape=RoundedCornerShape(4.dp)){Text(label,Modifier.padding(8.dp))}}) {
+ HelpArea(UiHelp.action(label)) {
   IconButton(onClick=onClick,enabled=enabled) {Icon(icon,contentDescription=label)}
  }
 }
 
-@Composable internal fun ChoiceMenu(label:String,value:String,choices:List<Pair<String,String>>,modifier:Modifier=Modifier,onSelect:(String)->Unit) {
+@Composable internal fun ChoiceMenu(label:String,value:String,choices:List<Pair<String,String>>,modifier:Modifier=Modifier,help:String=UiHelp.field(label),onSelect:(String)->Unit) {
  var expanded by remember {mutableStateOf(false)}
  Box(modifier) {
-  OutlinedButton(onClick={expanded=true},modifier=Modifier.fillMaxWidth()) {
-   Column(Modifier.weight(1f)) {Text(label,fontSize=10.sp,color=MaterialTheme.colors.onSurface.copy(alpha=.65f));Text(choices.firstOrNull {it.first==value}?.second?:value,fontSize=13.sp)}
+  HelpOutlinedButton(help,onClick={expanded=true},modifier=Modifier.fillMaxWidth(),fill=true) {
+   Column(Modifier.weight(1f)) {HelpText(label,fontSize=10.sp,color=MaterialTheme.colors.onSurface.copy(alpha=.65f));HelpText(choices.firstOrNull {it.first==value}?.second?:value,fontSize=13.sp)}
    Icon(AppIcons.ArrowDropDown,contentDescription=null)
   }
   DropdownMenu(expanded=expanded,onDismissRequest={expanded=false},modifier=Modifier.heightIn(max=380.dp)) {
-   choices.forEach {(key,title)->DropdownMenuItem(onClick={onSelect(key);expanded=false}) {Text(title,fontWeight=if(key==value)FontWeight.Bold else FontWeight.Normal)}}
+   choices.forEach {(key,title)->HelpMenuItem("Choose $title for ${label.lowercase()}. $help",onClick={onSelect(key);expanded=false}) {HelpText(title,fontWeight=if(key==value)FontWeight.Bold else FontWeight.Normal)}}
   }
  }
 }
@@ -54,16 +54,16 @@ internal val toolSections=listOf(
 @Composable internal fun SectionNavigator(sections:List<NavigationSection>,selected:String,modifier:Modifier=Modifier,onSelect:(String)->Unit) {
  var query by remember {mutableStateOf("")}
  Column(modifier.padding(end=14.dp)) {
-  OutlinedTextField(query,{query=it},label={Text("Find a section")},singleLine=true,modifier=Modifier.fillMaxWidth())
+  HelpField(UiHelp.field("Find a section"),query,{query=it},label={HelpText("Find a section")},singleLine=true,modifier=Modifier.fillMaxWidth(),fill=true)
   val matches=sections.filter {query.isBlank() || (it.title+" "+it.id+" "+it.keywords).contains(query,true)}
   ScrollableForm(Modifier.weight(1f).padding(top=8.dp)) {
-   if(matches.isEmpty()) Text("No matching section. Try position, map or messages.",fontSize=12.sp)
+   if(matches.isEmpty()) HelpText("No matching section. Try position, map or messages.",fontSize=12.sp)
    matches.groupBy {it.group}.forEach {(group,entries)->
-    Text(group,Modifier.padding(top=12.dp,bottom=4.dp),fontSize=11.sp,color=MaterialTheme.colors.onSurface.copy(alpha=.6f))
+    HelpText(group,Modifier.padding(top=12.dp,bottom=4.dp),fontSize=11.sp,color=MaterialTheme.colors.onSurface.copy(alpha=.6f))
     entries.forEach {entry->
      val active=entry.id==selected
      Surface(color=if(active)MaterialTheme.colors.primary.copy(alpha=.18f) else Color.Transparent,shape=RoundedCornerShape(6.dp)) {
-      Text(entry.title,Modifier.fillMaxWidth().clickable {onSelect(entry.id)}.padding(horizontal=10.dp,vertical=11.dp),fontSize=13.sp,fontWeight=if(active)FontWeight.Bold else FontWeight.Normal,color=if(active)MaterialTheme.colors.primary else MaterialTheme.colors.onSurface)
+      HelpText(entry.title,Modifier.fillMaxWidth().clickable {onSelect(entry.id)}.padding(horizontal=10.dp,vertical=11.dp),fontSize=13.sp,fontWeight=if(active)FontWeight.Bold else FontWeight.Normal,color=if(active)MaterialTheme.colors.primary else MaterialTheme.colors.onSurface,help=UiHelp.section(entry.title,entry.keywords))
      }
     }
    }

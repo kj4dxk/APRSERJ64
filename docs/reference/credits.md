@@ -6,6 +6,8 @@ APRSISCE/32 was developed by Lynn W. Deffenbaugh, KJ4ERJ (Silent Key), Homeside 
 
 ## Legacy reading by subject
 
+Location entry uses Google's [Open Location Code](https://github.com/google/open-location-code) Java library (Apache-2.0) for Plus Code decoding and recovery against a nearby reference. See [map navigation](../operate/maps.md#accepted-location-formats) for supported inputs and limitations.
+
 | Subject | Legacy source |
 | --- | --- |
 | Account setup | [Passcode](https://github.com/kj4dxk/APRSIS32/blob/main/docs/manual/doc-passcode.md) |
