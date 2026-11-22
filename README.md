@@ -15,8 +15,6 @@ Use your existing callsign's APRS-IS passcode if you have one. For requests, fol
 
 Your callsign and passcode are stored only in your local `settings.toml`. Keep that file and your data/logs private. Never distribute your configured folder as a clean download. [Full getting-started instructions](docs/start/quick-start.md).
 
-## User manual
-
 ## Maps and fallback
 
 The default OSM-derived tiles come from `http://pdeffenb.homeip.net:82/raster/light/{z}/{x}/{y}.png`, independently hosted by the maintainer. This reduces requests to the OpenStreetMap community tile server. If the project server has problems, open **Settings → Map → OpenStreetMap**, then **Save**. Select **pdeffenb** there to switch back. These preset addresses are editable in your local `settings.toml`.
