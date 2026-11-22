@@ -2,10 +2,18 @@
 package org.aprsis64
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import org.jetbrains.skia.Data
+import org.jetbrains.skia.EncodedImageFormat
+import org.jetbrains.skia.Image
+import org.jetbrains.skia.Surface
+import org.jetbrains.skia.svg.SVGDOM
+import java.awt.Color
+import java.awt.Font
+import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import javax.imageio.ImageIO
 
-/** APRSISMO symbol sheets, AGPL-3.0; same 16-column, 21-pixel cell layout. */
+/** Renders the bundled APRS vectors at the resolution requested by each UI surface. */
 object StationSymbols {
  private val labels=linkedMapOf<String,ImageBitmap>()
  @Synchronized fun label(text:String):ImageBitmap {
@@ -25,23 +33,69 @@ object StationSymbols {
   if(labels.size>=500)labels.remove(labels.keys.first())
   return image.toComposeImageBitmap().also {labels[text]=it}
  }
- private val primary=ImageIO.read(javaClass.getResource("/APRS1.png"))
- private val alternate=ImageIO.read(javaClass.getResource("/APRS2.png"))
- private val images=mutableMapOf<String,ImageBitmap>()
- @Synchronized fun bitmap(table:Char,symbol:Char):ImageBitmap = images.getOrPut("$table$symbol") {
-  val index=(symbol.code-33).coerceIn(0,93);val sheet=if(table=='/') primary else alternate
-  val image=BufferedImage(24,24,BufferedImage.TYPE_INT_ARGB)
-  val g=image.createGraphics()
-  try {
-   val x=2+(index%16)*21;val y=2+(index/16)*21
-   g.drawImage(sheet.getSubimage(x,y,18,18),0,0,24,24,null)
-   if(table in 'A'..'Z' || table in '0'..'9') {
-    g.font=java.awt.Font("SansSerif",java.awt.Font.BOLD,13)
-    val text=table.toString();val xx=(24-g.fontMetrics.stringWidth(text))/2
-    g.color=java.awt.Color.WHITE;g.fillRect(xx-1,2,g.fontMetrics.stringWidth(text)+2,14)
-    g.color=java.awt.Color.BLACK;g.drawString(text,xx,14)
-   }
-  } finally {g.dispose()}
-  image.toComposeImageBitmap()
+ private data class SymbolKey(val table: Char, val code: Int, val pixels: Int)
+
+ private val images = object : LinkedHashMap<SymbolKey, ImageBitmap>(256, .75f, true) {
+  override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SymbolKey, ImageBitmap>?): Boolean =
+   size > 512
  }
+
+ @Synchronized
+ fun bitmap(table: Char, symbol: Char, pixels: Int = 24): ImageBitmap {
+  val effectiveTable = when (table) {
+   '/', in 'A'..'Z', in '0'..'9' -> table
+   else -> '\\'
+  }
+  val key = SymbolKey(effectiveTable, symbol.code.coerceIn(33, 126), pixels)
+  return images.getOrPut(key) {
+   render(key.table, key.code, key.pixels).use { image ->
+    if (key.table == '/' || key.table == '\\') {
+     image.toComposeImageBitmap()
+    } else {
+     val awt = image.toAwtImage()
+     val graphics = awt.createGraphics()
+     try {
+      graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
+      graphics.scale(pixels / 24.0, pixels / 24.0)
+      graphics.font = Font("SansSerif", Font.BOLD, 13)
+      val text = key.table.toString()
+      val width = graphics.fontMetrics.stringWidth(text)
+      val left = (24 - width) / 2
+      graphics.color = Color.WHITE
+      graphics.fillRect(left - 1, 2, width + 2, 14)
+      graphics.color = Color.BLACK
+      graphics.drawString(text, left, 14)
+     } finally {
+      graphics.dispose()
+     }
+     awt.toComposeImageBitmap()
+    }
+   }
+  }
+ }
+
+ fun trayIcon(pixels: Int): BufferedImage = render('/', '!'.code, pixels).use { it.toAwtImage() }
+
+ private fun render(table: Char, code: Int, pixels: Int): Image {
+  val directory = if (table == '/') "primary" else "alternate"
+  val resource = "/aprs-symbols/$directory/${code.toString(16)}.svg"
+  val bytes = checkNotNull(javaClass.getResourceAsStream(resource)) {
+   "Missing APRS symbol resource $resource"
+  }.use { it.readBytes() }
+
+  return Data.makeFromBytes(bytes).use { data ->
+   SVGDOM(data).use { svg ->
+    Surface.makeRasterN32Premul(pixels, pixels).use { surface ->
+     svg.setContainerSize(pixels.toFloat(), pixels.toFloat())
+     svg.render(surface.canvas)
+     surface.makeImageSnapshot()
+    }
+   }
+  }
+ }
+
+ private fun Image.toAwtImage(): BufferedImage =
+  checkNotNull(encodeToData(EncodedImageFormat.PNG)).use { png ->
+   ImageIO.read(png.bytes.inputStream())
+  }
 }

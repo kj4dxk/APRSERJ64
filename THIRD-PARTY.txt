@@ -39,8 +39,7 @@ jSerialComm 2.11.0: LGPL-3.0 / Apache-2.0 dual license.
 https://github.com/Fazecast/jSerialComm
 Bundled license and native-library notices must accompany distributions.
 
-APRS symbol sheets APRS1.png and APRS2.png are reused from APRSFoundation/APRSISMO,
-https://github.com/APRSFoundation/APRSISMO, under that project's AGPL-3.0 license.
+APRS symbol SVGs are redrawn from the APRSIS32 primary and alternate artwork. See assets/aprs-symbols/README.md for provenance.
 
 APRS device identification database (src/main/resources/tocalls.json)
 Maintained by Hessu OH7LZB and APRS identifier allocation contributors.

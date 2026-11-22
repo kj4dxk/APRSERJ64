@@ -23,6 +23,13 @@ dependencies {
     implementation("com.fazecast:jSerialComm:2.11.0")
     testImplementation(kotlin("test-junit"))
 }
+tasks.processResources {
+    from("assets/aprs-symbols") {
+        include("primary/*.svg", "alternate/*.svg")
+        into("aprs-symbols")
+    }
+}
+
 compose.desktop {
     application {
         mainClass = "org.aprsis64.MainKt"

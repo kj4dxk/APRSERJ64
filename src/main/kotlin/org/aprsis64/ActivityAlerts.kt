@@ -9,7 +9,8 @@ class ActivityAlerts(private val home:java.nio.file.Path=java.nio.file.Path.of("
  fun configure() {
   if(!setting("alerts.desktop").toBoolean()){close();return}
   if(tray==null && java.awt.SystemTray.isSupported()) runCatching {
-   val image=javax.imageio.ImageIO.read(javaClass.getResource("/APRS1.png")).getSubimage(2,2,18,18)
+   val traySize=java.awt.SystemTray.getSystemTray().trayIconSize.width.coerceAtLeast(1)
+   val image=StationSymbols.trayIcon(traySize)
    val icon=java.awt.TrayIcon(image,"APRSIS64");icon.isImageAutoSize=true
    java.awt.SystemTray.getSystemTray().add(icon);tray=icon
   }

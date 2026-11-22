@@ -65,6 +65,34 @@ class ExtendedFeaturesTest {
    }finally{client.stop()}
   }
  }
+ @Test fun bundledSvgSymbolsRenderArtworkAndOverlaysAtRequestedSize() {
+  val size = 64
+  fun pixels(table: Char, symbol: Char): IntArray {
+   val bitmap = StationSymbols.bitmap(table, symbol, size)
+   assertEquals(size, bitmap.width)
+   assertEquals(size, bitmap.height)
+   return IntArray(size * size).also { bitmap.readPixels(it) }
+  }
+
+  val police = pixels('/', '!')
+  assertEquals(0, police.first() ushr 24)
+  assertTrue(0xFF0000CE.toInt() in police)
+  assertTrue(0xFFFFFF00.toInt() in police)
+
+  val alternate = pixels('\\', '>')
+  for (overlay in listOf('A', '7')) {
+   val overlaid = pixels(overlay, '>')
+   assertFalse(alternate.contentEquals(overlaid))
+   assertEquals(0xFFFFFFFF.toInt(), overlaid[8 * size + size / 2])
+   assertTrue((49 * size until size * size).all { alternate[it] == overlaid[it] })
+  }
+
+  val tray = StationSymbols.trayIcon(32)
+  assertEquals(32, tray.width)
+  assertEquals(0, tray.getRGB(0, 0) ushr 24)
+  assertTrue(0xFF0000CE.toInt() in tray.getRGB(0, 0, 32, 32, null, 0, 32))
+ }
+
  @Test fun newPreferencesSurviveReloadAndSymbolsCoverTables() {
   val home=Files.createTempDirectory("APRS features settings")
   val store=SettingsStore(home);store.values.setProperty("display.follow","true")

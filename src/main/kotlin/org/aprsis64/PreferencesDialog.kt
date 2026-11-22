@@ -7,6 +7,7 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.rememberDialogState
@@ -78,10 +79,12 @@ import kotlinx.serialization.json.*
     if(field.key in listOf("beacon.symbol","symbol")) {
         var picker by remember {mutableStateOf(false)}
         val table=values[if(field.key=="symbol") "symbol_table" else "beacon.symbol_table"]?.singleOrNull() ?: '/'
-        Row {Image(StationSymbols.bitmap(table,value.singleOrNull() ?: '?'),"Selected APRS symbol",Modifier.size(32.dp));TextButton(onClick={picker=true}){Text("Choose symbol")}}
+        val previewPixels=with(LocalDensity.current) {32.dp.roundToPx().coerceAtLeast(1)}
+        val pickerPixels=with(LocalDensity.current) {26.dp.roundToPx().coerceAtLeast(1)}
+        Row {Image(StationSymbols.bitmap(table,value.singleOrNull() ?: '?',previewPixels),"Selected APRS symbol",Modifier.size(32.dp));TextButton(onClick={picker=true}){Text("Choose symbol")}}
         if(picker) Column(Modifier.height(250.dp).verticalScroll(rememberScrollState())) {
             (33..126).toList().chunked(12).forEach {row->Row {row.forEach {code->
-                Box(Modifier.size(38.dp).clickable {values[field.key]=code.toChar().toString();picker=false}.padding(6.dp)) {Image(StationSymbols.bitmap(table,code.toChar()),"APRS symbol ${code.toChar()}")}
+                Box(Modifier.size(38.dp).clickable {values[field.key]=code.toChar().toString();picker=false}.padding(6.dp)) {Image(StationSymbols.bitmap(table,code.toChar(),pickerPixels),"APRS symbol ${code.toChar()}")}
             }}}
         }
     }
