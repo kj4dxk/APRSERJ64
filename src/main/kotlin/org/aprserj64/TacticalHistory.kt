@@ -5,7 +5,7 @@ import java.sql.DriverManager
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 data class HeardPath(val call:String,val port:String,val packet:RadioPacket,val time:Long)
 data class DxRecord(val port:String,val call:String,val latitude:Double,val longitude:Double,val kilometers:Double,val time:Long)

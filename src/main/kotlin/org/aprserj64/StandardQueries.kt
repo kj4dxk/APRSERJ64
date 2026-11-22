@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package org.aprserj64
 import kotlinx.coroutines.*
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 internal class StandardQueries(private val model:AppModel,private val scope:CoroutineScope,private val radio:()->RadioPorts?) {
  private val last=linkedMapOf<String,Long>()

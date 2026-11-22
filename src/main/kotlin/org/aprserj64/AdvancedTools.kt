@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.*
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 import java.time.Instant
 import java.util.Properties
 import kotlin.math.*

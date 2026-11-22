@@ -4,7 +4,7 @@ package org.aprserj64
 import java.nio.file.Files
 import kotlin.test.*
 import kotlinx.coroutines.*
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 class ChatDatabaseTest {
     @Test fun persistenceDedupAndAccounts(): Unit = runBlocking {

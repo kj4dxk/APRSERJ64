@@ -7,7 +7,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 /** Routing decisions are serialized; socket/serial readers never wait for their own transmit lock. */
 class RadioPorts(val call: String, values: Properties, configs: List<Properties>, parent: CoroutineScope, private val traffic: (String,String,String)->Unit = {_,_,_->}) : AutoCloseable, AprsMessageTransport {

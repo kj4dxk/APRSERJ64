@@ -2,7 +2,7 @@
 package org.aprserj64
 import java.util.Properties
 import java.net.URI
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 object FeaturePreferences {
  val fields=AdvancedPreferences.fields+AdditionalPreferences.fields+TacticalPreferences.fields+listOf(

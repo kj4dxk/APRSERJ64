@@ -2,7 +2,7 @@
 package org.aprserj64
 import java.nio.file.*
 import kotlinx.serialization.json.*
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 import kotlin.math.roundToInt
 
 /** File bridge for hardware collectors. Input must be fresh; no stale sensor retransmission. */

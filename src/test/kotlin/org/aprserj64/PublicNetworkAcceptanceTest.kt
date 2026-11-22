@@ -3,7 +3,7 @@ package org.aprserj64
 import kotlinx.coroutines.*
 import java.nio.file.Files
 import java.nio.file.Path
-import net.osmand.shared.aprs.AprsConnectionState
+import org.aprsfoundation.core.AprsConnectionState
 import org.junit.Assume.assumeTrue
 import kotlin.test.*
 

@@ -5,7 +5,7 @@ import java.io.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 /** Non-RF endpoints. Their input never populates RF heard tables or digipeats. */
 internal class ServicePort(private val config:PortConfig,private val scope:CoroutineScope,

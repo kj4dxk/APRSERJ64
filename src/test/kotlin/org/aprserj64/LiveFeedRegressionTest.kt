@@ -1,6 +1,6 @@
 package org.aprserj64
 import kotlin.test.*
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 class LiveFeedRegressionTest {
  @Test fun archiveBatchDrainsAllAcceptedPacketsOnFinish():Unit=kotlinx.coroutines.runBlocking {
   val home=java.nio.file.Files.createTempDirectory("APRS batch test");PortableHome.prepare(home)

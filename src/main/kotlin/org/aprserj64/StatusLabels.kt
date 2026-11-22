@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package org.aprserj64
-import net.osmand.shared.aprs.AprsConnectionState
+import org.aprsfoundation.core.AprsConnectionState
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter

@@ -10,7 +10,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.json.*
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 /** NWS-TTTTT / NWS_TTTTT and APRS warning objects; no network downloads. */
 class LegacyWeather(private val home:Path,parent:CoroutineScope,private val setting:(String)->String):AutoCloseable {

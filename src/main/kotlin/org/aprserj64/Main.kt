@@ -28,7 +28,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.serialization.json.*
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.CameraUpdate
 import org.maplibre.compose.desktop.ProvideMapPresentationHost

@@ -2,7 +2,7 @@
 package org.aprserj64
 
 import java.util.Properties
-import net.osmand.shared.aprs.AprsFilters
+import org.aprsfoundation.core.AprsFilters
 import org.tomlj.Toml
 
 object OperatingPreferences {

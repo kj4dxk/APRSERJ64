@@ -2,7 +2,7 @@
 package org.aprserj64
 
 import java.util.Properties
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 data class ScheduledBulletin(val slot:String,val group:String,val seconds:Int,val route:String,val text:String) {
  companion object {fun parse(line:String):ScheduledBulletin {

@@ -3,8 +3,7 @@ APRSFoundation/APRSISMO license reference:
 https://github.com/APRSFoundation/APRSISMO/blob/main/LICENSE
 
 Shared core: https://github.com/kj4dxk/aprs-core
-Extracted components retain GPLv3-or-later terms; see shared/aprs-core/ORIGIN-LICENSE.txt.
-New core additions are AGPL-3.0. No OsmAnd artwork is distributed here.
+The shared APRS core is AGPL-3.0 and based on APRSIS32 and APRSISMO.
 
 MapLibre Native and MapLibre Compose: BSD licenses.
 https://github.com/maplibre/maplibre-native

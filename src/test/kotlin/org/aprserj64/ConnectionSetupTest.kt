@@ -22,7 +22,7 @@ class ConnectionSetupTest {
    assertEquals("true",model.settings.getProperty("autoConnect"))
    model.connectSaved()
    assertNotNull(model.connectionSetupIssue.value)
-   assertEquals(net.osmand.shared.aprs.AprsConnectionState.STOPPED,model.state.value)
+   assertEquals(org.aprsfoundation.core.AprsConnectionState.STOPPED,model.state.value)
   }
  }
  @Test fun serverRejectionPromptsAndDisconnectPreservesStartupPreference():Unit=runBlocking {

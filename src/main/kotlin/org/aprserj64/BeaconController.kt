@@ -5,7 +5,7 @@ import java.util.Properties
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 import kotlinx.serialization.json.*
 
 data class BeaconState(val enabled: Boolean = true, val source: String = "Fixed", val detail: String = "Waiting for connection",

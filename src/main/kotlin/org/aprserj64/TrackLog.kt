@@ -3,7 +3,7 @@ package org.aprserj64
 import java.nio.file.*
 import java.io.RandomAccessFile
 import java.time.*
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 /** Daily, per-station files. GPX remains a complete document after every write. */
 class TrackLog(private val home:Path,private val setting:(String)->String) {

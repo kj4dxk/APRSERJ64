@@ -5,7 +5,7 @@ import java.nio.*
 import java.util.Properties
 import java.time.Instant
 import kotlinx.coroutines.*
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 import kotlin.test.*
 
 class RemainingFeaturesTest {

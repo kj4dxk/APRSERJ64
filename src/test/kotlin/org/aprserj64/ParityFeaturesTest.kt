@@ -4,7 +4,7 @@ import kotlin.test.*
 import java.nio.file.Files
 import java.time.Instant
 import kotlinx.coroutines.*
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 class ParityFeaturesTest {
  @Test fun digitalLogFormatsRejectTransmitsAndReportsWithoutLocations() {
   val ft=DigitalLogs.parse("FT8","261121_043915 7.074 Rx FT8 -21 0.1 967 N7KDT N9YLZ EN51")!!

@@ -3,7 +3,7 @@ package org.aprserj64
 import java.nio.file.*
 import kotlin.test.*
 import org.junit.Assume.assumeTrue
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 import kotlinx.serialization.json.*
 
 /** Opt-in real-feed regression/performance probe. Raw captures stay outside source control. */

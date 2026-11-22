@@ -3,7 +3,7 @@ package org.aprserj64
 
 import java.util.Properties
 import kotlinx.serialization.json.*
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 import org.tomlj.TomlTable
 
 enum class SettingKind { TEXT, BOOLEAN, INTEGER, DECIMAL, STRINGS }

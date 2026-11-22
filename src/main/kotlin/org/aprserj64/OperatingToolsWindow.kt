@@ -11,7 +11,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.*
 import kotlinx.coroutines.launch
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 import java.time.Instant
 
 @Composable fun OperatingToolsWindow(model:AppModel,selected:String?,initialTab:String="Station",requestId:Int=0,onNavigate:(String)->Unit={},dismiss:()->Unit) {

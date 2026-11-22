@@ -8,7 +8,7 @@ import java.time.*
 import java.util.Date
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 import kotlin.math.*
 
 data class OrbitPosition(val name:String,val latitude:Double,val longitude:Double,val altitudeKm:Double,val azimuth:Double,val elevation:Double,val rangeKm:Double,val rateKmSecond:Double,val epoch:Long)

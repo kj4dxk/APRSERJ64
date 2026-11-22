@@ -7,7 +7,7 @@ import java.nio.file.StandardCopyOption
 import java.util.Properties
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
     private val scope = CoroutineScope(SupervisorJob()+Dispatchers.Default)

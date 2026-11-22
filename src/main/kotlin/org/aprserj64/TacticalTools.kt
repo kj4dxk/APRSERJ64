@@ -7,7 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 import java.util.Properties
 import java.util.Locale
 

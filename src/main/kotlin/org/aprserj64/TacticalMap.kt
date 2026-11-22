@@ -4,7 +4,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.serialization.json.*
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 import org.maplibre.compose.expressions.dsl.const
 import org.maplibre.compose.interaction.ClickResult
 import org.maplibre.compose.layers.*

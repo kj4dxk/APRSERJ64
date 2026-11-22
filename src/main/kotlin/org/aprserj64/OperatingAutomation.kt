@@ -9,7 +9,7 @@ import java.nio.file.StandardCopyOption
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.*
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 /** Current-state automation. Disconnected timer events are never queued for later delivery. */
 class OperatingAutomation(private val model:AppModel,parent:CoroutineScope,private val radio:()->RadioPorts?):AutoCloseable {

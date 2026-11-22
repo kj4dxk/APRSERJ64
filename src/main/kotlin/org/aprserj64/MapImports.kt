@@ -4,7 +4,7 @@ import java.nio.file.*
 import javax.xml.stream.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 data class ImportedWaypoint(val name:String,val fix:AprsFix)
 data class GpxContent(val shapes:List<TacticalGeometry>,val waypoints:List<ImportedWaypoint>)

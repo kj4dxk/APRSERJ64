@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package org.aprserj64
 import kotlinx.coroutines.flow.MutableStateFlow
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 import kotlinx.serialization.json.*
 
 data class StationMetadata(val call:String,val time:Long,val rf:Boolean,val messageCapable:Boolean,val platform:String,val frequency:AprsFrequency?,val direct:Boolean=false,val igate:Boolean=false,val telemetry:Boolean=false,val status:Boolean=false,val frequencyIssue:Boolean=false,val weather:Boolean=false)

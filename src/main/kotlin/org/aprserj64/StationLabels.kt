@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package org.aprserj64
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 import java.util.Properties
 import java.util.Locale
 

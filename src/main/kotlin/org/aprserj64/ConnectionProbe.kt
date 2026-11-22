@@ -3,7 +3,7 @@ package org.aprserj64
 
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 
 

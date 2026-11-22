@@ -4,7 +4,7 @@ import java.nio.file.Files
 import java.net.ServerSocket
 import java.net.InetAddress
 import kotlinx.coroutines.*
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 import kotlin.test.*
 
 class AutomationIntegrationTest {

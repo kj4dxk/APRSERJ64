@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package org.aprserj64
 import kotlinx.coroutines.flow.MutableStateFlow
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 data class AppNotice(val time:Long,val text:String)
 class ActivityAlerts(private val home:java.nio.file.Path=java.nio.file.Path.of("."),private val setting:(String)->String):AutoCloseable {

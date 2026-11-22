@@ -8,7 +8,7 @@ import java.net.SocketTimeoutException
 import java.nio.file.Files
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 import kotlin.test.*
 
 class RuntimeIntegrationTest {

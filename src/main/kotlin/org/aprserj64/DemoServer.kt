@@ -6,7 +6,7 @@ import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.concurrent.thread
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 /** A real loopback APRS-IS session. Demo packets can never reach an Internet server. */
 class DemoServer : AutoCloseable {

@@ -7,7 +7,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Properties
 import kotlinx.serialization.json.*
 import kotlinx.coroutines.flow.MutableStateFlow
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 data class DigitalSpot(val call:String,val grid:String,val time:Long,val mode:String,val frequencyMhz:Double?) {
  fun position(now:Long):BeaconPosition {

@@ -3,7 +3,7 @@ package org.aprserj64
 import java.net.*
 import java.nio.file.Files
 import kotlinx.coroutines.*
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 import kotlin.test.*
 class LocalServiceParityTest {
  @Test fun localQueriesAndChatAckReturnToClientDespiteExcludingFilter():Unit=runBlocking {

@@ -2,7 +2,7 @@
 package org.aprserj64
 import java.util.Properties
 import kotlinx.coroutines.*
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 /** Runs alongside chat; addressed chat ACKs remain owned by ChatSession. */
 internal class QueryResponder(private val model:AppModel,private val scope:CoroutineScope,

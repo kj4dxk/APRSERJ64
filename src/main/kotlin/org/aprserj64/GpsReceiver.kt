@@ -9,7 +9,7 @@ import java.net.InetSocketAddress
 import java.net.SocketTimeoutException
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 data class GpsReading(val position: BeaconPosition? = null, val valid: Boolean = false, val detail: String = "Waiting for GPS")
 

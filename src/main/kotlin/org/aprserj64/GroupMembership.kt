@@ -3,7 +3,7 @@ package org.aprserj64
 import java.nio.file.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.json.*
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 data class Membership(val group:String,val state:String,val time:Long,val evidence:String)
 /** Confirmations come only from addressed replies by the configured server. */

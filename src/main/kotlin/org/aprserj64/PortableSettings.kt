@@ -7,7 +7,7 @@ import java.nio.file.StandardCopyOption.*
 import java.nio.file.AtomicMoveNotSupportedException
 import java.util.Properties
 import kotlinx.serialization.json.*
-import net.osmand.shared.aprs.AprsEndpoint
+import org.aprsfoundation.core.AprsEndpoint
 import org.tomlj.Toml
 
 /** Everything belongs to the EXE's folder, even when a shortcut has another working directory. */

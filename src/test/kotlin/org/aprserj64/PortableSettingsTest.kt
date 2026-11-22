@@ -4,7 +4,7 @@ package org.aprserj64
 import java.nio.file.Files
 import kotlin.test.*
 import kotlinx.coroutines.*
-import net.osmand.shared.aprs.AprsConnectionState
+import org.aprsfoundation.core.AprsConnectionState
 
 class PortableSettingsTest {
     @Test fun namedPortsAndStaticObjectRoutesRoundTrip() {

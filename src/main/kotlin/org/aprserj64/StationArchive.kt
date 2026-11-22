@@ -5,7 +5,7 @@ import java.sql.DriverManager
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 class StationArchive(private val home: Path,parent: CoroutineScope,private val setting: (String)->String): AutoCloseable {
  val objects=MutableStateFlow<Set<String>>(emptySet())

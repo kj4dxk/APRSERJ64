@@ -8,7 +8,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
 import org.maplibre.compose.desktop.*
 import kotlinx.serialization.json.*
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 import java.util.Properties
 import kotlin.math.*
 

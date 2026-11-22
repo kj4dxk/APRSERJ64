@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package org.aprserj64
 import kotlin.test.*
-import net.osmand.shared.aprs.AprsConnectionState
+import org.aprsfoundation.core.AprsConnectionState
 
 class CoordinateInputTest {
  private fun point(text:String,lat:Double,lon:Double,reference:MapLocation?=null):CoordinateResult {

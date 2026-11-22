@@ -6,7 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 @Composable fun AdditionalTools(model:AppModel,tab:String) {
  val scope=rememberCoroutineScope()

@@ -12,7 +12,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import net.osmand.shared.aprs.*
+import org.aprsfoundation.core.*
 
 data class PortStatus(val name: String, val detail: String, val received: Long=0, val transmitted: Long=0, val dropped: Long=0)
 

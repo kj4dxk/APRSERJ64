@@ -2,7 +2,7 @@
 package org.aprserj64
 
 import kotlin.test.*
-import net.osmand.shared.aprs.AprsProtocol
+import org.aprsfoundation.core.AprsProtocol
 
 class AppVersionTest {
     @Test fun releaseVersionIsPackagedAndIdentifiesTheConnection() {
