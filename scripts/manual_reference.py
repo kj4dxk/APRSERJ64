@@ -19,14 +19,15 @@ labels={}
 for file in SRC.glob('*Preferences.kt'):
     for key,label,default in fields(file.read_text(encoding='utf-8-sig')): labels[key]=label
 config=tomllib.loads((ROOT/'settings.example.toml').read_text(encoding='utf-8-sig'))
-lines=['# Settings catalog','','Generated from `settings.example.toml` and the application field schema. These are **new-install example defaults**, not a promise that an existing installation has these values. See [editing TOML](files.md) before changing a file. Exact keys are searchable.','','Tables containing records (server presets, ports and objects) are explained separately. Service addresses are configurable; a default address does not guarantee service availability.','']
+lines=['# Settings catalog','','Generated from `settings.example.toml` and the application field schema. These are **new-install example defaults**, not a promise that an existing installation has these values. See [editing TOML](files.md) before changing a file. Exact keys are searchable.','','Tables containing records (server presets, ports and objects) are explained separately. Service addresses are configurable; a default address does not guarantee service availability. Routing and setup endpoints are omitted from this catalog; use their configured values in your local `settings.toml`.','']
 def walk(table,prefix=''):
     scalar={k:v for k,v in table.items() if not isinstance(v,dict) and not (isinstance(v,list) and v and isinstance(v[0],dict))}
     if scalar:
         lines.extend(['## '+(prefix or 'Root'),'', '| Key | Example default | Meaning / UI label |','| --- | --- | --- |'])
         for key,value in scalar.items():
             full=prefix+'.'+key if prefix else key
-            lines.append(f'| `{full}` | `{cell(literal(value))}` | {cell(labels.get(full,key.replace("_"," ")))} |')
+            example = 'See local `settings.toml`' if full in {'services.routing_url', 'services.setup_url'} else f'`{cell(literal(value))}`'
+            lines.append(f'| `{full}` | {example} | {cell(labels.get(full,key.replace("_"," ")))} |')
         lines.append('')
     for key,value in table.items():
         full=prefix+'.'+key if prefix else key
