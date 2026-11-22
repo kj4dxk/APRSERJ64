@@ -66,6 +66,8 @@ internal class PortWorkspaceDraft(settings: Properties, ports: List<Properties>,
         require(newName.isNotBlank() && newName==newName.trim() && newName.length<=64 && devices.none {it.id!=id && it.name==newName})
         change {
             port.values["name"]=newName
+            values["digital.ports"]=encodedNames(names(values["digital.ports"]).map {if(it==old)newName else it})
+            if(values["weatherstation.port"]==old)values["weatherstation.port"]=newName
             if(values["position.source"]=="port" && values["position.port_name"]==old) values["position.port_name"]=newName
             devices.forEach {p->p.values["digi_outputs"]=encodedNames(names(p.values["digi_outputs"]).map {if(it==old) newName else it})}
             objects.forEach {obj->obj["ports"]=encodedNames(names(obj["ports"]).map {if(it==old) newName else it})}
@@ -79,6 +81,9 @@ internal class PortWorkspaceDraft(settings: Properties, ports: List<Properties>,
             if(values["position.source"]=="port" && values["position.port_name"]==port.name) values["position.port_name"]=""
             devices.forEach {p->val before=names(p.values["digi_outputs"])
                 if(port.name in before) {val after=before-port.name;p.values["digi_outputs"]=encodedNames(after);if(after.isEmpty()) p.values["digipeater"]="false"}}
+            val digitalBefore=names(values["digital.ports"])
+            if(port.name in digitalBefore){val after=digitalBefore-port.name;values["digital.ports"]=encodedNames(after);if(after.isEmpty())values["digital.transmit"]="false"}
+            if(values["weatherstation.port"]==port.name){values["weatherstation.port"]="";values["weatherstation.enabled"]="false"}
             objects.forEach {obj->val before=names(obj["ports"])
                 if(port.name in before) {val after=before-port.name;obj["ports"]=encodedNames(after);if(after.isEmpty()) obj["radio"]="false"}}
         }

@@ -7,6 +7,15 @@ import kotlin.math.roundToInt
 
 /** File bridge for hardware collectors. Input must be fresh; no stale sensor retransmission. */
 object LocalSensors {
+ fun wxnow(call:String,input:String,now:Long,maximumAgeSeconds:Int):AprsWeather? {
+  val lines=input.lines();if(lines.size<2)return null
+  val stamp=runCatching {java.time.LocalDateTime.parse(lines[0].trim().replace(Regex("\\s+")," "),java.time.format.DateTimeFormatter.ofPattern("MMM d yyyy HH:mm",java.util.Locale.US)).toInstant(java.time.ZoneOffset.UTC).toEpochMilli()}.getOrNull()?:return null
+  require(now-stamp in -60000..maximumAgeSeconds*1000L){"wxnow weather data is stale"}
+  val data=lines.drop(1).joinToString("").trim()
+  val wind=Regex("^(\\d{3}|\\.\\.\\.)/(\\d{3}|\\.\\.\\.)").find(data)?:return null
+  val payload="c"+wind.groupValues[1]+"s"+wind.groupValues[2]+data.substring(wind.value.length)
+  return AprsObservations.weather("$call>APRS:_00000000$payload",stamp)
+ }
  fun read(home:Path,file:String,maxAgeSeconds:Int,now:Long):String {
   val path=home.resolve(file);require(Files.size(path)<=65536){"Sensor file too large"}
   require(now-Files.getLastModifiedTime(path).toMillis() in -5000..maxAgeSeconds*1000L){"Sensor data is stale"}
@@ -25,7 +34,7 @@ object LocalSensors {
    val json=Json.parseToJsonElement(input).jsonObject
    fun n(key:String,min:Double,max:Double)=json[key]?.jsonPrimitive?.double?.also {require(it.isFinite() && it in min..max){"Invalid weather $key"}}
    AprsWeather(model.account.value,now,n("temperature_c",-90.0,80.0),n("wind_degrees",0.0,360.0)?.toInt(),n("wind_kph",0.0,500.0),n("gust_kph",0.0,500.0),n("humidity",0.0,100.0)?.toInt(),n("pressure_hpa",100.0,1200.0),n("rain_hour_mm",0.0,253.0),n("rain_day_mm",0.0,253.0))
-  }else (UltimeterWeather.decode(model.account.value,input,now) ?: AprsObservations.weather(input,now))?:error("Expected SI weather JSON or an APRS weather packet")
+  }else (wxnow(model.account.value,input,now,p.getProperty("weatherstation.maximum_age_seconds").toInt()) ?: UltimeterWeather.decode(model.account.value,input,now) ?: AprsObservations.weather(input,now))?:error("Expected SI weather JSON or an APRS weather packet")
   fun digits(value:Double?,width:Int)=value?.roundToInt()?.coerceIn(0,("9".repeat(width)).toInt())?.toString()?.padStart(width,'0')?:".".repeat(width)
   val c=buildString {
    append(digits(weather.windDegrees?.toDouble(),3));append('/');append(digits(weather.windKph?.div(1.609344),3))

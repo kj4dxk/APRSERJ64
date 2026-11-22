@@ -40,6 +40,12 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
             delay(config.number("reconnect_seconds")*1000L)
         }
     }}
+    fun replyTo(recipient:String,packet:RadioPacket):Boolean {
+        if(!ready || !config.canTransmit)return false
+        val sent=runCatching {service?.send(packet,recipient)==true}.getOrDefault(false)
+        if(sent){transmitted(packet);status.value=status.value.copy(transmitted=status.value.transmitted+1)}
+        return sent
+    }
     private suspend fun session()=coroutineScope {
         if(config.protocol in PortPreferences.services) {
             val endpoint=ServicePort(config,this,{value->status.value=status.value.copy(received=status.value.received+1);if(!packet(value))status.value=status.value.copy(dropped=status.value.dropped+1)},{detail->ready=true;status.value=status.value.copy(detail=detail)})
@@ -82,7 +88,7 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
     private suspend fun command(command: String) {
         val parts=command.split('|',limit=2);val response=parts.getOrNull(1)
         val waiting=response?.takeIf {it.isNotEmpty()}?.let {CompletableDeferred<Unit>()}
-        expected=if(waiting!=null) response!! to waiting else null
+        expected=if(waiting!=null) response to waiting else null
         try {
             raw(parts[0].toByteArray(Charsets.US_ASCII))
             if(waiting!=null) withTimeout(config.number("command_timeout_ms").toLong()) {waiting.await()}

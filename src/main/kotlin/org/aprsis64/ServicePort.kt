@@ -11,12 +11,13 @@ import net.osmand.shared.aprs.*
 internal class ServicePort(private val config:PortConfig,private val scope:CoroutineScope,
  private val receive:suspend (RadioPacket)->Unit,private val connected:(String)->Unit):AutoCloseable {
  private var listener:AutoCloseable?=null
- private class Peer(val output:OutputStream) {val queue=Channel<ByteArray>(128);@Volatile var filter:PacketFilter?=null;@Volatile var call=""}
+ private class Peer(val output:OutputStream) {val queue=Channel<ByteArray>(128);@Volatile var filter:PacketFilter?=null;@Volatile var call="";val gated=ConcurrentHashMap<String,Long>();val associated=ConcurrentHashMap<String,Long>()}
  private val clients=ConcurrentHashMap<Socket,Peer>()
  private var udp:DatagramSocket?=null
  private val positions=ConcurrentHashMap<String,AprsFix>()
  private val igates=ConcurrentHashMap.newKeySet<String>()
  private val seen=linkedMapOf<String,Long>()
+ private val udpSources=ConcurrentHashMap<String,SocketAddress>()
  private val peers=ConcurrentHashMap<SocketAddress,Long>()
  @Volatile private var cwop:OutputStream?=null
  suspend fun run()=withContext(Dispatchers.IO) {
@@ -29,13 +30,13 @@ internal class ServicePort(private val config:PortConfig,private val scope:Corou
      if(peers.size<32 || peers.containsKey(data.socketAddress))peers[data.socketAddress]=System.currentTimeMillis()
      String(data.data,0,data.length,Charsets.US_ASCII).lineSequence().take(16).forEach {line->
       val packet=RadioPacket.parse(line.trim()) ?: Regex("([A-Z0-9-]{3,9}>[^\\r\\n]+)").find(line)?.value?.let {RadioPacket.parse(it)}
-      if(packet!=null)accept(packet)
+      if(packet!=null){if(udpSources.size<4096)udpSources[packet.source]=data.socketAddress;accept(packet)}
      }
     }
    }
    "CWOP"->{
     val endpoint=AprsEndpoint.parse(config.text("endpoint"));val socket=Socket();listener=socket;socket.connect(InetSocketAddress(endpoint.host,endpoint.port),5000);socket.soTimeout=1000
-    val out=socket.getOutputStream();out.write("user ${config.text("service_call")} pass -1 vers APRSIS64 0.7.0\r\n".toByteArray(Charsets.US_ASCII));out.flush();cwop=out;connected("CWOP connected")
+    val out=socket.getOutputStream();out.write("user ${config.text("service_call")} pass -1 vers APRSIS64 0.8.0\r\n".toByteArray(Charsets.US_ASCII));out.flush();cwop=out;connected("CWOP connected")
     val buffer=ByteArray(512);while(currentCoroutineContext().isActive){try{if(socket.getInputStream().read(buffer)<0)break}catch(_:SocketTimeoutException){}}
    }
    else->{
@@ -66,8 +67,10 @@ internal class ServicePort(private val config:PortConfig,private val scope:Corou
   val peer=clients[socket]?:return;fun write(s:String){if(!peer.queue.trySend((s+"\r\n").toByteArray(Charsets.US_ASCII)).isSuccess)socket.close()}
   write("# APRSIS64 local server")
   var identity="";var verified=false;val line=StringBuilder();var overflow=false
-  val input=socket.getInputStream()
-  while(currentCoroutineContext().isActive){val byte=try{input.read()}catch(_:SocketTimeoutException){continue};if(byte<0)return
+  val input=socket.getInputStream();var heartbeat=System.currentTimeMillis()
+  while(currentCoroutineContext().isActive){
+   if(System.currentTimeMillis()-heartbeat>=config.number("service_heartbeat_seconds")*1000L){write("# APRSIS64 heartbeat");heartbeat=System.currentTimeMillis()}
+   val byte=try{input.read()}catch(_:SocketTimeoutException){continue};if(byte<0)return
    if(byte==10){val value=line.toString().trimEnd('\r');line.clear();if(overflow){overflow=false;continue}
     if(value.startsWith("user ",true)){
      val parts=value.split(Regex("\\s+"));val who=parts.getOrNull(1)?.uppercase().orEmpty();val index=parts.indexOf("pass");val code=parts.getOrNull(index+1)?.toIntOrNull()
@@ -75,11 +78,16 @@ internal class ServicePort(private val config:PortConfig,private val scope:Corou
      val filter=value.substringAfter(" filter ","");peer.filter=filter.takeIf {it.isNotBlank()}?.let {PacketFilter(it)}
      write("# logresp $who ${if(verified)"verified" else "unverified"}, APRSIS64")
     }else if(value.startsWith("#filter ")){peer.filter=PacketFilter(value.removePrefix("#filter "))}
-    else if(verified){RadioPacket.parse(value)?.takeIf {it.source==identity}?.let {accept(it)}}
+    else if(verified){RadioPacket.parse(value)?.let {packet->
+     if(packet.source!=identity && (packet.payload.startsWith('}') || packet.path.any {it.trimEnd('*') in listOf("TCPIP","TCPXX") || it.startsWith('q')}))return@let
+     peer.gated.entries.removeIf {System.currentTimeMillis()-it.value>1800000}
+     if(peer.gated.size<4096)peer.gated[packet.source]=System.currentTimeMillis()
+     accept(packet)
+    }}
    }else if(line.length<512)line.append(byte.toChar()) else overflow=true
   }
  }
- fun send(packet:RadioPacket):Boolean {
+ fun send(packet:RadioPacket,recipient:String?=null):Boolean {
   observe(packet)
   if(config.protocol=="Dummy")return true
   if(config.protocol=="CWOP") {
@@ -89,8 +97,17 @@ internal class ServicePort(private val config:PortConfig,private val scope:Corou
   }
   val line=(if(config.protocol=="Syslog-UDP")"<134>APRSIS64: " else "")+packet.line()+"\r\n"
   val bytes=line.toByteArray(Charsets.US_ASCII);var sent=false
-  udp?.let {socket->peers.entries.removeIf {System.currentTimeMillis()-it.value>600000};peers.keys.forEach {peer->runCatching {socket.send(DatagramPacket(bytes,bytes.size,peer));sent=true}}}
-  clients.forEach {(socket,peer)->if(peer.filter==null || peer.filter!!.matches(packet,positions[peer.call],positions,igates)) {
+  udp?.let {socket->peers.entries.removeIf {System.currentTimeMillis()-it.value>600000};peers.keys.filter {recipient==null || udpSources[recipient]==it}.forEach {peer->runCatching {socket.send(DatagramPacket(bytes,bytes.size,peer));sent=true}}}
+  clients.forEach {(socket,peer)->
+   val now=System.currentTimeMillis()
+   peer.gated.entries.removeIf {now-it.value>1800000};peer.associated.entries.removeIf {now-it.value>1800000}
+   val message=AprsMessages.parse(packet.line())
+   val addressed=message!=null && (message.recipient==peer.call || peer.gated.containsKey(message.recipient))
+   if(addressed && peer.associated.size<4096)peer.associated[packet.source]=now
+   val associated=peer.associated.containsKey(packet.source) && AprsProtocol.parse(packet.line(),now)!=null
+   val selected=recipient==null || recipient==peer.call || peer.gated.containsKey(recipient)
+   val subscribed=peer.filter?.matches(packet,positions[peer.call],positions,igates)==true || config.protocol=="Local-Server" && peer.filter==null
+   if(selected && (recipient!=null || addressed || associated || subscribed)) {
    if(peer.queue.trySend(bytes).isSuccess)sent=true else {clients.remove(socket);peer.queue.close();runCatching{socket.close()}}
   }}
   return sent

@@ -17,6 +17,11 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
     private val events=Channel<Pair<String,RadioPacket>>(128)
     private val incoming=Channel<AprsMessage>(128)
     override val messages=incoming.receiveAsFlow()
+    private val localForChat=java.util.concurrent.ConcurrentHashMap<String,Pair<String,Long>>()
+    private val directHeard=java.util.concurrent.ConcurrentHashMap<String,Long>()
+    private val localHeard=java.util.concurrent.ConcurrentHashMap<String,Pair<Int,Long>>()
+    private val maximumHops=values.getProperty("radio.maximum_hops").toInt()
+    private val heardHours=java.util.concurrent.ConcurrentHashMap<String,LongArray>()
     private val heardForChat=java.util.concurrent.ConcurrentHashMap<String,Pair<String,Long>>()
     private val heardMillis=values.getProperty("radio.heard_seconds").toLong()*1000
     private val devices=linkedMapOf<String,DevicePort>()
@@ -39,6 +44,10 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
         }
         scope.launch {for((name,packet) in events) routing.withLock {
             val now=System.currentTimeMillis();val device=devices[name] ?: return@withLock
+            if(!device.config.isRf) {
+                localForChat.entries.removeIf {now-it.value.second>heardMillis}
+                if(localForChat.size<4096)localForChat[packet.source]=name to now
+            }
             traffic(name,"RX",packet.line())
             store.receive(packet.line(),now);stations.value=store.snapshot(now)
             AprsProtocol.parse(packet.line(),now)?.let {positions[it.callsign]=AprsSpatial.fix(it)}
@@ -57,6 +66,14 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
             }
             router.observeRf(name,packet,now)
             if(!packet.payload.startsWith('}')) {
+                if(packet.usedHops<=maximumHops)localHeard[packet.source]=packet.usedHops to now
+                localHeard.entries.removeIf {now-it.value.second>heardMillis}
+                if(packet.usedHops==0)directHeard[packet.source]=now
+                directHeard.entries.removeIf {now-it.value>heardMillis}
+                if(heardHours.size<4096 || heardHours.containsKey(packet.source)) {
+                    val h=heardHours.getOrPut(packet.source){LongArray(48)};val hour=now/3600000;val index=(hour%24).toInt()*2
+                    synchronized(h){if(h[index]!=hour){h[index]=hour;h[index+1]=0};h[index+1]++}
+                }
                 heardForChat[packet.source]=name to now
                 if(heardForChat.size>values.getProperty("radio.maximum_entries").toInt()) heardForChat.entries.minByOrNull {it.value.second}?.let {heardForChat.remove(it.key,it.value)}
             }
@@ -72,7 +89,7 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
             }
             val isClient=client
             if(config.flag("rf_to_is") && !(config.flag("no_gate_me") && packet.source==call) && !config.flag("passall") && isClient?.state?.value==AprsConnectionState.VERIFIED && !router.duplicate("igate",packet,now)) {
-                router.toInternet(packet,config.canTransmit && config.flag("is_to_rf") && router.messageReachable(name,packet.source,now))?.let {
+                router.toInternet(packet,config.canTransmit && config.flag("is_to_rf"))?.let {
                     try {isClient.sendGated(call,it);traffic("APRS-IS","TX",it);router.transmitted("igate",packet,now)}
                     catch(cancelled: CancellationException) {throw cancelled} catch(_: Exception) { /* No offline queue. */ }
                 }
@@ -103,14 +120,23 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
             }
         } }
     }
+    fun isService(name:String)=devices[name]?.config?.protocol in PortPreferences.services
     fun weather(name:String)=weatherReadings[name]
     fun sky()=devices.mapValues {it.value.gpsSky.value}.filterValues {it.time>0}
     fun heardCalls()=heardForChat.filterValues {System.currentTimeMillis()-it.second in 0..heardMillis}.keys.sorted()
     fun positions()=positions.toMap()
-    suspend fun answer(port:String,line:String):Boolean {
+    fun localCalls()=localHeard.filterValues {System.currentTimeMillis()-it.second in 0..heardMillis}.toSortedMap().map {(call,h)->if(h.first==0)call else "$call(${h.first})"}
+    fun directCalls()=directHeard.filterValues {System.currentTimeMillis()-it in 0..heardMillis}.keys.sorted()
+    fun heardReport(call:String):String {
+        val h=heardHours[call]?:return "$call not heard on RF"
+        val hour=System.currentTimeMillis()/3600000
+        return synchronized(h){"$call HEARD: "+(0L..7L).joinToString(" "){ago->val index=((hour-ago)%24).toInt()*2;if(h[index]==hour-ago)h[index+1].toString() else "."}}
+    }
+    suspend fun answer(port:String,line:String,recipient:String?=null):Boolean {
         if(port=="APRS-IS")return broadcast(line,true,false)
-        val device=devices[port]?.takeIf {it.config.isRf && it.config.flag("messages")}?:return false
+        val device=devices[port]?.takeIf {it.config.flag("messages")}?:return false
         val packet=RadioPacket.parse(line.trimEnd('\r','\n'))?:return false
+        if(!device.config.isRf)return recipient?.let {device.replyTo(it,packet)}?:false
         return device.transmit(packet.copy(path=device.config.path("message_path")))
     }
     suspend fun publishServices(port:String,line:String) {
@@ -132,6 +158,11 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
     }
     private suspend fun sendChat(recipient: String, line: String, route:String="best") {
         require(route in listOf("best","rf","is"))
+        val local=localForChat[recipient]?.takeIf {System.currentTimeMillis()-it.second in 0..heardMillis}
+        if(route=="best" && local!=null) {
+            check(devices[local.first]?.replyTo(recipient,requireNotNull(RadioPacket.parse(line.trimEnd('\r','\n'))))==true){"Local client unavailable"}
+            return
+        }
         val candidates=devices.values.filter {it.config.isRf && route!="is" && it.ready && it.config.canTransmit && it.config.flag("messages")}
         val heard=heardForChat[recipient]?.takeIf {System.currentTimeMillis()-it.second in 0..heardMillis}
         val device=candidates.firstOrNull {it.config.name==heard?.first}

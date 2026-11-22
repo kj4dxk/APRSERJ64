@@ -5,7 +5,7 @@ plugins {
     id("org.jetbrains.compose") version "1.12.1"
 }
 group = "org.aprsfoundation.community"
-version = "0.7.0"
+version = "0.8.0"
 repositories { google(); mavenCentral() }
 kotlin { jvmToolchain(25) }
 dependencies {
@@ -30,8 +30,8 @@ compose.desktop {
         jvmArgs += listOf("--enable-native-access=ALL-UNNAMED", "-Xmx768m")
         nativeDistributions {
             packageName = "APRSIS64"
-            packageVersion = "0.7.0"
-            description = "APRS map and persistent chat prototype"
+            packageVersion = "0.8.0"
+            description = "Portable APRS mapping, messaging and radio gateway"
             vendor = "APRSIS64 contributors"
             appResourcesRootDir.set(layout.buildDirectory.dir("portableResources"))
             modules("java.sql", "java.net.http", "jdk.unsupported", "jdk.crypto.ec", "jdk.httpserver")

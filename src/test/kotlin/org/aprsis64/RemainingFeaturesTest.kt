@@ -71,7 +71,7 @@ class RemainingFeaturesTest {
    monitor.record("APRS-IS","RX","N0CALL>APRS,DIGI*:!2830.00N/08112.00W>")
    assertTrue(monitor.entries.value.first().invalid);assertTrue(monitor.entries.value.last().duplicate)
    val views=StationViews();views.receive("RF","N0CALL>APWW01:=2830.00N/08112.00W>146.940MHz T123 -060")
-   val s=views.stations.value.getValue("N0CALL");assertTrue(s.rf);assertTrue(s.messageCapable);assertEquals("APRSIS32",s.platform);assertNotNull(s.frequency)
+   val s=views.stations.value.getValue("N0CALL");assertTrue(s.rf);assertTrue(s.messageCapable);assertEquals("KJ4ERJ APRSIS32",s.platform);assertNotNull(s.frequency)
   }finally {monitor.close();scope.cancel()}
  }
  @Test fun localShapefileBoundaryLookup() {

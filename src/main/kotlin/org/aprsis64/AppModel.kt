@@ -25,6 +25,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
     private var beaconObserver: Job? = null
     private var radio: RadioPorts?=null
     private var radioObserver: Job?=null
+    val digitalStations=MutableStateFlow<List<AprsStation>>(emptyList())
     private val internetStations=MutableStateFlow<List<AprsStation>>(emptyList())
     val portStatuses=MutableStateFlow<List<PortStatus>>(emptyList())
     @Volatile private var stress = false
@@ -63,7 +64,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         radio=current;current.attach(client)
         if(AprsProtocol.validCallsign(account.value)) chat=ChatSession(account.value,current,database,scope) {error.value=it}
         radioObserver=scope.launch {
-            launch {combine(current.stations,internetStations) {rf,inet->rf+inet.filter {s->rf.none {it.callsign==s.callsign}}}.collect {if(!stress) stations.value=it}}
+            launch {combine(current.stations,internetStations,digitalStations) {rf,inet,digital->(rf+inet+digital).distinctBy {it.callsign}}.collect {if(!stress) stations.value=it}}
             launch {current.statuses.collect {portStatuses.value=it}}
         }
         if(AprsProtocol.validCallsign(account.value)) startBeacons(current,account.value)

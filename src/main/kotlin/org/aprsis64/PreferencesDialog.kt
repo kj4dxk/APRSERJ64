@@ -28,7 +28,7 @@ import kotlinx.serialization.json.*
     DialogWindow(onCloseRequest=dismiss,title="Settings",state=rememberDialogState(width=780.dp,height=790.dp)) {
         MaterialTheme(colors=darkColors()) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
             FlowRow(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
-                listOf("Beacon","Position","Status","Objects","Map","Services","Operating","Display","History","Offline","Weather","Groups","Kiosk","Alerts","Connectivity","Tactical","Messaging","Bulletins","Telemetry","Logging","Legacyweather","Qru","Queries","Satellites","Imports","Platforms","Weatherstation","Multitrack").forEach {tab ->
+                listOf("Beacon","Position","Status","Objects","Map","Services","Operating","Display","History","Offline","Weather","Groups","Kiosk","Alerts","Connectivity","Tactical","Messaging","Bulletins","Telemetry","Logging","Legacyweather","Qru","Queries","Satellites","Imports","Platforms","Weatherstation","Multitrack","Digital").forEach {tab ->
                     val label=when(tab){"Legacyweather"->"APRS weather";"Qru"->"QRU server";else->tab}
                     TextButton(onClick={selected=tab}) {Text(if(selected==tab) "[$label]" else label)}
                 }

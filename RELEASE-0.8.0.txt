@@ -1,0 +1,97 @@
+APRSIS64 0.8.0 — protocol corrections and APRSIS32 workflow additions
+2026-11-21
+
+Corrected behavior
+- Third-party positions and object ownership/kill reports are decoded for display
+  without removing the original envelope from IGate loop-protection decisions.
+- Receive-side decimal and base91 DAO precision, including southern/western
+  coordinates. Base91 telemetry is excluded when looking for DAO extensions.
+- Strict object filters accept spaces. NWS/service message addressees are not
+  incorrectly restricted to amateur callsign syntax. RF AX.25 address validation
+  remains separate from Internet packet identities.
+- Mic-E telemetry uses the correct five-channel apostrophe flag and places the
+  two-channel variant in channels 1 and 3. Published base91 telemetry values and
+  bit order have independent expected-value tests.
+- Standard queries distinguish direct/local/heard stations, accept heard/object
+  arguments, transmit requested objects/status packets, and requeue pending
+  messages for the requester. Requeue preserves message ID, history timestamp,
+  and excludes acknowledged/rejected messages. SQLite schema migration adds a
+  retry timestamp instead of rewriting conversation history.
+- Local input ports retain client reply routes for query responses, messages and
+  acknowledgments. A recently local recipient is not silently rerouted elsewhere
+  when its local client is unavailable.
+- IS-Server permits verified clients to submit RF-gated stations. Addressed
+  messages and associated positions bypass subscription exclusions. Default
+  IS-Server delivery is messaging-only; Local-Server retains its unfiltered-feed
+  default. Configurable comment heartbeats keep idle client connections alive.
+- qAR/qAO advertisement reflects radio transmit capability. Recent direct-heard
+  classification survives a later digipeated duplicate; entry IGates are learned
+  from q paths for other stations.
+- Weather objects retain their object identity; midnight-only rain is accepted.
+- GSV cycles are assembled before replacing a constellation/signal view. Multiple
+  signal IDs coexist and GSA system identifiers distinguish constellations.
+- Satellite horizon crossing and peak calculations refine sampled brackets to
+  one-second intervals. This improves event timing, not the accuracy of stale TLEs.
+- Group keepalive retries retain confirmed evidence. A new list request marks old
+  entries provisional until confirmed again; silence is not treated as a complete
+  list or proof of removal. Explicit removal responses update membership.
+
+New digital-mode log integration (Settings -> Digital)
+- JT65-HF CSV, JS8Call ALL.TXT and WSJT-X FT8 ALL.TXT receive-log import.
+- Explicit sender/grid extraction and Maidenhead cell centers; TX entries and
+  non-location replies such as RR73 do not create locations.
+- Local station display operates without an APRS-IS connection. Normal-length
+  calls receive -JT, -JS or -FT display/object suffixes.
+- Optional object transmission, interval/expiry controls, selected RF ports and
+  IS/RF output selection. Imported objects are not transmitted until enabled.
+- Ownership journal supports expired-object cleanup across application restarts.
+  Files are scanned with a bounded tail; stale positive beacons are not queued.
+- Port renames/deletions maintain digital and weather references. Deleting the
+  last selected digital RF port disables transmission rather than widening it.
+
+Weather bridge
+- wxnow.txt timestamp plus weather-line input, as used by the documented APRSIS32
+  external weather-collector workflow. UTC observation freshness is checked
+  independently of file modification time. Existing APRS/Ultimeter/JSON input
+  remains available. Configure the input filename in Settings -> Weatherstation.
+
+Verification
+116 automated tests pass (63 shared-core, 53 Windows), including actual localhost
+TCP clients, synthetic KISS/AGW/NMEA streams, third-party map/kill ownership,
+filters, DAO, Mic-E/base91 telemetry, wxnow units/freshness, query replies, chat
+ACK routing, gated-client message delivery, digital-log expiry/restart, GPS
+multi-signal assembly, membership evidence and refined satellite pass timing.
+The earlier platform-label assertion now expects the bundled database's vendor
+and model, KJ4ERJ APRSIS32. Tests do not send public APRS traffic.
+
+Build: Gradle test, core:test and packagePortable. Portable output:
+ build/portable/APRSIS64.exe
+No installer, screen control, application launch or Desktop replacement.
+All configured endpoints, callsigns/passcodes and existing user settings remain
+in the user's portable folder. New defaults are merged without overwriting them.
+
+Verification boundaries
+Physical GPS/TNC/weather devices, live ANSRVR/CWOP/email/QRU peers, prolonged RF
+operation and the updated GUI still require the later hands-on test session.
+Orbital propagation itself was not independently certified against a precision
+reference ephemeris. Generic queries with geographic arguments, proprietary
+weather dialects beyond the supported inputs, projected-shapefile reprojection,
+and wholesale APRSIS32 XML migration are not claimed as complete equivalents.
+Digital log support covers the explicit decoded-call/grid forms documented by
+legacy source, not reconstruction of every fragmented digital-mode exchange.
+This release fixes the reproduced/source-proven audit defects and adds the
+identified log and wxnow workflows; it does not claim exhaustive historical
+APRSIS32 equivalence based solely on passing automated tests.
+
+Protocol references
+https://www.aprs.org/doc/APRS101.PDF (Mic-E telemetry, messages and queries)
+https://www.aprs.org/datum.txt (DAO)
+https://www.aprs-is.net/IGateDetails.aspx
+https://www.aprs-is.net/javAPRSFilter.aspx
+https://he.fi/doc/aprs-base91-comment-telemetry.txt
+APRSIS32 source behavior and archived documentation were inspected; proprietary
+implementation code was not copied into these repositories.
+
+Portable SHA256: 1128FB7114B93FF391A11FB926C76E1B37FA67784C4E63E6B5C9D3F9DF4C8893
+Shared core commit: fcea42b
+

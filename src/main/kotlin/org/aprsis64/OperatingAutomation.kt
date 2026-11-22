@@ -19,6 +19,7 @@ class OperatingAutomation(private val model:AppModel,parent:CoroutineScope,priva
  private val replies=ConcurrentHashMap<String,Long>()
  private val due=mutableMapOf<String,Long>()
  private val listener=AWTEventListener {active=System.currentTimeMillis()}
+ private val digital=DigitalObjectFeed(model.directory)
  private val sequenceFile=model.directory.resolve("data/telemetry-sequence.txt")
  private var sequence=runCatching {Files.readString(sequenceFile).trim().toInt().coerceIn(0,999)}.getOrDefault(0)
  init {
@@ -43,8 +44,10 @@ class OperatingAutomation(private val model:AppModel,parent:CoroutineScope,priva
  private suspend fun tick(now:Long) {
   if(model.demo.value || !AprsProtocol.validCallsign(model.account.value))return
   val output=radio()?:return
-  if(!output.available())return
   val p=model.settings
+  digital.tick(model.account.value,p,now){line,useIs,useRf,selected->output.available() && output.broadcast(line,useIs,useRf,selected)}
+  model.digitalStations.value=digital.stations.value
+  if(!output.available())return
   suspend fun send(key:String,seconds:Int,line:String,route:String):Boolean {
    if(now-(due[key]?:0)<seconds*1000L)return false
    val sent=output.broadcast(line,route!="rf",route!="is")

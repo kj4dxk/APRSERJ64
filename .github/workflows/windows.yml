@@ -17,10 +17,11 @@ jobs:
           java-version: '25'
       - name: Test and package
         shell: pwsh
-        run: ./gradlew.bat test packagePortable --console=plain
+        run: ./gradlew.bat test core:test packagePortable --console=plain
       - uses: actions/upload-artifact@v4
         with:
           name: APRSIS64-windows
           path: |
             build/portable/APRSIS64.exe
             build/reports/tests/
+

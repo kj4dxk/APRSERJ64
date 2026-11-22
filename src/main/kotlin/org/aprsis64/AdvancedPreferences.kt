@@ -5,6 +5,16 @@ import java.net.URI
 
 object AdvancedPreferences {
  val fields=listOf(
+  BeaconField("digital.enabled","Import digital-mode logs","false",SettingKind.BOOLEAN),
+  BeaconField("digital.transmit","Transmit imported digital objects","false",SettingKind.BOOLEAN),
+  BeaconField("digital.jt65_file","JT65-HF CSV log file",""),
+  BeaconField("digital.js8_file","JS8Call ALL.TXT file",""),
+  BeaconField("digital.ft8_file","WSJT-X FT8 ALL.TXT file",""),
+  BeaconField("digital.maximum_age_seconds","Expire digital spots after (seconds)","1800",SettingKind.INTEGER),
+  BeaconField("digital.interval_seconds","Digital object interval (seconds)","600",SettingKind.INTEGER),
+  BeaconField("digital.maximum_objects","Maximum objects per log","50",SettingKind.INTEGER),
+  BeaconField("digital.route","Digital object outputs","is",choices=listOf("is","rf","both")),
+  BeaconField("digital.ports","Digital object RF ports (empty: all eligible)","[]",SettingKind.STRINGS),
   BeaconField("queries.enabled","Answer standard APRS queries","true",SettingKind.BOOLEAN),
   BeaconField("queries.minimum_seconds","Query reply cooldown per station","30",SettingKind.INTEGER),
   BeaconField("queries.maximum_results","Maximum stations in a query response","10",SettingKind.INTEGER),
@@ -21,7 +31,7 @@ object AdvancedPreferences {
   BeaconField("weatherstation.enabled","Transmit local weather","false",SettingKind.BOOLEAN),
   BeaconField("weatherstation.source","Weather input","file",choices=listOf("file","port")),
   BeaconField("weatherstation.port","Named weather port",""),
-  BeaconField("weatherstation.file","Weather data file (JSON or standard APRS packet)","data/weather.json"),
+  BeaconField("weatherstation.file","Weather data file (JSON, APRS or wxnow.txt)","data/weather.json"),
   BeaconField("weatherstation.maximum_age_seconds","Maximum weather input age (seconds)","600",SettingKind.INTEGER),
   BeaconField("weatherstation.interval_seconds","Weather transmit interval (seconds)","600",SettingKind.INTEGER),
   BeaconField("weatherstation.route","Weather outputs","is",choices=listOf("is","rf","both")),
@@ -40,6 +50,7 @@ object AdvancedPreferences {
  )
  fun validate(p:Properties) {
   fun n(k:String)=p.getProperty(k).toInt()
+  require(n("digital.maximum_age_seconds") in 60..86400 && n("digital.interval_seconds") in 60..86400 && n("digital.maximum_objects") in 1..500)
   require(n("queries.minimum_seconds") in 10..3600 && n("queries.maximum_results") in 1..30)
   require(n("satellites.maximum_age_days") in 1..365 && n("satellites.prediction_hours") in 1..168)
   val url=URI(p.getProperty("satellites.url"));require(url.scheme in listOf("http","https") && url.host!=null)

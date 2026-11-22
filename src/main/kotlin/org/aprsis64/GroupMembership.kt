@@ -17,14 +17,18 @@ class GroupMembership(private val home:Path,private val setting:(String)->String
   val m=AprsMessages.parse(line)?:return;val now=System.currentTimeMillis();val server=setting("groups.server")
   activate(account)
   if(direction=="TX" && m.sender==account && m.recipient==server){
-   val p=m.text.split(' ',limit=3);if(p[0]=="L")listUntil=now+60000
-   if(p[0] in listOf("J","U","K","CQ") && p.size>1)put(p[1],if(p[0]=="U")"Leave requested" else "Join requested",now,m.text)
+   val p=m.text.split(' ',limit=3);if(p[0]=="L"){
+    listUntil=now+60000
+    entries.value.filter {it.state=="Confirmed member"}.forEach {put(it.group,"Previously confirmed; awaiting list",it.time,it.evidence)}
+   }
+   if(p[0] in listOf("J","U","K","CQ") && p.size>1 && (p[0]=="U" || entries.value.none {it.group==p[1].uppercase() && it.state=="Confirmed member"}))put(p[1],if(p[0]=="U")"Leave requested" else "Join requested",now,m.text)
   }
   if(direction!="RX" || m.sender!=server || m.recipient!=account || m.acknowledgement!=null)return
   replies.value=(replies.value+m.text).takeLast(30)
+  Regex("(?i)^([A-Z0-9_-]{1,20}) Removed From Group$").matchEntire(m.text)?.let {put(it.groupValues[1],"Not a member",now,m.text)}
   if(now<listUntil)Regex("(?:^|[ ,:])([A-Za-z0-9_-]{1,20})\\(([0-9]+)\\)").findAll(m.text).forEach {put(it.groupValues[1],"Confirmed member",now,m.text)}
-  Regex("(?i)(?:joined|joining|keeping alive|listening to)\\s+(?:group\\s+)?([A-Z0-9_-]{1,20})").find(m.text)?.let {put(it.groupValues[1],"Confirmed member",now,m.text)}
-  Regex("(?i)(?:unjoined|left|removed from|not a member of)\\s+(?:group\\s+)?([A-Z0-9_-]{1,20})").find(m.text)?.let {put(it.groupValues[1],"Not a member",now,m.text)}
+  Regex("(?i)\\b(?:joined|joining|keeping alive|listening to)\\s+(?:group\\s+)?([A-Z0-9_-]{1,20})").find(m.text)?.let {put(it.groupValues[1],"Confirmed member",now,m.text)}
+  Regex("(?i)^(?:unjoined|left|removed from|not a member of)\\s+(?:group\\s+)?([A-Z0-9_-]{1,20})").find(m.text)?.let {put(it.groupValues[1],"Not a member",now,m.text)}
  }
  private fun file()=home.resolve("data/groups-${key.replace(Regex("[^A-Z0-9-]"),"_")}.json")
  private fun load()=runCatching {Json.parseToJsonElement(Files.readString(file())).jsonArray.take(200).map {val o=it.jsonObject;Membership(o["group"]!!.jsonPrimitive.content,o["state"]!!.jsonPrimitive.content,o["time"]!!.jsonPrimitive.long,o["evidence"]!!.jsonPrimitive.content)}}.getOrDefault(emptyList())

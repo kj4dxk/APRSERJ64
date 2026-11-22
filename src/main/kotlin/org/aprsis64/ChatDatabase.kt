@@ -35,7 +35,8 @@ class ChatDatabase(path: Path, private val now: () -> Long = System::currentTime
             if("route" !in columns)s.execute("ALTER TABLE messages ADD COLUMN route TEXT NOT NULL DEFAULT 'best'")
             if("request_ack" !in columns)s.execute("ALTER TABLE messages ADD COLUMN request_ack INTEGER NOT NULL DEFAULT 1")
             s.execute("CREATE TABLE IF NOT EXISTS conversations(account TEXT NOT NULL,peer TEXT NOT NULL,route TEXT NOT NULL,request_ack INTEGER NOT NULL,PRIMARY KEY(account,peer))")
-            s.execute("PRAGMA user_version=2")
+            if("retry_at" !in columns)s.execute("ALTER TABLE messages ADD COLUMN retry_at INTEGER NOT NULL DEFAULT 0")
+            s.execute("PRAGMA user_version=3")
         }
     }
     private suspend fun <T> access(block: () -> T): T = withContext(Dispatchers.IO) { mutex.withLock { block() } }
@@ -89,7 +90,7 @@ class ChatDatabase(path: Path, private val now: () -> Long = System::currentTime
         } catch (e: Exception) { db.rollback(); throw e } finally { db.autoCommit = true }
     }
     override suspend fun pending(account: String): List<PendingChat> = access {
-        val expired = execute("UPDATE messages SET status='NO_ACK' WHERE account=? AND outgoing=1 AND status IN ('QUEUED','SENDING','WAITING') AND (time<? OR (attempts>=5 AND last_send<?))", account, now()-900_000, now()-30_000)
+        val expired = execute("UPDATE messages SET status='NO_ACK' WHERE account=? AND outgoing=1 AND status IN ('QUEUED','SENDING','WAITING') AND (MAX(time,retry_at)<? OR (attempts>=5 AND last_send<?))", account, now()-900_000, now()-30_000)
         if(expired > 0) changed()
         db.prepareStatement("SELECT id,peer,body,wire_id,route,request_ack FROM messages WHERE account=? AND outgoing=1 AND status IN ('QUEUED','SENDING','WAITING') AND attempts<5 AND last_send<=? ORDER BY id LIMIT 1").use { s ->
             s.setString(1,account); s.setLong(2,now()-30_000)
@@ -110,6 +111,11 @@ class ChatDatabase(path: Path, private val now: () -> Long = System::currentTime
     }
     suspend fun markRead(account: String, peer: String) = access {
         if(execute("UPDATE messages SET unread=0 WHERE account=? AND peer=? AND unread=1",account,peer)>0) changed()
+    }
+    suspend fun requeuePending(account:String,peer:String):Int = access {
+        val count=execute("UPDATE messages SET status='QUEUED',attempts=0,last_send=0,retry_at=? WHERE account=? AND peer=? AND outgoing=1 AND request_ack=1 AND status IN ('QUEUED','SENDING','WAITING','NO_ACK')",now(),account,peer)
+        if(count>0)changed()
+        count
     }
     suspend fun retry(account: String, row: Long) {
         val message=rows(account).firstOrNull {it.id==row && it.outgoing && it.status in listOf("NO_ACK","REJECTED")} ?: return

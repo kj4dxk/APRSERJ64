@@ -41,6 +41,7 @@ object PortPreferences {
         BeaconField("gate_filter","Additional IS-to-RF filter (e.g. r/28/-81/30 -b/TEST*)",""),
         BeaconField("service_input","Accept local service input","false",b),
         BeaconField("service_peers","Allowed UDP source IPs (loopback is always allowed)","[]",SettingKind.STRINGS),
+        BeaconField("service_heartbeat_seconds","Local server heartbeat (seconds)","20",i),
         BeaconField("service_max_clients","Maximum local server clients","8",i),
         BeaconField("service_call","CWOP station identifier",""),
         BeaconField("agw_user","AGW username (empty: no authentication)",""),
@@ -120,6 +121,7 @@ object PortPreferences {
         }) {"Use a named GPS port instead of opening the serial device twice"}
         val names=ports.map {it.getProperty("name")}.toSet()
         objects.forEach {obj->require(Json.parseToJsonElement(obj.getProperty("ports")).jsonArray.all {it.jsonPrimitive.content in names})}
+        require(Json.parseToJsonElement(values.getProperty("digital.ports","[]")).jsonArray.all {it.jsonPrimitive.content in names}) {"Select existing digital object ports"}
     }
 }
 
@@ -141,7 +143,7 @@ class PortConfig(val values: Properties) {
         }
         require(protocol!="AGW" && protocol !in PortPreferences.services || text("transport")=="tcp")
         PacketFilter(text("gate_filter"))
-        require(number("service_max_clients") in 1..32)
+        require(number("service_max_clients") in 1..32 && number("service_heartbeat_seconds") in 5..120)
         require(text("agw_user").length<=255 && text("agw_password").length<=255)
         if(protocol=="CWOP" && flag("enabled"))require(text("service_call").matches(Regex("[A-Z0-9]{3,9}")))
         require(list("service_peers").all {it.matches(Regex("[0-9a-fA-F:.]{2,45}"))})

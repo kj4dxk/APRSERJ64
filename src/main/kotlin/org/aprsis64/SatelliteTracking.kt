@@ -55,11 +55,33 @@ class SatelliteTracking(private val model:AppModel,private val scope:CoroutineSc
  private fun update(){val now=System.currentTimeMillis();val ground=ground();positions.value=selected(now).map {o->val s=SatelliteFactory.createSatellite(o.tle).getPosition(ground,Date(now));OrbitPosition(o.name,Math.toDegrees(s.latitude),((Math.toDegrees(s.longitude)+540)%360)-180,s.altitude,Math.toDegrees(s.azimuth),Math.toDegrees(s.elevation),s.range,s.rangeRate,o.epoch)};if(orbits.isNotEmpty() && positions.value.isEmpty())status.value="No selected satellites with current TLEs"}
  suspend fun predict()=withContext(Dispatchers.Default){
   val start=System.currentTimeMillis();val end=start+model.settings.getProperty("satellites.prediction_hours").toLong()*3600000;val g=ground();val result=mutableListOf<OrbitPass>()
-  selected(start).forEach {o->val satellite=SatelliteFactory.createSatellite(o.tle);var rise:Long?=null;var peak=0.0;var t=start
-   while(t<=end){currentCoroutineContext().ensureActive();val elevation=Math.toDegrees(satellite.getPosition(g,Date(t)).elevation)
-    if(elevation>0){if(rise==null)rise=t;peak=max(peak,elevation)}else if(rise!=null){result.add(OrbitPass(o.name,rise!!,t,peak));rise=null;peak=0.0};t+=30000
-   };if(rise!=null)result.add(OrbitPass(o.name,rise!!,end,peak))
+  selected(start).forEach {o->
+   val satellite=SatelliteFactory.createSatellite(o.tle)
+   result+=orbitPasses(o.name,start,end){t->Math.toDegrees(satellite.getPosition(g,Date(t)).elevation)}
   };passes.value=result.sortedBy {it.rise}.take(500)
  }
  fun geometry(now:Long)=positions.value.map {o->val center=AprsFix(o.latitude,o.longitude,now);val angle=acos(6371.0/(6371+o.altitudeKm.coerceAtLeast(0.0)));TacticalGeometry("satellite-${o.name}",AprsShape(AprsSpatial.circle(center,angle*6371000),true,"#8478d6"))}
+}
+
+/** Refine bracketed horizon crossings and pass peaks to one second. */
+internal suspend fun orbitPasses(name:String,start:Long,end:Long,elevation:(Long)->Double):List<OrbitPass> {
+ val result=mutableListOf<OrbitPass>()
+   fun crossing(low:Long,high:Long,rising:Boolean):Long {
+    var a=low;var b=high
+    while(b-a>1000){val mid=(a+b)/2;if((elevation(mid)>0)==rising)b=mid else a=mid}
+    return (a+b)/2
+   }
+   fun peak(a:Long,b:Long):Double {
+    var left=a;var right=b
+    while(right-left>1000){val x=left+(right-left)/3;val y=right-(right-left)/3;if(elevation(x)<elevation(y))left=x else right=y}
+    return maxOf(elevation(a),elevation(b),elevation((left+right)/2))
+   }
+   var previous=start;var up=elevation(start)>0;var rise:Long?=if(up)start else null;var t=start+10000
+   while(t<=end){currentCoroutineContext().ensureActive();val next=elevation(t)>0
+    if(next&&!up)rise=crossing(previous,t,true)
+    if(!next&&up){val set=crossing(previous,t,false);val began=rise?:start;result.add(OrbitPass(name,began,set,peak(began,set)));rise=null}
+    up=next;previous=t;t+=10000
+   }
+   rise?.let {result.add(OrbitPass(name,it,end,peak(it,end)))}
+ return result
 }

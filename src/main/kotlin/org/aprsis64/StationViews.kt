@@ -6,6 +6,8 @@ import kotlinx.serialization.json.*
 
 data class StationMetadata(val call:String,val time:Long,val rf:Boolean,val messageCapable:Boolean,val platform:String,val frequency:AprsFrequency?,val direct:Boolean=false,val igate:Boolean=false,val telemetry:Boolean=false,val status:Boolean=false,val frequencyIssue:Boolean=false)
 class StationViews(private val home:java.nio.file.Path?=null,private val setting:(String)->String?={null}) {
+ private val directTimes=linkedMapOf<String,Long>()
+ private val igateTimes=linkedMapOf<String,Long>()
  private val identityCache=linkedMapOf<String,String>()
  private var platformKey="";private var platforms=emptyMap<String,String>();private var custom=emptyMap<String,String>();private var mice=emptyMap<String,String>()
  private fun platform(destination:String,payload:String):String {
@@ -37,7 +39,14 @@ class StationViews(private val home:java.nio.file.Path?=null,private val setting
 
  val stations=MutableStateFlow<Map<String,StationMetadata>>(emptyMap())
  @Synchronized fun receive(port:String,line:String,time:Long=System.currentTimeMillis(),rf:Boolean=port!="APRS-IS") {
-  val p=RadioPacket.parse(line)?:return
+  val outer=RadioPacket.parse(line)?:return
+  val p=outer.content()?:return
+  val direct=rf && outer===p && p.usedHops==0
+  val lifetime=(setting("radio.heard_seconds")?.toLongOrNull()?:1800)*1000
+  directTimes.entries.removeAll {time-it.value>lifetime};igateTimes.entries.removeAll {time-it.value>lifetime}
+  if(direct)directTimes[p.source]=time
+  p.path.indexOfFirst {it in listOf("qAR","qAr","qAO","qAo")}.takeIf {it>=0}?.let {index->p.path.getOrNull(index+1)?.let {igateTimes[it]=time}}
+  while(directTimes.size>5000)directTimes.remove(directTimes.keys.first());while(igateTimes.size>5000)igateTimes.remove(igateTimes.keys.first())
   val s=AprsProtocol.parse(line,time)
   val call=s?.callsign?:p.source
   val previous=stations.value[call]
@@ -45,12 +54,12 @@ class StationViews(private val home:java.nio.file.Path?=null,private val setting
    StationCapabilities.messageCapable(p.payload) || previous?.messageCapable==true,
    platform(p.destination,p.payload),
    s?.let {StationCapabilities.frequency(it.comment)}?:previous?.frequency,
-   rf && p.usedHops==0 && !p.payload.startsWith('}'),
-   p.path.any {it.startsWith('q')} && p.source==p.path.lastOrNull() || previous?.igate==true,
+   call in directTimes,
+   call in igateTimes,
    AprsObservations.telemetry(line,time)!=null || previous?.telemetry==true,
    p.payload.startsWith('>') || previous?.status==true,
    s?.comment?.let {"MHz" in it && (StationCapabilities.frequency(it)==null || StationCapabilities.frequency(it)?.tone==null)}?:previous?.frequencyIssue?:false)
-  stations.value=(stations.value.filterValues {time-it.time<86400000}+ (call to metadata)).entries.toList().takeLast(5000).associate {it.toPair()}
+  stations.value=(stations.value.filterValues {time-it.time<86400000}.mapValues {(key,value)->value.copy(direct=key in directTimes,igate=key in igateTimes)}+ (call to metadata)).entries.toList().takeLast(5000).associate {it.toPair()}
  }
 }
 
