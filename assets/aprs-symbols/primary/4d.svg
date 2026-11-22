@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 17 17">
+  <title>APRS primary M (0x4D)</title>
+  <path fill="#0000ce" fill-rule="evenodd" d="M3 14L13 14L13 14.78Q13 15 12.78 15L12.22 15Q12 15 12 15.22L12 15.78Q12 16 11.78 16L4.22 16Q4 16 4 15.78L4 15.22Q4 15 3.78 15L3.22 15Q3 15 3 14.78Z"/>
+  <path fill="#00ce00" fill-rule="evenodd" d="M2 6.22Q2 6 2.22 6L2.78 6Q3 6 3 5.78L3 5.22Q3 5 3.22 5L6.78 5Q7 5 7 4.78L7 3.22Q7 3 7.22 3L7.78 3Q8 3 8 2.78L8 2.22Q8 2 8.22 2L8.78 2Q9 2 9 1.78L9 1.22Q9 1 9.22 1L10.78 1Q11 1 11 1.22L11 2.78Q11 3 10.78 3L10.22 3Q10 3 10 3.22L10 4.78Q10 5 10.22 5L12.78 5Q13 5 13 5.22L13 5.78Q13 6 13.22 6L13.78 6Q14 6 14 6.22L14 6.78Q14 7 13.78 7L2 7Z"/>
+  <path fill="#ce0000" fill-rule="evenodd" d="M1 10L12.78 10Q13 10 13 10.22L13 12L2 12L2 11.22Q2 11 1.78 11L1.22 11Q1 11 1 10.78Z"/>
+  <path fill="#ff009c" fill-rule="evenodd" d="M2 12L13.78 12Q14 12 14 12.22L14 13.78Q14 14 13.78 14L2.22 14Q2 14 2 13.78Z"/>
+  <path fill="#ff6300" fill-rule="evenodd" d="M1 8L12 8L12 10L1 10Z"/>
+  <path fill="#ffff00" fill-rule="evenodd" d="M1 7.22Q1 7 1.22 7L13 7L13 7.78Q13 8 12.78 8L1 8Z"/>
+</svg>

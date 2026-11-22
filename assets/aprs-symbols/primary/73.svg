@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 17 17">
+  <title>APRS primary s (0x73)</title>
+  <path fill="#000000" fill-rule="evenodd" d="M7 6.22Q7 6 7.22 6L10.78 6Q11 6 11 6.22L11 6.78Q11 7 11.22 7L11.78 7Q12 7 12 7.22L12 7.78Q12 8 12.22 8L12.78 8Q13 8 13 8.22L13 9L7 9ZM8 7L8 8L10 8L10 7Z"/>
+  <path fill="#006300" fill-rule="evenodd" d="M1 9.22Q1 9 1.22 9L16.78 9Q17 9 17 9.22L17 10.78Q17 11 16.78 11L16.22 11Q16 11 16 11.22L16 11.78Q16 12 15.78 12L15.22 12Q15 12 15 12.22L15 12.78Q15 13 14.78 13L1.22 13Q1 13 1 12.78Z"/>
+  <path fill="#cecece" fill-rule="evenodd" d="M8 7L10 7L10 8L8 8Z"/>
+</svg>
