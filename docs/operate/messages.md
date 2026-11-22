@@ -10,6 +10,8 @@
 
 Chats and their outgoing queue are stored in `data/chats.sqlite` and survive restarts. Conversations are scoped to the local account; switching your callsign does not merge histories from different identities.
 
+You can send another message while earlier messages are queued, waiting for acknowledgment or finished. Each message has its own delivery state and retry history. New messages take priority over eligible retries; normal transmission pacing still applies.
+
 ## Understand routes
 
 | Route | What APRSIS64 does |

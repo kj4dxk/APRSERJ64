@@ -43,6 +43,29 @@ class ChatDatabaseTest {
             assertEquals("NO_ACK",db.rows("N0CALL-12","N2CALL").single().status)
         }
     }
+    @Test fun newMessagesDoNotWaitForOlderAcknowledgments(): Unit = runBlocking {
+        var now=1_000_000L
+        val account="N0CALL-12"; val peer="N1CALL-7"
+        ChatDatabase(Files.createTempDirectory("aprsis64-independent-chat").resolve("chats.sqlite"),{now}).use { db ->
+            db.enqueue(account,peer,"First")
+            val first=db.pending(account).single()
+            db.attempted(first.row); db.transmitted(first.row,true)
+            db.enqueue(account,peer,"Second")
+            val second=db.pending(account).single()
+            assertEquals("Second",second.body)
+            db.attempted(second.row); db.transmitted(second.row,true)
+            assertEquals(listOf("WAITING","WAITING"),db.rows(account).map {it.status})
+            now+=30_001 // Both retries are due, but fresh text goes first.
+            db.enqueue(account,peer,"Third")
+            val third=db.pending(account).single()
+            assertEquals("Third",third.body)
+            db.attempted(third.row); db.transmitted(third.row,true)
+            db.receive(account,AprsMessage(peer,account,"",acknowledgement=second.wireId))
+            assertEquals(listOf("WAITING","ACKNOWLEDGED","WAITING"),db.rows(account).map {it.status})
+            assertEquals(first.row,db.pending(account).single().row)
+            assertEquals(3,setOf(first.wireId,second.wireId,third.wireId).size)
+        }
+    }
     @Test fun localTransportChatRoundTrip(): Unit = runBlocking {
         val path=Files.createTempDirectory("aprsis64-wire-test").resolve("chats.sqlite")
         val parent=CoroutineScope(SupervisorJob()+Dispatchers.Default)

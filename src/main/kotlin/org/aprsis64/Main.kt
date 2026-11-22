@@ -356,7 +356,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                 Text("${draft.length}/300",color=Muted,fontSize=10.sp)
                 Spacer(Modifier.weight(1f))
-                Button(onClick={sending=true; scope.launch {try {model.send(peer,draft); draft=""} catch(_:Exception){model.error.value="Unable to save this message."} finally {sending=false}}},
+                Button(onClick={val submitted=draft; sending=true; scope.launch {try {model.send(peer,submitted); if(draft==submitted) draft=""} catch(_:Exception){model.error.value="Unable to save this message."} finally {sending=false}}},
                     enabled=!sending&&AprsMessages.validLongText(draft)&&AprsProtocol.validCallsign(account)&&AprsProtocol.validCallsign(peer)&&account!=peer) {Text("Send")}
             }
         }

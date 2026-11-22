@@ -92,7 +92,7 @@ class ChatDatabase(path: Path, private val now: () -> Long = System::currentTime
     override suspend fun pending(account: String): List<PendingChat> = access {
         val expired = execute("UPDATE messages SET status='NO_ACK' WHERE account=? AND outgoing=1 AND status IN ('QUEUED','SENDING','WAITING') AND (MAX(time,retry_at)<? OR (attempts>=5 AND last_send<?))", account, now()-900_000, now()-30_000)
         if(expired > 0) changed()
-        db.prepareStatement("SELECT id,peer,body,wire_id,route,request_ack FROM messages WHERE account=? AND outgoing=1 AND status IN ('QUEUED','SENDING','WAITING') AND attempts<5 AND last_send<=? ORDER BY id LIMIT 1").use { s ->
+        db.prepareStatement("SELECT id,peer,body,wire_id,route,request_ack FROM messages WHERE account=? AND outgoing=1 AND status IN ('QUEUED','SENDING','WAITING') AND attempts<5 AND last_send<=? ORDER BY last_send,id LIMIT 1").use { s ->
             s.setString(1,account); s.setLong(2,now()-30_000)
             s.executeQuery().use { r -> buildList { while(r.next()) add(PendingChat(r.getLong(1),r.getString(2),r.getString(3),r.getString(4),r.getString(5),r.getInt(6)==1)) } }
         }
