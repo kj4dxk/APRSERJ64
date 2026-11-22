@@ -32,7 +32,7 @@ Nov 21 2026 12:00
 180/010g020t068r000p010P020h50b10132
 ```
 
-This is a format example and will be stale if used literally later. The producer must write the current observation time. APRSIS64 checks both file freshness and the embedded timestamp. The weather line uses APRS weather units; `r`, `p` and `P` represent different rainfall periods and must not be interchanged.
+This is a format example and will be stale if used literally later. The producer must write the current observation time. APRSERJ64 checks both file freshness and the embedded timestamp. The weather line uses APRS weather units; `r`, `p` and `P` represent different rainfall periods and must not be interchanged.
 
 For Tempest, Davis or another collector, use a compatible external program that emits a supported file. The APRSIS32 manual's Tempest workflow uses an external collector; it is not evidence of a built-in native Tempest driver here.
 

@@ -1,8 +1,8 @@
 # Moving from APRSIS32
 
-Use the old manual for concepts and the table below to locate the APRSIS64 workflow. Do not assume an old menu, keyboard shortcut or XML tag has the same implementation here.
+Use the old manual for concepts and the table below to locate the APRSERJ64 workflow. Do not assume an old menu, keyboard shortcut or XML tag has the same implementation here.
 
-| APRSIS32 topic | APRSIS64 location/change |
+| APRSIS32 topic | APRSERJ64 location/change |
 | --- | --- |
 | Initial startup, callsign and passcode | [Connection and quick start](quick-start.md) |
 | Configure / General, map settings | [Settings and map chapter](../operate/maps.md) |
@@ -22,14 +22,14 @@ Use the old manual for concepts and the table below to locate the APRSIS64 workf
 
 ## Migrate deliberately
 
-1. Keep the old installation intact while setting up a separate APRSIS64 folder.
+1. Keep the old installation intact while setting up a separate APRSERJ64 folder.
 2. Enter the account, actual position, map source and connection information first.
 3. Recreate one device port at a time and verify reception before enabling forwarding.
 4. Recreate objects and scheduled services with explicit output choices.
 5. Compare actual packets and replies, not only how similar the screen looks.
 
-There is no general APRSIS32 XML import tool. Do not rename the old XML to TOML or paste XML blocks into it. The APRSIS64 settings loader can migrate its own older `settings.properties` format when appropriate; that is a different format from APRSIS32 XML.
+There is no general APRSIS32 XML import tool. Do not rename the old XML to TOML or paste XML blocks into it. The APRSERJ64 settings loader can migrate its own older `settings.properties` format when appropriate; that is a different format from APRSIS32 XML.
 
 ## Important differences
 
-APRSIS64 uses a portable EXE/runtime folder, TOML preferences and SQLite history. Multiple copies can run from separate folders; the launcher protects one folder from simultaneous use. North-up is fixed. Message retries and route choices differ from the historical manual. Query-only objects use an explicit setting, not the old zero-interval recipe. Satellite, weather and device support have the limits listed in [compatibility](../reference/compatibility.md).
+APRSERJ64 uses a portable EXE/runtime folder, TOML preferences and SQLite history. Multiple copies can run from separate folders; the launcher protects one folder from simultaneous use. North-up is fixed. Message retries and route choices differ from the historical manual. Query-only objects use an explicit setting, not the old zero-interval recipe. Satellite, weather and device support have the limits listed in [compatibility](../reference/compatibility.md).

@@ -52,14 +52,14 @@ No proprietary source was copied into this project.
 - Config.h: LOCAL_MAX_HOPS=2, RECENTLY_HEARD_MINUTES=30,
   DUPLICATE_DETECT_SECONDS=30. These values remain the defaults here.
 - APRSIS32's registered RF paths and transform lists are empty. The user explicitly
-  chose helpful prefilled APRSIS64 defaults instead: WIDE1-1,WIDE2-1 for beacons,
+  chose helpful prefilled APRSERJ64 defaults instead: WIDE1-1,WIDE2-1 for beacons,
   WIDE1-1 for messages and WIDE1-1= for a fill-in digipeater. Repeating defaults
   off until its switch is enabled. Blank/custom paths remain fully supported.
 - New completed setup defaults enabled. Saved templates with no actual device
   stay disabled. Existing settings are preserved; profile-dependent defaults
   fill missing TOML fields without overwriting supplied fields.
 - Serial baud, reconnect/command pacing, queue budgets and transmit-rate limits
-  are APRSIS64 implementation settings, not claims of exact APRSIS32 equivalence.
+  are APRSERJ64 implementation settings, not claims of exact APRSIS32 equivalence.
 
 This UI compiles and the underlying TCP port integration tests pass. Visual
 interaction review and real-device validation. APRSIS32's proven behavior guides

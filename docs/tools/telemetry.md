@@ -8,7 +8,7 @@
 
 Without definitions, a raw value is not automatically a temperature, voltage or percentage. Equations use `a × value² + b × value + c`. Digital bit values and bit-sense definitions are separate.
 
-APRSIS64 receives classic `T#` samples, base91 comment telemetry and supported Mic-E hex telemetry. Base91's larger raw range does not expand the classic outbound 8-bit sample range.
+APRSERJ64 receives classic `T#` samples, base91 comment telemetry and supported Mic-E hex telemetry. Base91's larger raw range does not expand the classic outbound 8-bit sample range.
 
 ## Send your own telemetry
 
@@ -32,4 +32,4 @@ Write a fresh JSON object to the configured telemetry input file:
 
 Use `input:supply` and `input:temperature` in the channel sources. Set the input age limit and validate it in **Tools → Local sensors → Read telemetry input**. The file bridge does not automatically discover or poll arbitrary hardware sensors.
 
-Changing a channel's meaning requires consistent definitions. Confirm received labels/equations with another implementation, not just the local graph. APRSIS32's old Windows Mobile battery/charging example is not the default telemetry channel layout in APRSIS64.
+Changing a channel's meaning requires consistent definitions. Confirm received labels/equations with another implementation, not just the local graph. APRSIS32's old Windows Mobile battery/charging example is not the default telemetry channel layout in APRSERJ64.

@@ -1,6 +1,6 @@
 # FT8, JS8Call and JT65 log import
 
-**Goal:** display stations decoded by your digital-mode program and optionally publish APRS objects for them. APRSIS64 reads logs; it does not decode audio or run the digital-mode radio software.
+**Goal:** display stations decoded by your digital-mode program and optionally publish APRS objects for them. APRSERJ64 reads logs; it does not decode audio or run the digital-mode radio software.
 
 ## Configure the importer
 
@@ -8,7 +8,7 @@ Open **Settings**, search for **digital**, then select **Digital-mode imports**.
 
 You can also edit `settings.toml`:
 
-1. Close APRSIS64 and copy `settings.toml` as a backup.
+1. Close APRSERJ64 and copy `settings.toml` as a backup.
 2. Find its existing `[digital]` table; edit it rather than adding a duplicate table.
 3. Set the file path(s), enable importing and initially leave transmission off.
 4. Save and restart. Check for imported stations with `-FT`, `-JS` or `-JT` names for ordinary-length calls.

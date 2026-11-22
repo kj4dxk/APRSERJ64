@@ -6,7 +6,7 @@ import sys
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
-SRC = ROOT / 'src/main/kotlin/org/aprsis64'
+SRC = ROOT / 'src/main/kotlin/org/aprserj64'
 PATTERN = re.compile(r'BeaconField\("((?:\\.|[^"\\])*)",\s*"((?:\\.|[^"\\])*)",\s*"((?:\\.|[^"\\])*)"')
 def fields(text):
     return [(json.loads('"'+a+'"'), json.loads('"'+b+'"'), json.loads('"'+c+'"')) for a,b,c in PATTERN.findall(text)]

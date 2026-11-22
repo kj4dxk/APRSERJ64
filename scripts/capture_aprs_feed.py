@@ -9,7 +9,7 @@ started=datetime.now(timezone.utc).isoformat();n=0;comments=[];t=time.monotonic(
 with socket.create_connection((a.host,a.port),timeout=20) as sock:
  sock.settimeout(15);remote=sock.getpeername();reader=sock.makefile('rb')
  banner=reader.readline(2048).decode('latin1').strip();comments.append(banner)
- sock.sendall(f'user {a.call} pass -1 vers APRSIS64-QA 0.8\r\n'.encode('ascii'))
+ sock.sendall(f'user {a.call} pass -1 vers APRSERJ64-QA 0.8\r\n'.encode('ascii'))
  with out.open('wb') as f:
   while n<a.count and time.monotonic()-t<a.seconds:
    try:line=reader.readline(4096)

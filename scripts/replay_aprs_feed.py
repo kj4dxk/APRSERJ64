@@ -7,7 +7,7 @@ def publish():
  (folder/'relay-stats.json').write_text(json.dumps(stats))
 def client(conn):
  with conn:
-  f=conn.makefile('rb');conn.sendall(b'# APRSIS64 bounded loopback replay\r\n');login=f.readline();call=login.split()[1].decode();conn.sendall(f'# logresp {call} unverified, server LOCAL-REPLAY\r\n'.encode())
+  f=conn.makefile('rb');conn.sendall(b'# APRSERJ64 bounded loopback replay\r\n');login=f.readline();call=login.split()[1].decode();conn.sendall(f'# logresp {call} unverified, server LOCAL-REPLAY\r\n'.encode())
   with lock:stats['connections']+=1
   def reader():
    try:

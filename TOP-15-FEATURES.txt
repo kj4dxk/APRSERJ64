@@ -1,4 +1,4 @@
-APRSIS64 0.4.0 — coverage of the requested top 15 categories
+APRSERJ64 0.4.0 — coverage of the requested top 15 categories
 2026-11-20
 
 Ranking supplied in APRS-top-30-features.md. This is category-level functional
@@ -37,7 +37,7 @@ Existing working components were retained and the missing workflows added.
    reconnect and GPS transitions retain the existing controls and minimum limits.
 9. Sound-card modems
    Add port offers Dire Wolf KISS (8001), Dire Wolf/AGWPE (8000), and SoundModem
-   KISS (8100). Start/configure the external modem's audio/PTT separately. APRSIS64
+   KISS (8100). Start/configure the external modem's audio/PTT separately. APRSERJ64
    supplies the client interfaces; it does not contain a new audio DSP modem.
 10. APRS-IS filters/range
    Settings > Operating: fixed-center range, moving range or custom mode; radius

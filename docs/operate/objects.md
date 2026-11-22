@@ -34,7 +34,7 @@ Open **Tools → Find nearby objects**. Request `INFO` to discover groups, then 
 
 1. Create enabled, alive object entries and assign a **QRU group**, such as `HOSP` or a repeater group.
 2. Enable the QRU responder through **Settings → Tactical overlays** and configure limits. The **QRU server** settings tab controls advertisement fields.
-3. Select **Transmit only when queried** if an object should not have normal periodic beacons. This is APRSIS64's explicit field; do not reproduce the old manual's zero-interval XML recipe.
+3. Select **Transmit only when queried** if an object should not have normal periodic beacons. This is APRSERJ64's explicit field; do not reproduce the old manual's zero-interval XML recipe.
 4. Select eligible IS/RF outputs and save.
 5. Test from a station with a fresh known position. Inspect replies and the requested objects.
 

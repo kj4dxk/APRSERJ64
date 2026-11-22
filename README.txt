@@ -1,7 +1,7 @@
-CURRENT: APRSIS64 0.8.0. See RELEASE-0.8.0.txt for changes and validation.
+CURRENT: APRSERJ64 0.8.0. See RELEASE-0.8.0.txt for changes and validation.
 User manual: docs/index.md. Searchable/offline editions: docs/reference/maintaining.md.
 
-APRSIS64 — portable Windows APRS map, chat and beaconing
+APRSERJ64 — portable Windows APRS map, chat and beaconing
 
 RELEASE 0.6.0: the twelve reviewed gap areas are implemented. 99 automated
 tests pass, with packaged Windows visual/restart QA. See RELEASE-0.6.0.txt for
@@ -19,20 +19,20 @@ all settings categories and operating-tools tabs, map, chat, persistence and
 representative port workflows. Physical radio testing remains outstanding.
 See VISUAL-TEST-REPORT.txt and TEST-REPORT.txt for coverage and limitations.
 
-Source: https://github.com/kj4dxk/APRSIS64
+Source: https://github.com/kj4dxk/APRSERJ64
 Shared core: https://github.com/kj4dxk/aprs-core (pinned git submodule)
 License: AGPL-3.0, matching APRSFoundation/APRSISMO. No warranty.
 Extracted GPLv3 components retain their original terms and notices.
 See LICENSE and THIRD-PARTY.txt. No proprietary APRSIS32 source is included.
 
 RUN
-Download APRSIS64.exe, put it in a writable folder, and run it. No installer,
+Download APRSERJ64.exe, put it in a writable folder, and run it. No installer,
 administrator access, or separate Java installation is needed on Windows x64.
 The bootstrap uses Windows' built-in .NET Framework; the Java runtime and all
 application dependencies are embedded in the EXE and extracted on first launch.
 It always works relative to the EXE, even if a shortcut starts elsewhere.
 
-The program creates these items beside APRSIS64.exe:
+The program creates these items beside APRSERJ64.exe:
   settings.toml         Account, server list, maps, services, GPS and beacon settings
   data/chats.sqlite     Persistent chat history and outgoing queue
   data/stations.sqlite  Track, weather and telemetry history
@@ -43,7 +43,7 @@ The program creates these items beside APRSIS64.exe:
   logs/                 Current and previous launch diagnostics
   app/<payload-id>/     Bundled application and Java runtime
 
-Close APRSIS64 before moving its folder. Move the whole folder to retain settings,
+Close APRSERJ64 before moving its folder. Move the whole folder to retain settings,
 chats and cached tiles. Moving just the EXE starts a fresh copy. An updated EXE
 unpacks a separate runtime subfolder without replacing settings, chats or tiles.
 Only one instance can run from a folder. Data does not go to AppData or the registry.
@@ -78,7 +78,7 @@ Connect on startup is enabled by default; Disconnect disables automatic startup
 connection until enabled again. The distributed EXE contains no personal credentials.
 Local settings, data and caches are excluded from the source repository.
 
-The initial 12 presets and order come from APRSISOSM's aprs_servers.json.
+The initial 12 presets and order come from APRSERJa's aprs_servers.json.
 The runtime menu reads [[aprs.servers]] in settings.toml. Add, remove or reorder
 those blocks and restart; edits are preserved, including an empty server list.
 [aprs].server and port select the active endpoint independently of the menu.
@@ -118,13 +118,13 @@ BUILD
 Clone with --recurse-submodules. Install JDK 25 and JDK 17; set JAVA_HOME to 25 and
 JAVA17_HOME to 17. Windows .NET Framework's C# compiler builds the bootstrap.
   .\gradlew.bat test packagePortable
-Output: build/portable/APRSIS64.exe (single file, approximately 93 MiB).
+Output: build/portable/APRSERJ64.exe (single file, approximately 93 MiB).
 Do not distribute the internal createDistributable EXE alone: it needs its runtime.
 The top-level portable EXE contains that runtime and creates the required folders.
 The GitHub Actions workflow builds the portable EXE, not an MSI.
 
 ANDROID COMPANION
-The current APRSISOSM Android application is standalone and implements its own
+The current APRSERJa Android application is standalone and implements its own
 map, routing and APRS logic. It follows the Windows station-to-chat workflow,
 full-SSID conversation identity and durable outbox approach. Windows continues
 to use the aprs-core submodule with a JDBC chat adapter. See the Android repository
@@ -134,12 +134,12 @@ GRAPHICS AND DIAGNOSTICS
 MapLibre Vulkan feeds Compose Direct3D12 on Windows. The Intel Iris Xe driver on the
 test PC rejected OpenGL texture import, so Vulkan is the default. Native libraries'
 license notices are bundled. See TEST-REPORT.txt for test evidence and limitations.
-For source development, -Daprsis64.home can set a test folder; the portable launcher
-sets APRSIS64_HOME automatically. -Daprsis64.probe=true enables a rendered-feature
+For source development, -Daprserj64.home can set a test folder; the portable launcher
+sets APRSERJ64_HOME automatically. -Daprserj64.probe=true enables a rendered-feature
 query diagnostic in development launches. Diagnostic output never prints passcodes.
 
 CONFIGURABLE SERVICES
-[map].tile_url defaults to the APRSISOSM pdeffenb raster/light template. Online
+[map].tile_url defaults to the APRSERJa pdeffenb raster/light template. Online
 maps are on; overlay and underlay are off. Their URLs, opacity, tile size, zoom
 limits, initial zoom, cache budget, frame limit and attribution are configurable.
 North-up is enforced without a setting, as requested. There are no cloud backup,

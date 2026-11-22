@@ -7,8 +7,8 @@ on:
       - 'mkdocs.yml'
       - 'requirements-docs.txt'
       - 'settings.example.toml'
-      - 'src/main/kotlin/org/aprsis64/*Preferences.kt'
-      - 'src/main/kotlin/org/aprsis64/ObjectGeometry.kt'
+      - 'src/main/kotlin/org/aprserj64/*Preferences.kt'
+      - 'src/main/kotlin/org/aprserj64/ObjectGeometry.kt'
       - '.github/workflows/manual.yml'
   pull_request:
     paths:
@@ -17,8 +17,8 @@ on:
       - 'mkdocs.yml'
       - 'requirements-docs.txt'
       - 'settings.example.toml'
-      - 'src/main/kotlin/org/aprsis64/*Preferences.kt'
-      - 'src/main/kotlin/org/aprsis64/ObjectGeometry.kt'
+      - 'src/main/kotlin/org/aprserj64/*Preferences.kt'
+      - 'src/main/kotlin/org/aprserj64/ObjectGeometry.kt'
       - '.github/workflows/manual.yml'
   workflow_dispatch:
 permissions:
@@ -37,7 +37,7 @@ jobs:
       - run: python scripts/manual_build.py
       - uses: actions/upload-artifact@v4
         with:
-          name: APRSIS64-manual
+          name: APRSERJ64-manual
           path: |
-            build/APRSIS64-manual.html
+            build/APRSERJ64-manual.html
             build/manual-site/

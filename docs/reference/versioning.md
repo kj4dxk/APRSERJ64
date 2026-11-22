@@ -1,8 +1,8 @@
 # Versions and GitHub tags
 
-APRSIS64 follows Lynn's APRSISCE/32 convention: `YYYY.MM.DD.HHmm`.
+APRSERJ64 follows Lynn's APRSISCE/32 convention: `YYYY.MM.DD.HHmm`.
 For example, `2024.09.05.1714` means September 5, 2024 at 17:14.
-APRSIS64 release timestamps use America/New_York time, including daylight saving.
+APRSERJ64 release timestamps use America/New_York time, including daylight saving.
 This is date-based versioning, not semantic versioning or a compatibility promise.
 
 `version.txt` is the single source for the release identifier. Set it once when

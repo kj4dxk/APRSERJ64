@@ -1,4 +1,4 @@
-# APRSIS64 common-workflow GUI and live-feed QA
+# APRSERJ64 common-workflow GUI and live-feed QA
 
 Tested on this Windows PC on November 21, 2026 (America/New_York), using an isolated portable folder. The user's saved callsign, passcode, maps and chat database were not changed. Updated executable SHA-256: `97e7103c205015c028c2cfd40117c47e4659c636b95799dc2ba17d3397c9a565`.
 
@@ -23,11 +23,11 @@ The raw packet sample was replayed over loopback into the actual portable applic
 
 Independent reference: `aprslib 0.7.2`. Compared positions within 0.0002 degrees (about 22 m of latitude), plus symbol/table identity. This is cross-implementation evidence, not a claim that either implementation is the APRS standard.
 
-- APRSIS64 decoded **12,500 positional reports** from the sample.
+- APRSERJ64 decoded **12,500 positional reports** from the sample.
 - Reference parser provided positions for **12,462 packets**.
 - **12,368 common positions matched**, with **zero coordinate or symbol mismatches** after the fixes.
-- **94 reference-decoded positions remain unhandled by APRSIS64.** Most include nonstandard multi-character SSID suffixes such as DEMO-002; others include legacy UI wrappers or unusual payload forms. These are not silently counted as successful decodes. Indexes remain in the local mismatch report for further interoperability work.
-- APRSIS64 also decodes positional reports the reference does not. The counts above are intentionally not a fabricated universal success percentage.
+- **94 reference-decoded positions remain unhandled by APRSERJ64.** Most include nonstandard multi-character SSID suffixes such as DEMO-002; others include legacy UI wrappers or unusual payload forms. These are not silently counted as successful decodes. Indexes remain in the local mismatch report for further interoperability work.
+- APRSERJ64 also decodes positional reports the reference does not. The counts above are intentionally not a fabricated universal success percentage.
 - Final decoder probe: **20,344 packets/s** including position/message/weather/telemetry calls and diagnostic serialization. Station-store probe: **29,186 packets/s**. These are warmed JVM probes; they exclude the UI, networking and SQLite and must not be presented as end-to-end throughput.
 
 ## End-to-end replay results after batching
@@ -76,10 +76,10 @@ The most useful next UI work would be a compact first-run checklist (identity, p
 ## Reproduce without public transmissions
 
 1. Capture a bounded sample with `scripts/capture_aprs_feed.py --call YOURCALL-SSID --output build/live-feed/packets.txt`. It uses pass -1 and sends only a login.
-2. Set `APRSIS64_FEED_FILE` to that absolute file and run the Gradle test suite. The opt-in `LiveFeedProbeTest` otherwise skips itself.
+2. Set `APRSERJ64_FEED_FILE` to that absolute file and run the Gradle test suite. The opt-in `LiveFeedProbeTest` otherwise skips itself.
 3. Install aprslib in a test environment and run `scripts/compare_aprs_feed.py build/live-feed`.
 4. Set `build/live-feed/replay-control.json` to `{"rate":0}` and run `scripts/replay_aprs_feed.py --input build/live-feed/packets.txt`. It binds loopback only, port 18765 by default.
-5. Use a separate portable app folder configured for `127.0.0.1:18765`, receive-only passcode, no RF ports and beaconing off. Set `APRSIS64_QA_METRICS` to an absolute JSONL output path before launch for optional counters/UI timing. Normal launches do not record these metrics.
+5. Use a separate portable app folder configured for `127.0.0.1:18765`, receive-only passcode, no RF ports and beaconing off. Set `APRSERJ64_QA_METRICS` to an absolute JSONL output path before launch for optional counters/UI timing. Normal launches do not record these metrics.
 6. Set the replay rate to 1000 or 2000, then back to zero after a bounded interval. Compare sender counts with processed + dropped counters and allow queues to drain. Stop the helper after testing.
 
 Build and automated validation: **124 passing tests (58 Windows, 66 shared core)** including the opt-in captured-feed probe; no failures. Desktop deployment replaces only the EXE, preserves user data, and keeps a backup of the prior EXE.

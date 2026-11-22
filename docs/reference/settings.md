@@ -67,7 +67,7 @@ Each `[[aprs.servers]]` entry is a separate record. The example contains 12 entr
 | `services.map_page_url` | `"http://pdeffenb.homeip.net:82/raster.html"` | map page url |
 | `services.setup_url` | See local `settings.toml` | setup url |
 | `services.monitor_url` | `"http://pdeffenb.homeip.net:82/monitor.html"` | monitor url |
-| `services.source_url` | `"https://github.com/kj4dxk/APRSIS64"` | source url |
+| `services.source_url` | `"https://github.com/kj4dxk/APRSERJ64"` | source url |
 
 ## beacon
 
@@ -104,7 +104,7 @@ Each `[[aprs.servers]]` entry is a separate record. The example contains 12 entr
 | `beacon.messaging` | `true` | Advertise messaging capability |
 | `beacon.include_reason` | `false` | Include transmission reason |
 | `beacon.status_tag` | `""` | Mic-E status tag |
-| `beacon.comments` | `["APRSIS64"]` | Comments (one per line) |
+| `beacon.comments` | `["APRSERJ64"]` | Comments (one per line) |
 | `beacon.comment_enabled` | `true` | Include comments |
 | `beacon.comment_interval_seconds` | `0` | Minimum comment interval (seconds) |
 | `beacon.rotate_comments` | `false` | Rotate comments |
@@ -142,7 +142,7 @@ Each `[[aprs.servers]]` entry is a separate record. The example contains 12 entr
 | `status.interval_seconds` | `1800` | Status interval (seconds) |
 | `status.timestamp` | `true` | Include status timestamp |
 | `status.grid` | `false` | Include grid instead of timestamp |
-| `status.text` | `"APRSIS64"` | Status text |
+| `status.text` | `"APRSERJ64"` | Status text |
 
 ## radio
 

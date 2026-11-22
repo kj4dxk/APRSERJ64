@@ -16,7 +16,7 @@ build/docs-venv/Scripts/python scripts/manual_build.py
 Outputs:
 
 - `build/manual-site/index.html`: web edition with full-text search; serve it over HTTP.
-- `build/APRSIS64-manual.html`: self-contained offline edition. Open directly in a browser, search chapter text with its search field, use Ctrl+F for individual matches, or print to PDF.
+- `build/APRSERJ64-manual.html`: self-contained offline edition. Open directly in a browser, search chapter text with its search field, use Ctrl+F for individual matches, or print to PDF.
 
 For local web preview:
 

@@ -1,4 +1,4 @@
-APRSIS64 0.6.0 — remaining-gap implementation
+APRSERJ64 0.6.0 — remaining-gap implementation
 2026-11-20
 
 This release implements the twelve areas identified in the preceding gap review.

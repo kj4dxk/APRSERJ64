@@ -1,6 +1,6 @@
-# APRSIS64 user manual
+# APRSERJ64 user manual
 
-**For APRSIS64 0.8.0 on Windows x64.** Start with one working connection, then add the features you need. This manual describes APRSIS64's controls and behavior; old APRSIS32 menu names are mapped in the [migration guide](start/from-aprsis32.md).
+**For APRSERJ64 0.8.0 on Windows x64.** Start with one working connection, then add the features you need. This manual describes APRSERJ64's controls and behavior; old APRSIS32 menu names are mapped in the [migration guide](start/from-aprsis32.md).
 
 ## Start here
 
@@ -38,4 +38,4 @@ For an alphabetical entry point, use the [topic index and glossary](reference/in
 
 Mapping, persistent chats, beaconing, ports, routing and the documented tools have implementations. Version 0.8.0 passed 116 automated tests. Those checks do not certify every physical radio, external gateway or GUI workflow. [Compatibility and limits](reference/compatibility.md) identifies the boundaries so a visible control is not mistaken for a tested hardware integration.
 
-The APRSISCE/32 manual maintained in [kj4dxk/APRSIS32](https://github.com/kj4dxk/APRSIS32) informed the topic coverage. Procedures here were rewritten for APRSIS64. See [sources and credits](reference/credits.md).
+The APRSISCE/32 manual maintained in [kj4dxk/APRSIS32](https://github.com/kj4dxk/APRSIS32) informed the topic coverage. Procedures here were rewritten for APRSERJ64. See [sources and credits](reference/credits.md).

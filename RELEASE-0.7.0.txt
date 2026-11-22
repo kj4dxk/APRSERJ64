@@ -1,10 +1,10 @@
-APRSIS64 0.7.0 — additional APRSIS32 workflows
+APRSERJ64 0.7.0 — additional APRSIS32 workflows
 2026-11-20
 
 Build-only delivery requested by the user. No automated tests, UI testing, live
 transmission checks, application launch or Desktop replacement were performed
 for this version. The 99-test result in RELEASE-0.6.0.txt is historical and does
-not validate these changes. The portable output is build/portable/APRSIS64.exe.
+not validate these changes. The portable output is build/portable/APRSERJ64.exe.
 
 Implemented additions
 

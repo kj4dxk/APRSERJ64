@@ -31,6 +31,6 @@ Examples illustrate syntax, not a suggested global RF feed. The [APRS-IS filter 
 
 ## Local gate_filter
 
-Each radio can have a `gate_filter` for additional IS-to-RF subscriptions. APRSIS64 supports range/area, station/prefix/object, path/entry, recipient/destination, type, symbol, q, moving and friend terms. Local `D` checks the broader path and `+` marks a required term; these extensions must not be assumed to work on every upstream server.
+Each radio can have a `gate_filter` for additional IS-to-RF subscriptions. APRSERJ64 supports range/area, station/prefix/object, path/entry, recipient/destination, type, symbol, q, moving and friend terms. Local `D` checks the broader path and `+` marks a required term; these extensions must not be assumed to work on every upstream server.
 
 Local includes are ORed, exclusions win, and required terms must also match; retain an ordinary include when using required terms. An empty local gate filter adds no subscription. It does not disable ordinary eligible message gating. Duplicate, provenance, path and port limits still apply.

@@ -1,12 +1,12 @@
 # Compatibility and limits
 
-This manual targets APRSIS64 **0.8.0**. The APRSIS32 manual supplies topic coverage and operating context; it does not prove identical behavior. Procedures here follow the current Windows source.
+This manual targets APRSERJ64 **0.8.0**. The APRSIS32 manual supplies topic coverage and operating context; it does not prove identical behavior. Procedures here follow the current Windows source.
 
 ## Differences that affect operation
 
 - Configuration is portable TOML. There is no automatic APRSIS32 XML configuration importer.
 - North stays up. There is no rotation setting.
-- Message retries use APRSIS64's five-attempt/30-second eligibility/15-minute age policy; see [messages](../operate/messages.md).
+- Message retries use APRSERJ64's five-attempt/30-second eligibility/15-minute age policy; see [messages](../operate/messages.md).
 - Digipeater transforms and output selection are configured per port. New profiles include useful paths, but existing user choices remain authoritative.
 - Object query-only behavior has an explicit field. Removing a settings entry is different from sending a kill.
 - The updated Settings window includes [digital-mode import controls](../tools/digital.md); older builds had an empty Digital tab.

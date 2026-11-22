@@ -1,4 +1,4 @@
-APRSIS64 0.5.0 - coverage of the requested top 30 categories
+APRSERJ64 0.5.0 - coverage of the requested top 30 categories
 2026-11-20
 
 Ranks 1-15 retain the implementation documented in TOP-15-FEATURES.txt.

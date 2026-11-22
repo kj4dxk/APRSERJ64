@@ -25,9 +25,9 @@ For example, `1|TEST|600|is|Exercise starts at 1400 UTC` is an example entry, no
 
 ## Send an email through a gateway
 
-Open **Tools → Send APRS email**, check the gateway callsign, enter an address and short text, and review the number of gateway messages before selecting **Send email**. Gateway replies appear in its chat. Long text creates separate numbered gateway emails; it is not reassembled into one long email by APRSIS64.
+Open **Tools → Send APRS email**, check the gateway callsign, enter an address and short text, and review the number of gateway messages before selecting **Send email**. Gateway replies appear in its chat. Long text creates separate numbered gateway emails; it is not reassembled into one long email by APRSERJ64.
 
-The gateway address is configurable in **Settings → Messages**. Gateway policy and availability are external to APRSIS64; an APRS ACK is not an email delivery receipt.
+The gateway address is configurable in **Settings → Messages**. Gateway policy and availability are external to APRSERJ64; an APRS ACK is not an email delivery receipt.
 
 ## Automatic reply and kiosk
 

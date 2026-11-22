@@ -2,7 +2,7 @@
 
 Send an addressed query as a normal APRS message to the station's callsign. A reply depends on that station's implementation, route, current state and rate limits.
 
-| Query | APRSIS64 0.8.0 behavior |
+| Query | APRSERJ64 0.8.0 behavior |
 | --- | --- |
 | `?APRSP` | Current position report if available |
 | `?APRSS` | Status packet and configured port summary |
@@ -23,7 +23,7 @@ Send an addressed query as a normal APRS message to the station's callsign. A re
 
 **Settings → Query replies** controls ordinary replies, per-requester cooldown and result limits. DX and QRU have their own tactical settings. The default ordinary-query cooldown is 30 seconds: rapidly sending several different queries can suppress later replies. Do not diagnose a missing second reply before checking that limit.
 
-APRSIS64's heard report is not the old manual's full `I+G+D+d+R` counter output. A named-object request is subject to eligibility and a per-object suppression interval; zero objects sent may be a valid result.
+APRSERJ64's heard report is not the old manual's full `I+G+D+d+R` counter output. A named-object request is subject to eligibility and a per-object suppression interval; zero objects sent may be a valid result.
 
 ## QRU
 

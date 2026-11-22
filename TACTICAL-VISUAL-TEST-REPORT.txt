@@ -1,4 +1,4 @@
-APRSIS64 tactical visual QA - 2026-11-20 (continued into Nov 21 UTC)
+APRSERJ64 tactical visual QA - 2026-11-20 (continued into Nov 21 UTC)
 
 METHOD
 Interactive Windows checks using the actual portable app, native screenshots,
@@ -68,8 +68,8 @@ checks. Estimates do not validate terrain-aware propagation. Upstream LWJGL Unsa
 and no-provider SLF4J warnings remain nonfatal.
 
 DEPLOYMENT
-Updated C:/Users/paul/Desktop/APRSIS64/APRSIS64.exe, with old EXE/settings backups
-named APRSIS64-before-tactical-update.exe and settings-before-tactical-update.toml.
+Updated C:/Users/paul/Desktop/APRSERJ64/APRSERJ64.exe, with old EXE/settings backups
+named APRSERJ64-before-tactical-update.exe and settings-before-tactical-update.toml.
 SHA-256 matches the tested portable build:
 2C465D9ECAB2998C97DAA1FA1EC145238B85E25A4F948B0E1C808CE135C7F960
 Payload: 980607e4548c12bc68bcbd34. All preexisting parsed TOML values preserved;

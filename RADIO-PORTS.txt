@@ -1,7 +1,7 @@
 0.6.0 UPDATE: see RELEASE-0.6.0.txt for current features and validation.
 The implementation-status notes below are historical.
 
-APRSIS64 named ports — 0.3.0 built and TCP-tested; physical hardware unverified
+APRSERJ64 named ports — 0.3.0 built and TCP-tested; physical hardware unverified
 
 The main Ports workspace creates serial or TCP connections. Every port has its own name,
 protocol, device/endpoint, baud, channel, transmit controls, paths, IGate directions,

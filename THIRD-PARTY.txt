@@ -1,4 +1,4 @@
-APRSIS64 source and new application code: AGPL-3.0, see LICENSE.
+APRSERJ64 source and new application code: AGPL-3.0, see LICENSE.
 APRSFoundation/APRSISMO license reference:
 https://github.com/APRSFoundation/APRSISMO/blob/main/LICENSE
 

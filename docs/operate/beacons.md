@@ -29,7 +29,7 @@ GPS freshness and accuracy limits default to 30 seconds and 100 meters. A stale 
 
 Open **Settings → Beaconing**. The adaptive policy can react to time, start/stop transitions, heading changes, distance and forecast error. **Use time only** selects interval-driven behavior. **Use speed-based SmartBeaconing** enables the separate speed/turn settings.
 
-Forecast error compares the current position with where the last reported speed and course would predict it. This concept follows the GeniusBeaconing™ work described by Lynn W. Deffenbaugh, KJ4ERJ; APRSIS64's UI and implementation are its own. Do not transfer old XML timing values without checking the units here.
+Forecast error compares the current position with where the last reported speed and course would predict it. This concept follows the GeniusBeaconing™ work described by Lynn W. Deffenbaugh, KJ4ERJ; APRSERJ64's UI and implementation are its own. Do not transfer old XML timing values without checking the units here.
 
 Use the field units: seconds, meters, degrees and knots. Minimum intervals and per-port radio limits still constrain automatic output. Reconnect/GPS-change preferences are explicit; disconnected position reports are not stored for later replay.
 

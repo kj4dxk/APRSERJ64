@@ -1,4 +1,4 @@
-# First-run defaults copied from APRSISOSM. Runtime values live in settings.toml.
+# First-run defaults copied from APRSERJa. Runtime values live in settings.toml.
 [map]
 source_name = "pdeffenb"
 project_preset_url = "http://pdeffenb.homeip.net:82/raster/light/{z}/{x}/{y}.png"
@@ -28,11 +28,11 @@ search_url = "http://pdeffenb.homeip.net:82/api/search"
 map_page_url = "http://pdeffenb.homeip.net:82/raster.html"
 setup_url = "http://pdeffenb.homeip.net:82/osmand-setup.html"
 monitor_url = "http://pdeffenb.homeip.net:82/monitor.html"
-source_url = "https://github.com/kj4dxk/APRSIS64"
+source_url = "https://github.com/kj4dxk/APRSERJ64"
 legacy_wiki_url = "https://aprsisce.wikidot.com/"
 legacy_manual_url = "https://kj4dxk.github.io/APRSIS32/"
-manual_url = "https://github.com/kj4dxk/APRSIS64/blob/codex/aprs-symbol-vectors/docs/index.md"
-credits_url = "https://github.com/kj4dxk/APRSIS64/blob/codex/aprs-symbol-vectors/docs/reference/credits.md"
+manual_url = "https://github.com/kj4dxk/APRSERJ64/blob/codex/aprs-symbol-vectors/docs/index.md"
+credits_url = "https://github.com/kj4dxk/APRSERJ64/blob/codex/aprs-symbol-vectors/docs/reference/credits.md"
 foundation_url = "https://www.aprsfoundation.org/"
 foundation_github_url = "https://github.com/APRSFoundation"
 foundation_legacy_url = "https://github.com/APRSFoundation/APRSISCE"

@@ -4,7 +4,7 @@ The implementation-status notes below are historical.
 LATEST TACTICAL VISUAL QA: see TACTICAL-VISUAL-TEST-REPORT.txt.
 The earlier results below are retained as historical records.
 
-APRSIS64 0.5.0 - Visual QA and regression fixes - 2026-11-20
+APRSERJ64 0.5.0 - Visual QA and regression fixes - 2026-11-20
 
 METHOD
 Ran the portable Windows app on this PC in an isolated folder with --demo.
@@ -62,7 +62,7 @@ test :core:test packagePortable succeeded: 70 tests, zero failures/errors
 Nonfatal LWJGL sun.misc.Unsafe deprecation warning remains.
 
 DEPLOYMENT
-Updated Desktop/APRSIS64/APRSIS64.exe after backing up the previous EXE and TOML.
+Updated Desktop/APRSERJ64/APRSERJ64.exe after backing up the previous EXE and TOML.
 Verified build/deployed SHA-256 equality and all parsed TOML values unchanged.
 Restarted normally: VERIFIED as N0CALL on rotate.aprs2.net:14580, initial
 BEACON_TX logged, live stations and pdeffenb map visible in desktop-final.png.

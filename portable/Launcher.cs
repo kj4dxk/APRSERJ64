@@ -18,7 +18,7 @@ internal static class Launcher {
                 Directory.CreateDirectory(Path.Combine(root, dir));
             FileStream instance;
             try { instance = new FileStream(Path.Combine(root, "data", "running.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
-            catch (IOException) { MessageBox.Show("APRSIS64 is already running from this folder.", "APRSIS64"); return 1; }
+            catch (IOException) { MessageBox.Show("APRSERJ64 is already running from this folder.", "APRSERJ64"); return 1; }
             using (instance) {
                 string engine = Path.Combine(root, "app", PayloadInfo.Id);
                 string marker = Path.Combine(engine, ".complete");
@@ -38,18 +38,18 @@ internal static class Launcher {
                     }
                     File.WriteAllText(marker, PayloadInfo.Id);
                 }
-                string logPath = Path.Combine(root, "logs", "APRSIS64.log");
+                string logPath = Path.Combine(root, "logs", "APRSERJ64.log");
                 if (File.Exists(logPath)) File.Copy(logPath, logPath + ".previous", true);
                 using (var log = new StreamWriter(logPath, false, Encoding.UTF8)) {
                     log.AutoFlush = true;
-                    var info = new ProcessStartInfo(Path.Combine(engine, "APRSIS64.exe"));
+                    var info = new ProcessStartInfo(Path.Combine(engine, "APRSERJ64.exe"));
                     info.WorkingDirectory = root;
                     info.Arguments = string.Join(" ", Array.ConvertAll(args, Quote));
                     info.UseShellExecute = false;
                     info.CreateNoWindow = true;
                     info.RedirectStandardOutput = true;
                     info.RedirectStandardError = true;
-                    info.EnvironmentVariables["APRSIS64_HOME"] = root;
+                    info.EnvironmentVariables["APRSERJ64_HOME"] = root;
                     string temp = Path.Combine(root, "cache", "tmp");
                     info.EnvironmentVariables["TEMP"] = temp;
                     info.EnvironmentVariables["TMP"] = temp;
@@ -59,14 +59,14 @@ internal static class Launcher {
                         process.OutputDataReceived += (sender, e) => { if (e.Data != null) lock(log) log.WriteLine(e.Data); };
                         process.ErrorDataReceived += (sender, e) => { if (e.Data != null) lock(log) log.WriteLine(e.Data); };
                         process.Start(); process.BeginOutputReadLine(); process.BeginErrorReadLine(); process.WaitForExit();
-                        if (process.ExitCode != 0) MessageBox.Show("APRSIS64 could not start. See logs\\APRSIS64.log in this folder.", "APRSIS64");
+                        if (process.ExitCode != 0) MessageBox.Show("APRSERJ64 could not start. See logs\\APRSERJ64.log in this folder.", "APRSERJ64");
                         return process.ExitCode;
                     }
                 }
             }
         } catch (Exception ex) {
             try { File.WriteAllText(Path.Combine(root, "logs", "startup-error.log"), ex.ToString()); } catch { }
-            MessageBox.Show("Unable to run APRSIS64 in this folder. Choose a writable folder and try again.\n\n" + ex.Message, "APRSIS64");
+            MessageBox.Show("Unable to run APRSERJ64 in this folder. Choose a writable folder and try again.\n\n" + ex.Message, "APRSERJ64");
             return 1;
         }
     }

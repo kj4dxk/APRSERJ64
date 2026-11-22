@@ -1,4 +1,4 @@
-APRSIS64 0.8.0 — protocol corrections and APRSIS32 workflow additions
+APRSERJ64 0.8.0 — protocol corrections and APRSIS32 workflow additions
 2026-11-21
 
 Corrected behavior
@@ -65,7 +65,7 @@ The earlier platform-label assertion now expects the bundled database's vendor
 and model, KJ4ERJ APRSIS32. Tests do not send public APRS traffic.
 
 Build: Gradle test, core:test and packagePortable. Portable output:
- build/portable/APRSIS64.exe
+ build/portable/APRSERJ64.exe
 No installer, screen control, application launch or Desktop replacement.
 All configured endpoints, callsigns/passcodes and existing user settings remain
 in the user's portable folder. New defaults are merged without overwriting them.

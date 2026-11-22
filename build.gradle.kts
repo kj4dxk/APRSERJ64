@@ -17,9 +17,9 @@ tasks.register<JavaExec>("exportWindowsIcon") {
     group = "build"
     description = "Render the Windows ICO from the application's SVG logo"
     classpath = sourceSets.main.get().runtimeClasspath
-    mainClass.set("org.aprsis64.ExportIconKt")
+    mainClass.set("org.aprserj64.ExportIconKt")
     javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(25)) })
-    args(layout.projectDirectory.file("assets/aprsis64.ico").asFile.absolutePath)
+    args(layout.projectDirectory.file("assets/aprserj64.ico").asFile.absolutePath)
 }
 dependencies {
     implementation(project(":core"))
@@ -47,16 +47,16 @@ tasks.processResources {
 
 compose.desktop {
     application {
-        mainClass = "org.aprsis64.MainKt"
+        mainClass = "org.aprserj64.MainKt"
         // Vulkan shares textures with Compose's Direct3D12 host; Intel WGL import failed in testing.
         jvmArgs += listOf("--enable-native-access=ALL-UNNAMED", "-Xmx768m")
         nativeDistributions {
-            windows { iconFile.set(project.file("assets/aprsis64.ico")) }
-            packageName = "APRSIS64"
+            windows { iconFile.set(project.file("assets/aprserj64.ico")) }
+            packageName = "APRSERJ64"
             // jpackage requires three numeric components, with major/minor <= 255.
             packageVersion = "${releaseTime.year - 2000}.${releaseTime.monthValue}.${releaseTime.dayOfMonth * 1440 + releaseTime.hour * 60 + releaseTime.minute}"
             description = "Portable APRS mapping, messaging and radio gateway"
-            vendor = "APRSIS64 contributors"
+            vendor = "APRSERJ64 contributors"
             appResourcesRootDir.set(layout.buildDirectory.dir("portableResources"))
             modules("java.sql", "java.net.http", "jdk.unsupported", "jdk.crypto.ec", "jdk.httpserver")
         }

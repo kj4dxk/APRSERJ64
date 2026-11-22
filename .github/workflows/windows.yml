@@ -20,8 +20,8 @@ jobs:
         run: ./gradlew.bat test core:test packagePortable --console=plain
       - uses: actions/upload-artifact@v4
         with:
-          name: APRSIS64-windows
+          name: APRSERJ64-windows
           path: |
-            build/portable/APRSIS64.exe
+            build/portable/APRSERJ64.exe
             build/reports/tests/
 

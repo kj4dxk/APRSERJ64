@@ -4,7 +4,7 @@
 
 ## Install the portable program
 
-1. Place `APRSIS64.exe` in a folder you can write to, such as a folder under Documents. No installer or separate Java installation is required.
+1. Place `APRSERJ64.exe` in a folder you can write to, such as a folder under Documents. No installer or separate Java installation is required.
 2. Run the EXE. The first launch extracts its bundled runtime into an `app/` subfolder and creates settings and data folders beside it.
 3. Open **Settings → My position**. Check the selected position source and coordinates **before connecting with a transmitting account**. The seeded fixed location is in Florida; it is not automatically your location.
 4. Select **Settings → Beaconing** and review **Beaconing enabled**, **Beacon to APRS-IS** and **Beacon to RF ports**. Beaconing starts enabled by default. Select **Save** when finished.

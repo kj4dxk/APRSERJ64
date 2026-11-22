@@ -1,6 +1,6 @@
-site_name: APRSIS64 manual
-site_description: Task-based user guide and configuration reference for APRSIS64
-repo_url: https://github.com/kj4dxk/APRSIS64
+site_name: APRSERJ64 manual
+site_description: Task-based user guide and configuration reference for APRSERJ64
+repo_url: https://github.com/kj4dxk/APRSERJ64
 edit_uri: edit/main/docs/
 site_dir: build/manual-site
 use_directory_urls: false

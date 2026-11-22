@@ -4,7 +4,7 @@ The implementation-status notes below are historical.
 LATEST TACTICAL VISUAL QA: see TACTICAL-VISUAL-TEST-REPORT.txt.
 The earlier results below are retained as historical records.
 
-APRSIS64 tactical additions verification - 2026-11-20
+APRSERJ64 tactical additions verification - 2026-11-20
 PASS: test :core:test packagePortable, followed by the expanded full test suite.
 82 tests: 49 shared core and 33 Windows; zero failures/errors.
 New integration coverage: TOML nicknames/DF/object roundtrip and transmitted polygon;
@@ -19,7 +19,7 @@ Known nonfatal warnings: unnecessary TomlTable !! and upstream LWJGL Unsafe use.
 Full visual interaction with new tools, physical hardware and external QRU peers
 remain unverified. The earlier visual sweep below applies to the previous build.
 
-APRSIS64 0.5.0 visual regression fixes - 2026-11-20
+APRSERJ64 0.5.0 visual regression fixes - 2026-11-20
 PASS: test :core:test packagePortable. 70 tests: 41 shared core, 29 Windows.
 Completed keyboard-driven visual QA using window screenshots, including settings,
 operating tools, offline tile download, chat acknowledgements and restart history.
@@ -31,7 +31,7 @@ See VISUAL-TEST-REPORT.txt for detailed scope and unverified interactions.
 Earlier verification follows (the capture limitation below was subsequently
 worked around with window-only capture):
 
-APRSIS64 0.5.0 feature integration - 2026-11-20
+APRSERJ64 0.5.0 feature integration - 2026-11-20
 PASS: test :core:test packagePortable. 69 tests: 41 shared core, 28 Windows.
 New tests cover weather/telemetry/bulletin parsing, service message encoding,
 persistent observations and tracks, GPX escaping/export, telemetry definitions,
@@ -54,7 +54,7 @@ This confirms the local transmit path, not independent network-wide reception.
 
 Earlier verification follows:
 
-APRSIS64 0.4.0 feature integration — 2026-11-20
+APRSERJ64 0.4.0 feature integration — 2026-11-20
 PASS: test :core:test packagePortable. 61 tests: 38 shared core, 23 Windows.
 New coverage: custom/moving/range filters and actual login wire output, preset
 round-trip/removal, SmartBeaconing interval/turn handling, owner-scoped object
@@ -67,7 +67,7 @@ channel. Manual UI/hardware validation remains outstanding. See TOP-15-FEATURES.
 
 Earlier 0.3.0 verification follows:
 
-APRSIS64 0.3.0 combined verification — 2026-11-20
+APRSERJ64 0.3.0 combined verification — 2026-11-20
 
 PASS: Gradle test :core:test and packagePortable on this Windows PC.
 52 tests, zero failures/errors: 34 shared-core tests and 18 Windows tests.

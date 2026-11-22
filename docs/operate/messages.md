@@ -16,7 +16,7 @@ You can send another message while earlier messages are queued, waiting for ackn
 
 ## Understand routes
 
-| Route | What APRSIS64 does |
+| Route | What APRSERJ64 does |
 | --- | --- |
 | Automatic (stored as `best`) | Prefer a recently learned local-client route, then a suitable heard RF route; otherwise verified APRS-IS or an eligible RF fallback |
 | Radio only (`rf`) | Use an eligible radio output rather than APRS-IS |
@@ -42,7 +42,7 @@ Version 0.8.0 allows up to five attempts, with a 30-second eligibility interval 
 
 ## Message length and special characters
 
-An APRS message body is limited to 67 characters. APRSIS64 accepts up to 300 characters and splits long text into numbered messages. Each part is delivered independently. Use printable ASCII; `{`, `|` and `~` are reserved by the composer/packet format. A multipart exchange can arrive incompletely or out of order.
+An APRS message body is limited to 67 characters. APRSERJ64 accepts up to 300 characters and splits long text into numbered messages. Each part is delivered independently. Use printable ASCII; `{`, `|` and `~` are reserved by the composer/packet format. A multipart exchange can arrive incompletely or out of order.
 
 ## Chats and history
 
