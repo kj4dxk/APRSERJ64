@@ -46,4 +46,7 @@ Missing or malformed credentials prompt for correction. If the server rejects a 
 
 **Test connection** checks the entered callsign and passcode with the selected server without saving settings, changing your normal connection preference, or sending beacons. Results distinguish authenticated, unverified/receive-only, and no server response. Editing the inputs clears the previous test result.
 
-The passcode-help email address can be selected, copied, or clicked to compose a request with your callsign. **Copy request** includes recipient, subject and body. **Formatted draft** opens an .eml message with a bold name placeholder in compatible email apps. Replace the name placeholder before sending; the app never sends the email itself.
+The passcode-help address is selectable. Clicking it copies the address and briefly shows **Copied**. **Copy request** copies the recipient, subject and suggested message, including your callsign and a name placeholder. Paste these into your preferred email app or website and replace the name placeholder. The app does not open a mail client or send email. Passcodes are displayed openly in the editor.
+
+
+Email links depend on [Windows default-app associations](https://learn.microsoft.com/en-us/windows/apps/develop/launch/launch-default-app) and browser handlers for [Gmail](https://developer.chrome.com/blog/getting-gmail-to-handle-all-mailto-links-with-registerprotocolhandler/) and [Outlook web](https://learn.microsoft.com/en-us/deployedge/microsoft-edge-policies/registeredprotocolhandlers). Copying avoids assuming which mailbox the user intends to use.

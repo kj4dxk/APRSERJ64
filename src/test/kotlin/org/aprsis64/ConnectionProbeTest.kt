@@ -3,8 +3,8 @@ package org.aprsis64
 
 import java.net.ServerSocket
 import java.net.InetAddress
-import java.net.URLDecoder
-import java.util.Base64
+
+
 import kotlinx.coroutines.*
 import kotlin.test.*
 
@@ -35,19 +35,13 @@ class ConnectionProbeTest {
    service.join()
   }
  }
- @Test fun emailDraftPreservesRecipientPlusAndEscapesFields() {
-  val address="APRSISCE+owner@groups.io"
-  val uri=PasscodeRequest.mailto(address,"n1abc-13")
-  assertTrue(uri.toString().startsWith("mailto:$address?"))
-  val decoded=URLDecoder.decode(uri.rawSchemeSpecificPart.substringAfter('?'),Charsets.UTF_8)
-  assertTrue(decoded.contains("N1ABC-13"));assertTrue(decoded.contains("FULL LICENSED NAME"))
-  assertTrue(decoded.contains("APRSIS64"))
-  assertFailsWith<IllegalArgumentException> {PasscodeRequest.mailto("bad\r\nBcc: other@example.org","N1ABC")}
-  val eml=PasscodeRequest.formattedDraft(address,"N1ABC-13")
-  assertTrue(eml.startsWith("X-Unsent: 1\r\n"))
-  val html64=eml.substringAfter("Content-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n").substringBefore("\r\n--APRSIS64_REQUEST")
-  val html=String(Base64.getMimeDecoder().decode(html64),Charsets.UTF_8)
-  assertTrue(html.contains("<strong>[ENTER YOUR FULL LICENSED NAME HERE]</strong>"))
-  assertTrue(html.contains("N1ABC-13"))
+ @Test fun copiedRequestContainsRecipientSubjectAndEditableName() {
+  val request=PasscodeRequest.copyRequest("APRSISCE+owner@groups.io","n1abc-13")
+  assertTrue(request.startsWith("To: APRSISCE+owner@groups.io\nSubject: APRS-IS passcode request"))
+  assertTrue(request.contains("N1ABC-13"))
+  assertTrue(request.contains("[ENTER YOUR FULL LICENSED NAME HERE]"))
+  assertTrue(request.contains("I am using APRSIS64"))
+  assertFalse(request.contains("mailto:"))
+  assertTrue(PasscodeRequest.copyRequest("support@example.org","").contains("[YOUR CALLSIGN]"))
  }
 }

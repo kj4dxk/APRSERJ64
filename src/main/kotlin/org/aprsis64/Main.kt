@@ -15,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.*
@@ -457,7 +456,6 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     var pass by remember {mutableStateOf(model.settings.getProperty("passcode",""))}
     var receiveOnly by remember {mutableStateOf(pass=="-1")}
     var showPasscodeHelp by remember {mutableStateOf(false)}
-    var showPasscode by remember {mutableStateOf(false)}
     var validation by remember {mutableStateOf("")}
     val setupIssue by model.connectionSetupIssue.collectAsState()
     var host by remember {mutableStateOf(model.settings.getProperty("endpoint"))}
@@ -466,6 +464,14 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     var menu by remember {mutableStateOf(false)}
     val connectionScope=rememberCoroutineScope()
     val clipboard=remember {java.awt.Toolkit.getDefaultToolkit().systemClipboard}
+    var copyNotice by remember {mutableStateOf("")}
+    var copySequence by remember {mutableStateOf(0)}
+    LaunchedEffect(copySequence) {if(copySequence>0) {delay(2000);copyNotice=""}}
+    fun copyEmailText(text:String) {
+        runCatching {clipboard.setContents(java.awt.datatransfer.StringSelection(text),null)}
+            .onSuccess {copyNotice="Copied";copySequence++}
+            .onFailure {copyNotice="";validation="Unable to copy right now. Select the address and press Ctrl+C, or try again."}
+    }
     var testing by remember {mutableStateOf(false)}
     var testResult by remember {mutableStateOf("")}
     var testJob by remember {mutableStateOf<kotlinx.coroutines.Job?>(null)}
@@ -487,37 +493,36 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
                     }}
                 }
             }
-            HelpField(UiHelp.field("APRS-IS passcode"),if(receiveOnly) "" else pass,{pass=it},label={HelpText("APRS-IS passcode")},enabled=!receiveOnly,visualTransformation=if(showPasscode) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),singleLine=true,modifier=Modifier.fillMaxWidth(),fill=true)
+            HelpField(UiHelp.field("APRS-IS passcode"),pass.takeUnless {it=="-1"}.orEmpty(),{pass=it},label={HelpText("APRS-IS passcode")},enabled=!receiveOnly,singleLine=true,modifier=Modifier.fillMaxWidth(),fill=true)
             Row(verticalAlignment=Alignment.CenterVertically) {
                 HelpCheckbox("Receive stations without sending Internet messages or beacons. A passcode is not needed in this mode.",receiveOnly,{receiveOnly=it;if(!it && pass=="-1")pass=""});HelpText("Receive only (no APRS-IS transmissions)")
             }
             Row {
-                HelpTextButton("Show or hide the passcode on this screen.",onClick={showPasscode=!showPasscode},enabled=!receiveOnly){HelpText(if(showPasscode) "Hide passcode" else "Show passcode")}
                 HelpTextButton("Read APRSISCE/32 wiki guidance for existing and new passcodes.",onClick={showPasscodeHelp=!showPasscodeHelp}){HelpText(if(showPasscodeHelp) "Hide passcode help" else "How do I get a passcode?")}
             }
             if(showPasscodeHelp) {
                 HelpText("Already used APRS-IS? Use the same passcode for your callsign; it works across clients and SSIDs. This is not your website password.")
                 HelpText("The APRSISCE/32 wiki asks licensed APRSISCE/32 users to email their licensed name and callsign. That service is specifically for APRSISCE/32 users; the draft accurately identifies APRSIS64. You can choose Receive only while arranging a passcode.")
                 val email=model.settings.getProperty("services.passcode_request_email")
-                androidx.compose.foundation.text.selection.SelectionContainer {
-                    Text(email,modifier=Modifier.clickable {
-                        runCatching {Desktop.getDesktop().mail(PasscodeRequest.mailto(email,call))}.onFailure {validation="No email application could be opened. Use Copy request and paste it into your email service."}
-                    },color=MaterialTheme.colors.primary,textDecoration=androidx.compose.ui.text.style.TextDecoration.Underline)
+                Box {
+                    Column {
+                        androidx.compose.foundation.text.selection.SelectionContainer {
+                            Text(email,modifier=Modifier.clickable {copyEmailText(email)},color=MaterialTheme.colors.primary,textDecoration=androidx.compose.ui.text.style.TextDecoration.Underline)
+                        }
+                        HelpText("Click the address to copy it, then paste it into the To field in your email app or website.",fontSize=12.sp)
+                        Row {
+                            HelpTextButton("Copy the passcode-request email address.",onClick={copyEmailText(email)}) {HelpText("Copy address")}
+                            HelpTextButton("Copy recipient, subject and suggested message; paste them into your own email app or website.",onClick={copyEmailText(PasscodeRequest.copyRequest(email,call))}) {HelpText("Copy request")}
+                        }
+                        HelpText("Copy request includes your callsign. Replace the name placeholder before sending:")
+                        Text("ENTER YOUR FULL LICENSED NAME HERE",fontWeight=FontWeight.Bold)
+                    }
+                    if(copyNotice.isNotEmpty()) Popup(alignment=Alignment.TopEnd,properties=PopupProperties(focusable=false)) {
+                        Surface(color=MaterialTheme.colors.primary,contentColor=MaterialTheme.colors.onPrimary,elevation=8.dp,shape=MaterialTheme.shapes.small) {
+                            Text(copyNotice,Modifier.padding(horizontal=16.dp,vertical=10.dp))
+                        }
+                    }
                 }
-                Row {
-                    HelpTextButton("Copy the passcode-request email address.",onClick={clipboard.setContents(java.awt.datatransfer.StringSelection(email),null)}) {HelpText("Copy address")}
-                    HelpTextButton("Copy the recipient, subject and message for your email application.",onClick={clipboard.setContents(java.awt.datatransfer.StringSelection("To: "+email+"\nSubject: "+PasscodeRequest.subject(call)+"\n\n"+PasscodeRequest.body(call)),null)}) {HelpText("Copy request")}
-                    HelpTextButton("Open an email draft with a bold name placeholder. Requires an email application that supports .eml drafts; nothing is sent automatically.",onClick={
-                        runCatching {
-                            val draft=model.directory.resolve("data/passcode-request.eml")
-                            java.nio.file.Files.writeString(draft,PasscodeRequest.formattedDraft(email,call))
-                            Desktop.getDesktop().open(draft.toFile())
-                        }.onFailure {validation="Unable to open a formatted email draft. Use the email link or Copy request instead."}
-                    }) {HelpText("Formatted draft")}
-                }
-                HelpText("Before sending, replace the name placeholder:")
-                Text("ENTER YOUR FULL LICENSED NAME HERE",fontWeight=FontWeight.Bold)
-                HelpText("The email includes your callsign. Formatted draft makes the name placeholder bold in compatible email apps; the email link and copied request use plain text.",fontSize=12.sp)
                 HelpTextButton("Open the preserved APRSISCE/32 wiki passcode instructions.",onClick={runCatching {Desktop.getDesktop().browse(URI(model.settings.getProperty("services.passcode_help_url")))}}){HelpText("Read APRSISCE/32 passcode instructions")}
                 HelpTextButton("Open the APRSIS64 project for maintainer support.",onClick={runCatching {Desktop.getDesktop().browse(URI(model.settings.getProperty("services.source_url")))}}){HelpText("APRSIS64 project & support")}
             }

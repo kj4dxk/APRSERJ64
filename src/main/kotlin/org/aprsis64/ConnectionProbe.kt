@@ -4,8 +4,8 @@ package org.aprsis64
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import net.osmand.shared.aprs.*
-import java.net.URI
-import java.net.URLEncoder
+
+
 
 /** A separate login-only session: never saves settings, resumes a connection or sends beacons. */
 internal object ConnectionProbe {
@@ -31,18 +31,6 @@ internal object ConnectionProbe {
 }
 
 internal object PasscodeRequest {
- fun formattedDraft(email:String,call:String):String {
-  mailto(email,call) // Validate recipient before placing it in a mail header.
-  fun b64(text:String)=java.util.Base64.getMimeEncoder(76,"\r\n".toByteArray()).encodeToString(text.toByteArray(Charsets.UTF_8))
-  val plain=body(call)
-  val html="<html><body>"+plain.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
-   .replace("[ENTER YOUR FULL LICENSED NAME HERE]","<strong>[ENTER YOUR FULL LICENSED NAME HERE]</strong>")
-   .replace("\n","<br>\r\n")+"</body></html>"
-  val encodedSubject=java.util.Base64.getEncoder().encodeToString(subject(call).toByteArray(Charsets.UTF_8))
-  return "X-Unsent: 1\r\nTo: $email\r\nSubject: =?UTF-8?B?$encodedSubject?=\r\nMIME-Version: 1.0\r\nContent-Type: multipart/alternative; boundary=\"APRSIS64_REQUEST\"\r\n\r\n"+
-   "--APRSIS64_REQUEST\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${b64(plain)}\r\n"+
-   "--APRSIS64_REQUEST\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${b64(html)}\r\n--APRSIS64_REQUEST--\r\n"
- }
  fun subject(call:String)="APRS-IS passcode request — ${ConnectionSetup.normalizedCall(call).ifBlank {"[YOUR CALLSIGN]"}}"
  fun body(call:String)="""Hello,
 
@@ -53,9 +41,5 @@ I am using APRSIS64 and would like assistance obtaining my APRS-IS passcode.
 I found your address in the APRSISCE/32 wiki. I understand that your passcode service supports APRSISCE/32 users; if my request is outside that scope, please direct me to the appropriate support.
 
 Thank you."""
- fun mailto(email:String,call:String):URI {
-  require(Regex("[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}").matches(email))
-  fun encode(text:String)=URLEncoder.encode(text,Charsets.UTF_8).replace("+","%20")
-  return URI("mailto:$email?subject=${encode(subject(call))}&body=${encode(body(call))}")
- }
+ fun copyRequest(email:String,call:String)="To: $email\nSubject: ${subject(call)}\n\n${body(call)}"
 }
