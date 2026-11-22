@@ -31,7 +31,7 @@ class PublicNetworkAcceptanceTest {
    }
    val homes=(0..1).map {i->Files.createTempDirectory("aprs-moving-test-").also {home->PortableHome.prepare(home);SettingsStore(home).apply {
     values.setProperty("beacon.enabled",(i==0).toString());values.setProperty("beacon.radio","false")
-    values.setProperty("beacon.comment","Simulated GPS acceptance test")
+    values.setProperty("beacon.comments","[\"Simulated GPS acceptance test\"]")
     values.setProperty("beacon.minimum_seconds","10");values.setProperty("beacon.maximum_seconds","30");values.setProperty("beacon.time_only","true")
     values.setProperty("position.source",if(i==0) "gps_tcp" else "fixed");values.setProperty("position.gps_endpoint","127.0.0.1:${server.localPort}")
     values.setProperty("telemetry.enabled",(i==0).toString());values.setProperty("telemetry.interval_seconds","60")
@@ -52,6 +52,9 @@ class PublicNetworkAcceptanceTest {
     assertTrue(b.stations.value.any {it.callsign==ca && it.latitude>latitude},"Moving station decoded")
     assertTrue(tx.all {it.packet.substringAfter(':') in payloads},"Every local packet independently received")
     assertFalse(rx.any {it.invalid},"Invalid received packet")
+    val notices=a.serverMessages.value+b.serverMessages.value
+    assertTrue(notices.count {it.contains("logresp",true) && it.contains(" verified",true)}>=2,"Server verification responses captured")
+    assertFalse(notices.any {Regex("(?i)\\b(error|invalid|rejected|unverified)\\b").containsMatchIn(it)},"Server reported an error")
     println("MOVING_ACCEPTANCE: ${tx.size} outputs independently received, GPS movement and telemetry decoded")
    }}} finally {simulator.cancelAndJoin()}
   }

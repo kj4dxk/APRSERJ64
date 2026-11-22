@@ -20,6 +20,8 @@ import java.time.format.DateTimeFormatter
 @Composable fun PacketMonitorWindow(model: AppModel,dismiss: ()->Unit) {
     val entries by model.monitor.entries.collectAsState()
     val feed by model.monitor.feedStatus.collectAsState()
+    val serverMessages by model.serverMessages.collectAsState()
+    var showServerMessages by remember {mutableStateOf(false)}
     val scope=rememberCoroutineScope()
     var query by remember {mutableStateOf("")}
     var satellites by remember {mutableStateOf(false)}
@@ -38,6 +40,11 @@ import java.time.format.DateTimeFormatter
             Row {listOf("All","RF","Duplicates","Invalid").forEach {name->HelpTextButton(UiHelp.action(if(name==category)"[$name]" else name),onClick={category=name}){HelpText(if(name==category)"[$name]" else name)}}}
             if(satellites) HelpTextButton(UiHelp.action("Current ISS radio status"),onClick={java.awt.Desktop.getDesktop().browse(java.net.URI(model.settings.getProperty("services.satellite_status_url")))}) {HelpText("Current ISS radio status")}
             HelpText("$feed · ${displayed.size} packets",fontSize=12.sp)
+            HelpTextButton("Show the latest APRS-IS server login responses and diagnostic comments. These are separate from station packets.",onClick={showServerMessages=!showServerMessages}) {HelpText(if(showServerMessages) "Hide server responses" else "Show server responses")}
+            if(showServerMessages) Column(Modifier.heightIn(max=160.dp).verticalScroll(rememberScrollState())) {
+                if(serverMessages.isEmpty()) HelpText("No APRS-IS server responses yet.")
+                serverMessages.asReversed().forEach {SelectionContainerCompat(it)}
+            }
             if(result.isNotBlank()) HelpText(result,fontSize=12.sp)
             key(category,satellites,query) {LazyColumn(Modifier.weight(1f).fillMaxWidth()) {items(displayed.asReversed(),key={it.sequence}) {entry ->
                 Column(Modifier.padding(vertical=6.dp)) {

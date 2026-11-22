@@ -16,6 +16,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
     val state = MutableStateFlow(AprsConnectionState.STOPPED)
     val stations = MutableStateFlow<List<AprsStation>>(emptyList())
     val error = MutableStateFlow("")
+    val serverMessages=MutableStateFlow<List<String>>(emptyList())
     val demo = MutableStateFlow(demoMode)
     private var client: AprsIsClient? = null
     private var chat: ChatSession? = null
@@ -104,6 +105,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         val connection = AprsIsClient(); client = connection
         if(radio?.call==config.callsign && !demo.value) radio?.attach(connection) else startPorts()
         observing = scope.launch {
+            launch {connection.serverMessages.collect {serverMessages.value=it}}
             launch { connection.state.collect { if(state.value!=it)activity.event("connection",it.name,"Connection: $it");state.value=it; println("APRS_CONNECTION ${config.callsign} $it ${connection.activeEndpoint.value?.host}:${connection.activeEndpoint.value?.port}") } }
             launch { connection.stations.collect { internetStations.value=it; if(it.size == 1 || it.size % 50 == 0) println("APRS_STATIONS ${it.size}") } }
         }
