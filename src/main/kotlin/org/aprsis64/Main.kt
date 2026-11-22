@@ -66,7 +66,7 @@ fun main(args: Array<String>) {
         cacheFile = kotlinx.io.files.Path(home.resolve("cache/tiles.db").toString())
         maximumCacheSizeBytes = model.settings.getProperty("map.cache_megabytes").toLong() * 1024 * 1024
     }
-    println("APRSIS64 0.8.0 | Java ${System.getProperty("java.version")} | Vulkan / Direct3D12 | home=$home")
+    println("APRSIS64 ${AppVersion.value} | Java ${System.getProperty("java.version")} | Vulkan / Direct3D12 | home=$home")
     if(demoMode) model.localDemo()
     else model.connectSaved()
     val qaMetrics=startQaMetrics(model)
@@ -202,7 +202,7 @@ fun main(args: Array<String>) {
     if(preferences) PreferencesDialog(model) {preferences=false}
     if(packetMonitor) PacketMonitorWindow(model) {packetMonitor=false}
     if(portWorkspace) PortWorkspaceWindow(model) {portWorkspace=false}
-    if(about) AlertDialog(onDismissRequest={about=false},title={HelpText("APRSIS64 0.8.0")},text={
+    if(about) AlertDialog(onDismissRequest={about=false},title={HelpText("APRSIS64 ${AppVersion.value}")},text={
         Column(Modifier.heightIn(max=500.dp).verticalScroll(rememberScrollState())) {
          HelpText("Copyright 2026 APRSIS64 contributors.\nAGPL-3.0. No warranty.\n\nInspired by Lynn Deffenbaugh KJ4ERJ's APRSISCE/32. APRS by Bob Bruninga WB4APR. Map data © OpenStreetMap contributors.\n\nContains GPLv3 shared components. Third-party license notices are included in the app folder.")
          listOf("APRSIS64 manual" to "manual_url", "APRSIS32 manual" to "legacy_manual_url", "Original APRSISCE/32 wiki" to "legacy_wiki_url", "Attributions and licenses" to "credits_url", "APRS Foundation" to "foundation_url", "APRS Foundation GitHub" to "foundation_github_url", "Foundation APRSISCE/32 source" to "foundation_legacy_url", "APRSIS32 GitHub" to "legacy_source_url", "Passcode instructions" to "passcode_help_url").forEach {(label,key)->

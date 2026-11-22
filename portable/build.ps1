@@ -14,7 +14,10 @@ $inputStream = [IO.File]::OpenRead($zip)
 try { $payloadId = ([BitConverter]::ToString($hash.ComputeHash($inputStream))).Replace('-','').Substring(0,24).ToLowerInvariant() }
 finally { $inputStream.Dispose(); $hash.Dispose() }
 $info = Join-Path $out 'PayloadInfo.cs'
-Set-Content -LiteralPath $info -Value ('internal static class PayloadInfo { internal const string Id = "' + $payloadId + '"; }')
+$releaseVersion = (Get-Content -LiteralPath (Join-Path $repo 'version.txt') -Raw).Trim()
+if ($releaseVersion -notmatch '^\d{4}\.\d{2}\.\d{2}\.\d{4}$') { throw 'Invalid release version' }
+$numericVersion = (($releaseVersion.Split('.') | ForEach-Object { [int]$_ }) -join '.')
+Set-Content -LiteralPath $info -Value ('[assembly: System.Reflection.AssemblyVersion("' + $numericVersion + '")]' + "`n" + '[assembly: System.Reflection.AssemblyFileVersion("' + $numericVersion + '")]' + "`n" + '[assembly: System.Reflection.AssemblyInformationalVersion("' + $releaseVersion + '")]' + "`n" + 'internal static class PayloadInfo { internal const string Id = "' + $payloadId + '"; }')
 $compiler = Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
 if (!(Test-Path $compiler)) { throw 'The Windows .NET Framework C# compiler is required.' }
 & $compiler "/win32icon:$(Join-Path $repo 'assets/aprsis64.ico')" /nologo /target:winexe /platform:x64 /optimize+ /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:System.Windows.Forms.dll "/resource:$zip,payload.zip" "/out:$out/APRSIS64.exe" (Join-Path $PSScriptRoot 'Launcher.cs') $info

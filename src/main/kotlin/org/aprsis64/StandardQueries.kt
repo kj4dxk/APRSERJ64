@@ -27,7 +27,7 @@ internal class StandardQueries(private val model:AppModel,private val scope:Coro
      "?APRSP"->{val p=model.beaconState.value.position?.takeIf {it.current};if(p==null){if(!generic)reply("No current position")}else send(BeaconPackets.position(model.account.value,p,config.format))}
      "?APRSS"->{send(BeaconPackets.status(model.account.value,model.settings.getProperty("status.text","APRSIS64").ifBlank {"APRSIS64"},now,model.settings.getProperty("status.timestamp").toBoolean()));reply("Ports: "+model.portStatuses.value.take(max).joinToString("; "){it.name+" "+it.detail}.ifBlank {"none"})}
      "?APRST","?PING?"->reply("Received via $port: "+line.substringBefore(':'))
-     "?ABOUT","?APRSV","?VER"->reply("APRSIS64 0.8.0")
+     "?ABOUT","?APRSV","?VER"->reply("APRSIS64 ${AppVersion.value}")
      "?APRSD"->reply("Directs: "+output.directCalls().take(max).joinToString(" ").ifBlank {"none"})
      "?APRSL"->reply("Locals: "+output.localCalls().take(max).joinToString(" ").ifBlank {"none"})
      "?APRSH"->if(argument=="*")reply("Heard: "+output.heardCalls().take(max).joinToString(" ").ifBlank {"none"}) else reply(output.heardReport(argument.ifBlank {message.sender}.uppercase()))

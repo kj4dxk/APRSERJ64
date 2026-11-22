@@ -22,7 +22,7 @@ Your callsign and passcode are stored only in your local `settings.toml`. Keep t
 - [Settings catalog](docs/reference/settings.md)
 - [Build the searchable web and offline editions](docs/reference/maintaining.md)
 
-The manual targets version 0.8.0 and calls out current differences and limitations. Documentation builds are available as GitHub Actions artifacts after the manual workflow runs.
+The manual follows the current source and calls out differences and limitations. Releases use Lynn's `YYYY.MM.DD.HHmm` version convention, recorded in [version.txt](version.txt), with matching GitHub tags. See [versioning and release procedure](docs/reference/versioning.md). Documentation builds are available as GitHub Actions artifacts after the manual workflow runs.
 
 ## Development and licensing
 

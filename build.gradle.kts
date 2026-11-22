@@ -1,11 +1,15 @@
 import java.util.zip.ZipFile
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 plugins {
     kotlin("jvm") version "2.4.20"
     id("org.jetbrains.kotlin.plugin.compose") version "2.4.20"
     id("org.jetbrains.compose") version "1.12.1"
 }
 group = "org.aprsfoundation.community"
-version = "0.8.0"
+val releaseVersion = file("version.txt").readText().trim()
+val releaseTime = LocalDateTime.parse(releaseVersion, DateTimeFormatter.ofPattern("uuuu.MM.dd.HHmm"))
+version = releaseVersion
 repositories { google(); mavenCentral() }
 kotlin { jvmToolchain(25) }
 
@@ -34,6 +38,7 @@ dependencies {
     testImplementation(kotlin("test-junit"))
 }
 tasks.processResources {
+    from("version.txt")
     from("assets/aprs-symbols") {
         include("primary/*.svg", "alternate/*.svg")
         into("aprs-symbols")
@@ -48,7 +53,8 @@ compose.desktop {
         nativeDistributions {
             windows { iconFile.set(project.file("assets/aprsis64.ico")) }
             packageName = "APRSIS64"
-            packageVersion = "0.8.0"
+            // jpackage requires three numeric components, with major/minor <= 255.
+            packageVersion = "${releaseTime.year - 2000}.${releaseTime.monthValue}.${releaseTime.dayOfMonth * 1440 + releaseTime.hour * 60 + releaseTime.minute}"
             description = "Portable APRS mapping, messaging and radio gateway"
             vendor = "APRSIS64 contributors"
             appResourcesRootDir.set(layout.buildDirectory.dir("portableResources"))

@@ -74,7 +74,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         try {
             val address = AprsEndpoint.parse(endpoint)
             val config = AprsIsConfig(call.trim().uppercase(),password.trim().ifBlank { "-1" },address.host,address.port,
-                latitude,longitude,radiusKm=settings.getProperty("radiusKm").toInt(),application="APRSIS64",
+                latitude,longitude,radiusKm=settings.getProperty("radiusKm").toInt(),application="APRSIS64",applicationVersion=AppVersion.value,
                 filterMode=settings.getProperty("operating.filter_mode"),customFilter=OperatingPreferences.filterTerms(settings),
                 fallbackServers=if(settings.getProperty("connectivity.failover").toBoolean()) servers.take(16).map {AprsEndpoint(it.host,it.port)} else emptyList())
             settings.setProperty("callsign", config.callsign); settings.setProperty("endpoint",endpoint)
@@ -98,7 +98,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         disconnect()
         server = DemoServer()
         demo.value = true
-        start(AprsIsConfig("N0CALL-12","12345","127.0.0.1",server!!.port,28.536725,-81.242932,application="APRSIS64"))
+        start(AprsIsConfig("N0CALL-12","12345","127.0.0.1",server!!.port,28.536725,-81.242932,application="APRSIS64",applicationVersion=AppVersion.value))
     }
     private fun start(config: AprsIsConfig) {
         account.value = config.callsign;groups.activate(account.value); error.value = ""
@@ -168,7 +168,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
                 val config=AprsIsConfig(account.value,settings.getProperty("passcode").ifBlank {"-1"},
                     AprsEndpoint.parse(settings.getProperty("endpoint")).host,AprsEndpoint.parse(settings.getProperty("endpoint")).port,
                     settings.getProperty("latitude").toDouble(),settings.getProperty("longitude").toDouble(),
-                    radiusKm=settings.getProperty("radiusKm").toInt(),application="APRSIS64",
+                    radiusKm=settings.getProperty("radiusKm").toInt(),application="APRSIS64",applicationVersion=AppVersion.value,
                     filterMode=settings.getProperty("operating.filter_mode"),customFilter=OperatingPreferences.filterTerms(settings),
                 fallbackServers=if(settings.getProperty("connectivity.failover").toBoolean()) servers.take(16).map {AprsEndpoint(it.host,it.port)} else emptyList())
                 disconnect();startPorts();start(config)

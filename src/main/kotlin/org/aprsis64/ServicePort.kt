@@ -36,7 +36,7 @@ internal class ServicePort(private val config:PortConfig,private val scope:Corou
    }
    "CWOP"->{
     val endpoint=AprsEndpoint.parse(config.text("endpoint"));val socket=Socket();listener=socket;socket.connect(InetSocketAddress(endpoint.host,endpoint.port),5000);socket.soTimeout=1000
-    val out=socket.getOutputStream();out.write("user ${config.text("service_call")} pass -1 vers APRSIS64 0.8.0\r\n".toByteArray(Charsets.US_ASCII));out.flush();cwop=out;connected("CWOP connected")
+    val out=socket.getOutputStream();out.write("user ${config.text("service_call")} pass -1 vers APRSIS64 ${AppVersion.value}\r\n".toByteArray(Charsets.US_ASCII));out.flush();cwop=out;connected("CWOP connected")
     val buffer=ByteArray(512);while(currentCoroutineContext().isActive){try{if(socket.getInputStream().read(buffer)<0)break}catch(_:SocketTimeoutException){}}
    }
    else->{

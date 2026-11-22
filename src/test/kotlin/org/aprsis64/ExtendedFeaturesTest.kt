@@ -90,7 +90,7 @@ class ExtendedFeaturesTest {
   val tray = AppIcon.tray(32)
   assertEquals(32, tray.width)
   assertEquals(0xFFFF0000.toInt(), tray.getRGB(0, 0))
-  assertTrue(0xFF0000FF.toInt() in tray.getRGB(0, 0, 32, 32, null, 0, 32))
+  assertTrue(0xFF66BFFF.toInt() in tray.getRGB(0, 0, 32, 32, null, 0, 32))
  }
 
  @Test fun newPreferencesSurviveReloadAndSymbolsCoverTables() {
