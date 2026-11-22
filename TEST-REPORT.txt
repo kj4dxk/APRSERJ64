@@ -48,7 +48,7 @@ See TOP-30-FEATURES.txt for scope and remaining parity limitations.
 
 Desktop deployment: preserved every existing settings value, retained a 0.4.0
 EXE/settings backup, and verified the installed EXE hash against this build.
-Live startup logged VERIFIED at rotate.aprs2.net:14580 as KJ4DXK-13 and
+Live startup logged VERIFIED at rotate.aprs2.net:14580 as N0CALL and
 BEACON_TX Initial, then rendered a Vulkan frame and reached map idle.
 This confirms the local transmit path, not independent network-wide reception.
 

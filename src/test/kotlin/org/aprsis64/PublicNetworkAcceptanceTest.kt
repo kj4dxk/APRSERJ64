@@ -35,6 +35,7 @@ class PublicNetworkAcceptanceTest {
     values.setProperty("beacon.minimum_seconds","10");values.setProperty("beacon.maximum_seconds","30");values.setProperty("beacon.time_only","true")
     values.setProperty("position.source",if(i==0) "gps_tcp" else "fixed");values.setProperty("position.gps_endpoint","127.0.0.1:${server.localPort}")
     values.setProperty("telemetry.enabled",(i==0).toString());values.setProperty("telemetry.interval_seconds","60")
+    values.setProperty("operating.filter_mode","custom");values.setProperty("operating.custom_filter","b/$ca/$cb")
     values.setProperty("operating.monitor_capacity","10000");save()
    }}}
    try {AppModel(homes[1]).use {b->AppModel(homes[0]).use {a->
