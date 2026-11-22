@@ -14,7 +14,7 @@ import androidx.compose.ui.window.rememberDialogState
 import java.util.Properties
 import kotlinx.serialization.json.*
 
-@Composable fun PreferencesDialog(model: AppModel, dismiss: ()->Unit) {
+@Composable fun PreferencesDialog(model: AppModel, initialSection:String="Position", requestId:Int=0,onNavigate:(String)->Unit={}, dismiss: ()->Unit) {
     val values=remember {mutableStateMapOf<String,String>().apply {model.settings.stringPropertyNames().forEach {put(it,model.settings.getProperty(it))}}}
     val objects=remember {mutableStateListOf<MutableMap<String,String>>().apply {
         model.entities.forEach {props -> add(mutableStateMapOf<String,String>().apply {props.stringPropertyNames().forEach {put(it,props.getProperty(it))}})}
@@ -22,16 +22,18 @@ import kotlinx.serialization.json.*
     val baselineSettings=remember {model.settings.entriesMap()}
     val baselinePorts=remember {model.ports.map {it.entriesMap()}}
     val baselineObjects=remember {model.entities.map {it.entriesMap()}}
-    var selected by remember {mutableStateOf("Position")}
+    var selected by remember {mutableStateOf(initialSection)}
+    LaunchedEffect(initialSection,requestId) {selected=initialSection}
     var entity by remember {mutableStateOf(0)}
     var failure by remember {mutableStateOf("")}
     fun properties(values: Map<String,String>)=Properties().apply {values.forEach {(key,value)->setProperty(key,value)}}
     DialogWindow(icon=AppIcon.window,onCloseRequest=dismiss,title="Settings",state=rememberDialogState(width=1000.dp,height=790.dp)) {
+        LaunchedEffect(initialSection,requestId) {window.toFront();window.requestFocus()}
         MaterialTheme(colors=MaterialTheme.colors) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
             HelpText("Settings",style=MaterialTheme.typography.h5)
             Spacer(Modifier.height(12.dp))
             Row(Modifier.weight(1f)) {
-                SectionNavigator(settingsSections,selected,Modifier.width(245.dp).fillMaxHeight()) {selected=it}
+                SectionNavigator(settingsSections,selected,Modifier.width(245.dp).fillMaxHeight(),model.settings.getProperty("callsign",""),onNavigate={if(it.startsWith("settings:")) selected=it.substringAfter(':') else onNavigate(it)}) {selected=it}
                 Divider(Modifier.fillMaxHeight().width(1.dp))
                 Column(Modifier.weight(1f).padding(start=18.dp)) {
                     HelpText(settingsSections.first {it.id==selected}.title,style=MaterialTheme.typography.h6)

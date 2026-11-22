@@ -6,7 +6,7 @@ Pause the pointer over buttons, fields, indicators, navigation entries or menu c
 
 | Location | Tasks |
 | --- | --- |
-| Connection | Callsign-SSID, passcode, APRS-IS server and radius |
+| Click your callsign at the top left, Connection, or Menu → My callsign & passcode | Edit callsign-SSID, passcode and APRS-IS server |
 | Settings → My position, Beaconing, Station status | [Position and beaconing](../operate/beacons.md) |
 | Settings → Objects & items | [Objects, items and companion stations](../operate/objects.md) |
 | Settings → Map appearance, Service addresses, Station display, Tracking windows | [Maps and tracking windows](../operate/maps.md) |
@@ -29,3 +29,5 @@ Pause the pointer over buttons, fields, indicators, navigation entries or menu c
 | Tools → Local sensors, Weather boundaries | Read input files and manage boundary data |
 
 For exact configuration keys and defaults see the [settings catalog](settings.md). A toolbar action is not necessarily a saved preference.
+
+Settings, Menu and Tools search the same combined index. Try **my callsign**, **my call**, **callsign**, **call**, **passcode**, or your configured callsign to find **My callsign & passcode**. Results are labeled by destination, and searches also include individual setting names. Opening another editor keeps an existing Settings draft open; Save or Cancel it when finished.

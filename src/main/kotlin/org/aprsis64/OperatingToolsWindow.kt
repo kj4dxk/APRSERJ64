@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 import net.osmand.shared.aprs.*
 import java.time.Instant
 
-@Composable fun OperatingToolsWindow(model:AppModel,selected:String?,initialTab:String="Station",requestId:Int=0,dismiss:()->Unit) {
+@Composable fun OperatingToolsWindow(model:AppModel,selected:String?,initialTab:String="Station",requestId:Int=0,onNavigate:(String)->Unit={},dismiss:()->Unit) {
  val scope=rememberCoroutineScope()
  val weather by model.archive.weather.collectAsState()
  val telemetry by model.archive.telemetry.collectAsState()
@@ -54,7 +54,7 @@ import java.time.Instant
   LaunchedEffect(initialTab,requestId) {tab=initialTab;result="";window.toFront();window.requestFocus()}
   MaterialTheme(colors=MaterialTheme.colors) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
    Row(Modifier.weight(1f)) {
-    SectionNavigator(toolSections,tab,Modifier.width(230.dp).fillMaxHeight()) {tab=it;result=""}
+    SectionNavigator(toolSections,tab,Modifier.width(230.dp).fillMaxHeight(),model.settings.getProperty("callsign",""),onNavigate={if(it.startsWith("tools:")) {tab=it.substringAfter(':');result=""} else onNavigate(it)}) {tab=it;result=""}
     Divider(Modifier.fillMaxHeight().width(1.dp))
     Column(Modifier.weight(1f).padding(start=18.dp)) {
      HelpText(toolSections.first {it.id==tab}.title,style=MaterialTheme.typography.h5)

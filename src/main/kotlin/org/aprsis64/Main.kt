@@ -113,8 +113,25 @@ fun main(args: Array<String>) {
     var settings by remember { mutableStateOf(false) }
     var about by remember { mutableStateOf(false) }
     var preferences by remember { mutableStateOf(false) }
+    var preferencesPage by remember {mutableStateOf("Position")}
+    var preferencesRequest by remember {mutableStateOf(0)}
+    var menuQuery by remember {mutableStateOf("")}
     var packetMonitor by remember {mutableStateOf(false)}
     var portWorkspace by remember {mutableStateOf(false)}
+    fun navigate(destination:String) {
+        appMenu=false
+        when {
+            destination.startsWith("settings:")->{preferencesPage=destination.substringAfter(':');preferencesRequest++;preferences=true}
+            destination.startsWith("tools:")->openTool(destination.substringAfter(':'))
+            destination=="action:connection"->settings=true
+            destination=="action:ports"->portWorkspace=true
+            destination=="action:packets"->packetMonitor=true
+            destination=="action:about"->about=true
+            destination=="action:alltools"->openTool("Station")
+            destination=="action:practice"->model.localDemo()
+            destination=="action:disconnect"->model.disconnect(remember=true)
+        }
+    }
     var rows by remember { mutableStateOf<List<ChatRow>>(emptyList()) }
     LaunchedEffect(account,revision,selected) {
         rows=model.database.rows(account)
@@ -124,7 +141,10 @@ fun main(args: Array<String>) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colors.background)) {
         Row(Modifier.fillMaxWidth().background(Panel).padding(18.dp,12.dp),verticalAlignment=Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                HelpText(if(demo) "Practice · $account" else account.ifBlank {"Set up your station"},color=Accent,fontWeight=FontWeight.Bold)
+                HelpTextButton("Change your callsign, SSID or APRS-IS passcode.",onClick={settings=true},contentPadding=PaddingValues(0.dp)) {
+                    HelpText(if(demo) "Practice · $account" else account.ifBlank {"Set up your station"},color=Accent,fontWeight=FontWeight.Bold)
+                    Spacer(Modifier.width(4.dp));Icon(AppIcons.ArrowDropDown,"Change callsign or passcode",Modifier.size(16.dp))
+                }
                 HelpText(connectionLabel(connection,demo),color=Muted,fontSize=12.sp)
             }
             HelpOutlinedButton(UiHelp.action(if(connection==AprsConnectionState.STOPPED) "Connect" else "Connection"),onClick={settings=true}) {HelpText(if(connection==AprsConnectionState.STOPPED) "Connect" else "Connection")}
@@ -135,6 +155,15 @@ fun main(args: Array<String>) {
             Box {
                 HelpTextButton(UiHelp.action("Menu"),onClick={appMenu=true}) {Icon(AppIcons.Menu,null);Spacer(Modifier.width(6.dp));HelpText("Menu")}
                 DropdownMenu(expanded=appMenu,onDismissRequest={appMenu=false}) {
+                    HelpField("Search all settings and tools. Try my callsign, passcode, map or beacon.",menuQuery,{menuQuery=it},modifier=Modifier.width(340.dp).padding(8.dp),label={HelpText("Search settings & tools")},singleLine=true,fill=true)
+                    if(menuQuery.isNotBlank()) {
+                        val matches=navigationResults(menuQuery,account)
+                        Column(Modifier.width(360.dp).heightIn(max=420.dp).verticalScroll(rememberScrollState())) {
+                            if(matches.isEmpty()) HelpText("No matches. Try callsign, map or messages.",Modifier.padding(12.dp))
+                            matches.forEach {entry->HelpMenuItem(UiHelp.section(entry.title,entry.keywords),onClick={navigate(entry.id)}) {Column {HelpText(entry.title);HelpText(entry.group,fontSize=11.sp,color=Muted)}}}
+                        }
+                    } else {
+                    HelpMenuItem("Change your callsign, SSID or APRS-IS passcode.",onClick={navigate("action:connection")}) {HelpText("My callsign & passcode")}
                     HelpMenuItem(UiHelp.action("Station details"),onClick={appMenu=false;openTool("Station")}) {HelpText("Station details")}
                     HelpMenuItem(UiHelp.action("Weather reports"),onClick={appMenu=false;openTool("Weather")}) {HelpText("Weather reports")}
                     HelpMenuItem(UiHelp.action("Download maps"),onClick={appMenu=false;openTool("Offline")}) {HelpText("Download maps")}
@@ -146,6 +175,7 @@ fun main(args: Array<String>) {
                     if(connection==AprsConnectionState.STOPPED) HelpMenuItem(UiHelp.action("Practice with local demo"),onClick={appMenu=false;model.localDemo()}) {HelpText("Practice with local demo")}
                     else HelpMenuItem(UiHelp.action(if(demo) "Stop practice" else "Disconnect APRS-IS"),onClick={appMenu=false;model.disconnect(remember=true)}) {HelpText(if(demo) "Stop practice" else "Disconnect APRS-IS")}
                     HelpMenuItem(UiHelp.action("About & license"),onClick={appMenu=false;about=true}) {HelpText("About & license")}
+                    }
                 }
             }
         }
@@ -197,9 +227,9 @@ fun main(args: Array<String>) {
         }
     }
     tracking.toList().forEach {call->key(call) {TrackingWindow(model,call) {tracking.remove(call)}}}
-    if(tools) OperatingToolsWindow(model,selected,toolPage,toolRequest) {tools=false}
+    if(tools) OperatingToolsWindow(model,selected,toolPage,toolRequest,onNavigate=::navigate) {tools=false}
     if(settings) ConnectionDialog(model) {settings=false}
-    if(preferences) PreferencesDialog(model) {preferences=false}
+    if(preferences) PreferencesDialog(model,preferencesPage,preferencesRequest,onNavigate=::navigate) {preferences=false}
     if(packetMonitor) PacketMonitorWindow(model) {packetMonitor=false}
     if(portWorkspace) PortWorkspaceWindow(model) {portWorkspace=false}
     if(about) AlertDialog(onDismissRequest={about=false},title={HelpText("APRSIS64 ${AppVersion.value}")},text={

@@ -51,11 +51,35 @@ internal val toolSections=listOf(
  NavigationSection("GPX import","Import GPX","Advanced"),NavigationSection("Satellites","Satellite passes","Advanced"),NavigationSection("Weather boundaries","Weather boundaries","Advanced"),NavigationSection("Radio DX","Radio reach","Advanced"),NavigationSection("Direction finding","Direction finding","Advanced"),NavigationSection("Platforms","Device identification","Advanced")
 )
 
-@Composable internal fun SectionNavigator(sections:List<NavigationSection>,selected:String,modifier:Modifier=Modifier,onSelect:(String)->Unit) {
+internal val navigationActions=listOf(
+ NavigationSection("action:connection","My callsign & passcode","Connection","my call callsign call sign ssid password pass code login account change edit server connect"),
+ NavigationSection("action:ports","Radio & GPS ports","Menu","serial TNC KISS wiring"),
+ NavigationSection("action:packets","Packet monitor","Menu","diagnostics raw traffic server responses"),
+ NavigationSection("action:about","About & license","Menu","version credits attribution manual help"),
+ NavigationSection("action:alltools","All tools","Menu","station details"),
+ NavigationSection("action:practice","Practice with local demo","Menu","sample simulated offline"),
+ NavigationSection("action:disconnect","Disconnect APRS-IS / Stop practice","Menu","disconnect stop connection")
+)
+
+internal fun navigationResults(query:String,ownCall:String=""):List<NavigationSection> {
+ val words=query.lowercase().trim().split(Regex("\\s+")).filter {it !in listOf("", "my", "the", "where", "to", "set", "change", "edit")}
+ val entries=navigationActions+settingsSections.map {it.copy(id="settings:${it.id}",group="Settings")}+toolSections.map {it.copy(id="tools:${it.id}",group="Menu & tools")}
+ return entries.filter {entry->
+  val fields=if(entry.id.startsWith("settings:")) {
+   val section=entry.id.substringAfter(':').lowercase()
+   (BeaconPreferences.fields+BeaconPreferences.entityFields+FeaturePreferences.fields+OperatingPreferences.fields+ServicePreferences.fields+PortPreferences.global)
+    .filter {it.key.startsWith("$section.") || section=="objects" && it in BeaconPreferences.entityFields}.joinToString(" ") {it.key+" "+it.label}
+  } else ""
+  val text="${entry.title} ${entry.keywords} $fields ${if(entry.id=="action:connection") ownCall else ""}".lowercase()
+  words.all {it in text}
+ }
+}
+
+@Composable internal fun SectionNavigator(sections:List<NavigationSection>,selected:String,modifier:Modifier=Modifier,ownCall:String="",onNavigate:(String)->Unit={},onSelect:(String)->Unit) {
  var query by remember {mutableStateOf("")}
  Column(modifier.padding(end=14.dp)) {
-  HelpField(UiHelp.field("Find a section"),query,{query=it},label={HelpText("Find a section")},singleLine=true,modifier=Modifier.fillMaxWidth(),fill=true)
-  val matches=sections.filter {query.isBlank() || (it.title+" "+it.id+" "+it.keywords).contains(query,true)}
+  HelpField("Search all settings, menu items and tools, including your callsign and passcode.",query,{query=it},label={HelpText("Search settings & tools")},singleLine=true,modifier=Modifier.fillMaxWidth(),fill=true)
+  val matches=if(query.isBlank()) sections else navigationResults(query,ownCall)
   ScrollableForm(Modifier.weight(1f).padding(top=8.dp)) {
    if(matches.isEmpty()) HelpText("No matching section. Try position, map or messages.",fontSize=12.sp)
    matches.groupBy {it.group}.forEach {(group,entries)->
@@ -63,7 +87,7 @@ internal val toolSections=listOf(
     entries.forEach {entry->
      val active=entry.id==selected
      Surface(color=if(active)MaterialTheme.colors.primary.copy(alpha=.18f) else Color.Transparent,shape=RoundedCornerShape(6.dp)) {
-      HelpText(entry.title,Modifier.fillMaxWidth().clickable {onSelect(entry.id)}.padding(horizontal=10.dp,vertical=11.dp),fontSize=13.sp,fontWeight=if(active)FontWeight.Bold else FontWeight.Normal,color=if(active)MaterialTheme.colors.primary else MaterialTheme.colors.onSurface,help=UiHelp.section(entry.title,entry.keywords))
+      HelpText(entry.title,Modifier.fillMaxWidth().clickable {if(query.isBlank()) onSelect(entry.id) else onNavigate(entry.id)}.padding(horizontal=10.dp,vertical=11.dp),fontSize=13.sp,fontWeight=if(active)FontWeight.Bold else FontWeight.Normal,color=if(active)MaterialTheme.colors.primary else MaterialTheme.colors.onSurface,help=UiHelp.section(entry.title,entry.keywords))
      }
     }
    }
