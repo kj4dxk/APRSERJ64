@@ -4,7 +4,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import net.osmand.shared.aprs.*
 import kotlinx.serialization.json.*
 
-data class StationMetadata(val call:String,val time:Long,val rf:Boolean,val messageCapable:Boolean,val platform:String,val frequency:AprsFrequency?,val direct:Boolean=false,val igate:Boolean=false,val telemetry:Boolean=false,val status:Boolean=false,val frequencyIssue:Boolean=false)
+data class StationMetadata(val call:String,val time:Long,val rf:Boolean,val messageCapable:Boolean,val platform:String,val frequency:AprsFrequency?,val direct:Boolean=false,val igate:Boolean=false,val telemetry:Boolean=false,val status:Boolean=false,val frequencyIssue:Boolean=false,val weather:Boolean=false)
 class StationViews(private val home:java.nio.file.Path?=null,private val setting:(String)->String?={null}) {
  private val directTimes=linkedMapOf<String,Long>()
  private val igateTimes=linkedMapOf<String,Long>()
@@ -58,13 +58,14 @@ class StationViews(private val home:java.nio.file.Path?=null,private val setting
    call in igateTimes,
    AprsObservations.telemetry(line,time)!=null || previous?.telemetry==true,
    p.payload.startsWith('>') || previous?.status==true,
-   s?.comment?.let {"MHz" in it && (StationCapabilities.frequency(it)==null || StationCapabilities.frequency(it)?.tone==null)}?:previous?.frequencyIssue?:false)
+   s?.comment?.let {"MHz" in it && (StationCapabilities.frequency(it)==null || StationCapabilities.frequency(it)?.tone==null)}?:previous?.frequencyIssue?:false,
+   AprsObservations.weather(line,time)!=null || previous?.weather==true)
   stations.value=(stations.value.filterValues {time-it.time<86400000}.mapValues {(key,value)->value.copy(direct=key in directTimes,igate=key in igateTimes)}+ (call to metadata)).entries.toList().takeLast(5000).associate {it.toPair()}
  }
 }
 
 internal fun stationKind(station:AprsStation,kind:String,metadata:Map<String,StationMetadata>,objects:Set<String>)=when(kind) {
- "weather"->station.symbol=='_';"moving"->(AprsSpatial.details(station).speedKnots?:0.0)>0
+ "weather"->station.symbol=='_' || metadata[station.callsign]?.weather==true;"moving"->(AprsSpatial.details(station).speedKnots?:0.0)>0
  "objects"->station.callsign in objects;"rf"->metadata[station.callsign]?.rf==true
  "message-capable"->metadata[station.callsign]?.messageCapable==true;"frequency"->metadata[station.callsign]?.frequency!=null
  "frequency-issues"->metadata[station.callsign]?.frequencyIssue==true;"telemetry"->metadata[station.callsign]?.telemetry==true

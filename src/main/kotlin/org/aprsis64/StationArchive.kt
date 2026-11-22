@@ -29,7 +29,19 @@ class StationArchive(private val home: Path,parent: CoroutineScope,private val s
   }
   db.createStatement().use {s->s.executeQuery("SELECT time,packet FROM observations ORDER BY id").use {r->while(r.next()) decode(r.getString(2),r.getLong(1))}}
   }
-  worker=parent.launch(Dispatchers.IO) {for((line,time) in input) try {ingest(line,time)} catch(_:Exception){status.value="Unable to store station history; check free disk space"}}
+  worker=parent.launch(Dispatchers.IO) {
+   for(first in input) {
+    // Commit available records together; never delay a quiet feed waiting for a full batch.
+    val batch=ArrayList<Pair<String,Long>>(100);batch.add(first)
+    while(batch.size<100) {val next=input.tryReceive().getOrNull()?:break;batch.add(next)}
+    synchronized(lock) {
+     db.autoCommit=false
+     try {batch.forEach {(line,time)->ingest(line,time)};db.commit()}
+     catch(_:Exception) {db.rollback();dropped.value+=batch.size;status.value="Unable to store station history; check free disk space"}
+     finally {db.autoCommit=true}
+    }
+   }
+  }
  }
  fun offer(line: String,time: Long=System.currentTimeMillis()) {if(!input.trySend(line to time).isSuccess) dropped.value++}
  private fun decode(line: String,time: Long): Boolean {

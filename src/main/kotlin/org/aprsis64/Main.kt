@@ -69,8 +69,9 @@ fun main(args: Array<String>) {
     println("APRSIS64 0.8.0 | Java ${System.getProperty("java.version")} | Vulkan / Direct3D12 | home=$home")
     if(demoMode) model.localDemo()
     else model.connectSaved()
+    val qaMetrics=startQaMetrics(model)
     application {
-        Window(onCloseRequest={ model.close(); exitApplication() }, title="APRSIS64",
+        Window(onCloseRequest={ qaMetrics?.cancel(); model.close(); exitApplication() }, title="APRSIS64",
             state=rememberWindowState(width=1480.dp,height=900.dp)) {
             MaterialTheme(colors=darkColors(primary=Accent,background=Color(0xFF0E1B22),surface=Panel)) {
                 Surface(Modifier.fillMaxSize()) { ProvideMapPresentationHost(host=rememberAwtComposeMapPresentationHost(window)) { App(model) } }
@@ -119,7 +120,7 @@ fun main(args: Array<String>) {
         Row(Modifier.fillMaxWidth().background(Panel).padding(18.dp,12.dp),verticalAlignment=Alignment.CenterVertically) {
             Text(if(demo) "Demo · $account" else account,color=Muted)
             Spacer(Modifier.weight(1f))
-            Text(connection.name,color=if(connection==AprsConnectionState.VERIFIED) Accent else Muted)
+            Text(when(connection) { AprsConnectionState.VERIFIED->"Connected · transmit ready"; AprsConnectionState.RECEIVING->"Connected · receive only"; AprsConnectionState.STOPPED->"Disconnected"; else->connection.name.lowercase().replaceFirstChar {it.uppercase()} },color=if(connection==AprsConnectionState.VERIFIED) Accent else Muted)
             Spacer(Modifier.width(14.dp))
             OutlinedButton(onClick={ settings=true }) { Text("Connection") }
             TextButton(onClick={preferences=true}) {Text("Settings")}
@@ -145,6 +146,8 @@ fun main(args: Array<String>) {
                 TextButton(onClick={sort=listOf("callsign","recent","distance").let {it[(it.indexOf(sort)+1)%it.size]}}){Text("Sort: $sort")}
                 TextButton(onClick={val p=java.util.Properties().apply {putAll(model.settings);setProperty("display.search",search);setProperty("display.kind",kind);setProperty("display.sort",sort);setProperty("display.tracking_calls",encodedNames(tracking.toList()))};model.savePreferences(p,model.entities)}){Text("Save view defaults")}
                 Text("${filtered.size} / ${stations.size}",Modifier.padding(vertical=6.dp),fontSize=16.sp)
+                if(search.isNotBlank() || kind!="all") TextButton(onClick={search="";kind="all"}) {Text("Clear filters")}
+                if(account.isBlank()) Text("Open Connection to enter your callsign, or try Local demo.",fontSize=12.sp,color=Muted)
                 if(selected!=null) TextButton(onClick={if(selected !in tracking && tracking.size<8)tracking.add(selected!!)}){Text("Open tracking window")}
 
                 LazyColumn(Modifier.weight(1f)) { items(filtered,key={it.callsign}) { station ->
@@ -314,7 +317,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
         }
         if(peer==null) {
             Row(Modifier.padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically) {
-                OutlinedTextField(recipient,{recipient=it.uppercase()},Modifier.weight(1f),label={Text("Callsign-SSID")},singleLine=true)
+                OutlinedTextField(recipient,{recipient=it.trim().uppercase()},Modifier.weight(1f),label={Text("Callsign-SSID")},singleLine=true)
                 TextButton(onClick={select(recipient)},enabled=AprsProtocol.validCallsign(recipient)&&recipient!=account&&account.isNotBlank()) {Text("Chat")}
             }
             val threads=all.groupBy {it.peer}.values.sortedByDescending {it.last().time}
@@ -353,6 +356,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
                 } }
             }
             OutlinedTextField(draft,{draft=it},Modifier.fillMaxWidth().onPreviewKeyEvent {event->if(event.type==KeyEventType.KeyDown && event.key==Key.Tab) {focusManager.moveFocus(if(event.isShiftPressed) FocusDirection.Previous else FocusDirection.Next);true} else false}.padding(top=8.dp),label={Text("Message")},maxLines=3)
+            if(draft.isNotEmpty() && !AprsMessages.validLongText(draft)) Text("Use 1–300 printable English characters; no line breaks, {, | or ~.",fontSize=12.sp,color=MaterialTheme.colors.error)
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                 Text("${draft.length}/300",color=Muted,fontSize=10.sp)
                 Spacer(Modifier.weight(1f))
