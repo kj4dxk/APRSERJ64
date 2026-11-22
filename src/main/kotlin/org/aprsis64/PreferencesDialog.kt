@@ -48,6 +48,25 @@ import kotlinx.serialization.json.*
                     objects.forEachIndexed {index,obj -> HelpTextButton(UiHelp.action(obj["name"].orEmpty().ifBlank {"New object"}),onClick={entity=index}) {HelpText(obj["name"].orEmpty().ifBlank {"New object"})} }
                     objects.getOrNull(entity)?.let {objectValues -> BeaconPreferences.entityFields.forEach {SettingField(it,objectValues)} }
                 } else {
+                    if(selected=="Map") {
+                        HelpText("Map presets change the base map only. Routing and search keep their own services.")
+                        Row {
+                            listOf("pdeffenb" to "project_preset_url", "OpenStreetMap" to "osm_preset_url").forEach { (name, key) ->
+                                HelpOutlinedButton("Select $name tiles, then Save to apply. Keeps your other service settings.", onClick={
+                                    values["map.source_name"]=name
+                                    values["map.tile_url"]=values["map.$key"].orEmpty()
+                                    values["map.tile_size"]="256"
+                                    values["map.minimum_zoom"]="0"
+                                    values["map.maximum_zoom"]=if(name=="OpenStreetMap") "19" else "18"
+                                    values["map.initial_zoom"]=(values["map.initial_zoom"]?.toDoubleOrNull() ?: 12.0).coerceIn(0.0,18.0).toString()
+                                    values["map.online_enabled"]="true"
+                                    values["map.overlay_enabled"]="false"
+                                    values["map.underlay_enabled"]="false"
+                                }) {HelpText(name)}
+                            }
+                        }
+                        HelpText("Public OpenStreetMap is for normal interactive viewing. Do not use offline bulk downloads with that preset.")
+                    }
                     if(selected=="Operating") {
                         SettingField(BeaconField("radiusKm","APRS-IS radius (km)","100",SettingKind.INTEGER),values)
                         HelpText("Range uses the connection coordinates; moving follows your last APRS-IS position. Custom uses only your filter terms plus delivery to your callsign. Example: b/N1CALL d/RS0ISS*")

@@ -1,6 +1,8 @@
 # First-run defaults copied from APRSISOSM. Runtime values live in settings.toml.
 [map]
 source_name = "pdeffenb"
+project_preset_url = "http://pdeffenb.homeip.net:82/raster/light/{z}/{x}/{y}.png"
+osm_preset_url = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 tile_url = "http://pdeffenb.homeip.net:82/raster/light/{z}/{x}/{y}.png"
 attribution = "© OpenStreetMap contributors"
 attribution_url = "https://www.openstreetmap.org/copyright"
