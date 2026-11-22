@@ -1,5 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 17 17">
   <title>APRS primary q (0x71)</title>
-  <path fill="#000000" fill-rule="evenodd" d="M2 2.22Q2 2 2.22 2L14.78 2Q15 2 15 2.22L15 14.78Q15 15 14.78 15L2.22 15Q2 15 2 14.78ZM3 3L3 8L8 8L8 3ZM3 9L3 14L8 14L8 9ZM9 3L9 8L14 8L14 3ZM9 9L9 14L14 14L14 9Z"/>
-  <path fill="#cecece" fill-rule="evenodd" d="M3 3L8 3L8 8L3 8ZM3 9L8 9L8 14L3 14ZM9 3L14 3L14 8L9 8ZM9 9L14 9L14 14L9 14Z"/>
+  <rect x="1" y="1" width="15" height="15" rx="0.3" fill="#111"/>
+  <rect x="2.0" y="2.0" width="5.75" height="5.75" rx="0.15" fill="#ccc"/>
+  <rect x="2.0" y="8.5" width="5.75" height="5.75" rx="0.15" fill="#ccc"/>
+  <rect x="8.5" y="2.0" width="5.75" height="5.75" rx="0.15" fill="#ccc"/>
+  <rect x="8.5" y="8.5" width="5.75" height="5.75" rx="0.15" fill="#ccc"/>
 </svg>

@@ -1,5 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 17 17">
   <title>APRS alternate ` (0x60)</title>
-  <path fill="#009cff" fill-rule="evenodd" d="M2 4L3 4L3 5L2 5ZM3 6L4 6L4 8L3 8ZM4 9L5 9L5 10L4 10ZM5 11L6 11L6 13L5 13ZM6 4L7 4L7 5L6 5ZM6 14L7 14L7 15L6 15ZM7 6L8 6L8 8L7 8ZM9 9L10 9L10 10L9 10ZM10 11L11 11L11 13L10 13ZM11 4L12 4L12 5L11 5ZM12 6L13 6L13 8L12 8ZM12 14L13 14L13 16L12 16ZM14 9L15 9L15 12L14 12ZM16 13L17 13L17 15L16 15Z"/>
-  <path fill="#fffff7" fill-rule="evenodd" d="M1 1.22Q1 1 1.22 1L16.78 1Q17 1 17 1.22L17 13L16 13L16 15L17 15L17 16.78Q17 17 16.78 17L1.22 17Q1 17 1 16.78ZM2 4L2 5L3 5L3 8L4 8L4 5.22Q4 5 3.78 5L3 5L3 4ZM3.22 13Q3 13 3 13.22L3 13.78Q3 14 3.22 14L3.78 14Q4 14 4 13.78L4 13.22Q4 13 3.78 13ZM4 9L4 10L5 10L5 9ZM5 11L5 13L6 13L6 11ZM6 4L6 5L7 5L7 4ZM6 14L6 15L7 15L7 14ZM7 6L7 8L8 8L8 6ZM9 9L9 10L10 10L10 9ZM10 11L10 13L11 13L11 13.78Q11 14 11.22 14L12 14L12 16L13 16L13 14L12 14L12 13.22Q12 13 11.78 13L11 13L11 11ZM11 4L11 5.78Q11 6 11.22 6L12 6L12 8L13 8L13 6L12 6L12 4ZM14 9L14 12L15 12L15 9Z"/>
+  <path d="M2 2l.6 1.2" fill="none" stroke="#009cf0" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M7 2l.6 1.2" fill="none" stroke="#009cf0" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M12 2l.6 1.2" fill="none" stroke="#009cf0" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M4 6l.6 1.2" fill="none" stroke="#009cf0" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M9 6l.6 1.2" fill="none" stroke="#009cf0" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M14 6l.6 1.2" fill="none" stroke="#009cf0" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M2 10l.6 1.2" fill="none" stroke="#009cf0" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M7 10l.6 1.2" fill="none" stroke="#009cf0" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M12 10l.6 1.2" fill="none" stroke="#009cf0" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M4 14l.6 1.2" fill="none" stroke="#009cf0" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M9 14l.6 1.2" fill="none" stroke="#009cf0" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M14 14l.6 1.2" fill="none" stroke="#009cf0" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

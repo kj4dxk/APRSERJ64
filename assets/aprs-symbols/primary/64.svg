@@ -1,6 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 17 17">
   <title>APRS primary d (0x64)</title>
-  <path fill="#000000" fill-rule="evenodd" d="M1 8.22Q1 8 1.22 8L1.78 8Q2 8 2 7.78L2 7.22Q2 7 2.22 7L3 7L3 8L15 8L15 7L15.78 7Q16 7 16 7.22L16 7.78Q16 8 16.22 8L16.78 8Q17 8 17 8.22L17 16.78Q17 17 16.78 17L1.22 17Q1 17 1 16.78ZM2 9L2 16L16 16L16 9ZM3 6.22Q3 6 3.22 6L4 6L4 7L3 7ZM4 5.22Q4 5 4.22 5L5 5L5 6L4 6ZM5 4.22Q5 4 5.22 4L6 4L6 5L5 5ZM6 3.22Q6 3 6.22 3L7 3L7 4L6 4ZM7 2.22Q7 2 7.22 2L8 2L8 3L7 3ZM8 1.22Q8 1 8.22 1L9.78 1Q10 1 10 1.22L10 2L8 2ZM10 2L10.78 2Q11 2 11 2.22L11 3L10 3ZM11 3L11.78 3Q12 3 12 3.22L12 4L11 4ZM12 4L12.78 4Q13 4 13 4.22L13 5L12 5ZM13 5L13.78 5Q14 5 14 5.22L14 6L13 6ZM14 6L14.78 6Q15 6 15 6.22L15 7L14 7Z"/>
-  <path fill="#ce0000" fill-rule="evenodd" d="M2 9L16 9L16 16L2 16ZM3 7L4 7L4 6L5 6L5 5L6 5L6 4L7 4L7 3L8 3L8 2L10 2L10 3L11 3L11 4L12 4L12 5L13 5L13 6L14 6L14 7L15 7L15 8L3 8ZM3 10L3 15L4 15L4 13L5 13L5 12L4 12L4 11L6 11L6 10ZM7 10L7 15L8 15L8 10ZM9 10L9 15L10 15L10 13L11 13L11 15L12 15L12 10ZM10 11L11 11L11 12L10 12ZM13 10L13 15L15 15L15 14L14 14L14 13L15 13L15 12L14 12L14 11L15 11L15 10Z"/>
-  <path fill="#cecece" fill-rule="evenodd" d="M3 10L6 10L6 11L4 11L4 12L5 12L5 13L4 13L4 15L3 15ZM7 10L8 10L8 15L7 15ZM9 10L12 10L12 15L11 15L11 13L10 13L10 15L9 15ZM10 11L10 12L11 12L11 11ZM13 10L15 10L15 11L14 11L14 12L15 12L15 13L14 13L14 14L15 14L15 15L13 15Z"/>
+  <path fill="#be0000" d="M.8 8.2 8.5 1.2l7.7 7h-1.85v7.9H2.65V8.2Z"/>
+  <g transform="translate(1.3795 9.05) scale(0.94)">
+  <path d="M3 0H0v5M0 2.5h2.4" fill="none" stroke="#fff" stroke-width="0.68" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(5.1865 9.05) scale(0.94)">
+  <path d="M0 0h3M1.5 0v5M0 5h3" fill="none" stroke="#fff" stroke-width="0.68" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(8.9935 9.05) scale(0.94)">
+  <path d="M0 5V0h1.7a1.25 1.25 0 0 1 0 2.5H0m1.5 0L3 5" fill="none" stroke="#fff" stroke-width="0.68" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(12.8005 9.05) scale(0.94)">
+  <path d="M3 0H0v5h3M0 2.5h2.4" fill="none" stroke="#fff" stroke-width="0.68" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
 </svg>

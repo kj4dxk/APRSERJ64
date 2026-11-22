@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 17 17">
   <title>APRS alternate A (0x41)</title>
-  <path fill="#000000" fill-rule="evenodd" d="M1 1.22Q1 1 1.22 1L16.78 1Q17 1 17 1.22L17 16.78Q17 17 16.78 17L1.22 17Q1 17 1 16.78ZM3 3L3 15L15 15L15 3Z"/>
-  <path fill="#fffff7" fill-rule="evenodd" d="M3 3L15 3L15 10L14.22 10Q14 10 14 10.22L14 10.78Q14 11 14.22 11L15 11L15 15L3 15ZM6.22 10Q6 10 6 10.22L6 10.78Q6 11 6.22 11L6.78 11Q7 11 7 10.78L7 10.22Q7 10 6.78 10Z"/>
+  <rect x="0.9" y="0.9" width="15.2" height="15.2" rx="1" fill="#111"/>
+  <rect x="2.35" y="2.35" width="12.3" height="12.3" rx="0.35" fill="#fcfbf0"/>
 </svg>

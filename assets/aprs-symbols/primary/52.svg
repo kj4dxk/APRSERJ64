@@ -1,5 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 17 17">
   <title>APRS primary R (0x52)</title>
-  <path fill="#000000" fill-rule="evenodd" d="M1 2.22Q1 2 1.22 2L6.78 2Q7 2 7 2.22L7 2.78Q7 3 7.22 3L7.78 3Q8 3 8 3.22L8 7.78Q8 8 7.78 8L7.22 8Q7 8 7 8.22L7 9.78Q7 10 7.22 10L7.78 10Q8 10 8 10.22L8 14.78Q8 15 7.78 15L6.22 15Q6 15 6 14.78L6 11.22Q6 11 5.78 11L5.22 11Q5 11 5 10.78L5 10.22Q5 10 4.78 10L3.22 10Q3 10 3 10.22L3 14.78Q3 15 2.78 15L1.22 15Q1 15 1 14.78ZM3 4L3 8L5 8L5 7L6 7L6 5L5 5L5 4ZM10 2.22Q10 2 10.22 2L11.78 2Q12 2 12 2.22L12 4.78Q12 5 12.22 5L12.78 5Q13 5 13 5.22L13 6.78Q13 7 13.22 7L13.78 7Q14 7 14 6.78L14 5.22Q14 5 14.22 5L14.78 5Q15 5 15 4.78L15 2.22Q15 2 15.22 2L16.78 2Q17 2 17 2.22L17 5.78Q17 6 16.78 6L16.22 6Q16 6 16 6.22L16 8.78Q16 9 15.78 9L15.22 9Q15 9 15 9.22L15 11.78Q15 12 14.78 12L14.22 12Q14 12 14 12.22L14 14.78Q14 15 13.78 15L13.22 15Q13 15 13 14.78L13 12.22Q13 12 12.78 12L12.22 12Q12 12 12 11.78L12 9.22Q12 9 11.78 9L11.22 9Q11 9 11 8.78L11 6.22Q11 6 10.78 6L10.22 6Q10 6 10 5.78Z"/>
-  <path fill="#f7f7f7" fill-rule="evenodd" d="M3 4L5 4L5 5L6 5L6 7L5 7L5 8L3 8Z"/>
+  <g transform="translate(1.62625 3.625) scale(1.95)">
+  <path d="M0 5V0h1.7a1.25 1.25 0 0 1 0 2.5H0m1.5 0L3 5" fill="none" stroke="#111" stroke-width="0.85" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(9.52375 3.625) scale(1.95)">
+  <path d="M0 0l1.5 5L3 0" fill="none" stroke="#111" stroke-width="0.85" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
 </svg>

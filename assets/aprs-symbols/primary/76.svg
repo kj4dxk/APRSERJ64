@@ -1,10 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 17 17">
   <title>APRS primary v (0x76)</title>
-  <path fill="#000000" fill-rule="evenodd" d="M2 12L3 12L3 14L2.22 14Q2 14 2 13.78ZM3 11L5 11L5 12L3 12ZM3 14L5 14L5 14.78Q5 15 4.78 15L3.22 15Q3 15 3 14.78ZM5 12L6 12L6 13.78Q6 14 5.78 14L5 14ZM12 12L13 12L13 14L12.22 14Q12 14 12 13.78ZM13 11L15 11L15 12L13 12ZM13 14L15 14L15 14.78Q15 15 14.78 15L13.22 15Q13 15 13 14.78ZM15 12L16 12L16 13.78Q16 14 15.78 14L15 14Z"/>
-  <path fill="#009cff" fill-rule="evenodd" d="M8 9L9 9L9 10L8 10ZM16 9L16.78 9Q17 9 17 9.22L17 10L16 10Z"/>
-  <path fill="#00bdff" fill-rule="evenodd" d="M1 5.22Q1 5 1.22 5L2 5L2 8L5 8L5 5L2 5L2 4.22Q2 4 2.22 4L10.78 4Q11 4 11 4.22L11 5L6 5L6 8L12 8L12 9L13 9L13 7L13.78 7Q14 7 14 7.22L14 7.78Q14 8 14.22 8L15.78 8Q16 8 16 8.22L16 10L17 10L17 11L16 11L16 12L15 12L15 11L13 11L13 12L12 12L12 13L6 13L6 12L5 12L5 11L3 11L3 12L2 12L2 11L1 11L1 10L2 10L2 9L1 9ZM1 12L2 12L2 13L1.22 13Q1 13 1 12.78ZM8 9L8 10L9 10L9 9ZM11 5L11.78 5Q12 5 12 5.22L12 6L11 6ZM12 6L12.78 6Q13 6 13 6.22L13 7L12 7ZM16 12L17 12L17 12.78Q17 13 16.78 13L16 13Z"/>
-  <path fill="#424242" fill-rule="evenodd" d="M12 8L13 8L13 9L12 9Z"/>
-  <path fill="#5a5a5a" fill-rule="evenodd" d="M1 11L2 11L2 12L1 12ZM16 11L17 11L17 12L16 12Z"/>
-  <path fill="#cecece" fill-rule="evenodd" d="M2 5L5 5L5 8L2 8ZM3 12L5 12L5 14L3 14ZM6 5L11 5L11 6L12 6L12 7L13 7L13 8L6 8ZM13 12L15 12L15 14L13 14Z"/>
-  <path fill="#ef0000" fill-rule="evenodd" d="M1 9L2 9L2 10L1 10Z"/>
+  <path fill="#009cf0" d="M1 4.2h9.6q1.5 0 2.5 1.6l2.85 3.45v3.6H1Z"/>
+  <rect x="2.15" y="5.25" width="3.5" height="3.25" rx="0.3" fill="#cfe8ee"/>
+  <rect x="6.2" y="5.25" width="3.5" height="3.25" rx="0.3" fill="#cfe8ee"/>
+  <path fill="#cfe8ee" d="M10.8 5.3h.65l2.6 3.2H10.8Z"/>
+  <circle cx="4.1" cy="12.7" r="2.03" fill="#111"/>
+  <circle cx="13" cy="12.7" r="2.03" fill="#111"/>
+  <circle cx="4.1" cy="12.7" r="0.8" fill="#aaa"/>
+  <circle cx="13" cy="12.7" r="0.8" fill="#aaa"/>
 </svg>

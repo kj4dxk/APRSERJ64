@@ -1,9 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 17 17">
   <title>APRS primary M (0x4D)</title>
-  <path fill="#0000ce" fill-rule="evenodd" d="M3 14L13 14L13 14.78Q13 15 12.78 15L12.22 15Q12 15 12 15.22L12 15.78Q12 16 11.78 16L4.22 16Q4 16 4 15.78L4 15.22Q4 15 3.78 15L3.22 15Q3 15 3 14.78Z"/>
-  <path fill="#00ce00" fill-rule="evenodd" d="M2 6.22Q2 6 2.22 6L2.78 6Q3 6 3 5.78L3 5.22Q3 5 3.22 5L6.78 5Q7 5 7 4.78L7 3.22Q7 3 7.22 3L7.78 3Q8 3 8 2.78L8 2.22Q8 2 8.22 2L8.78 2Q9 2 9 1.78L9 1.22Q9 1 9.22 1L10.78 1Q11 1 11 1.22L11 2.78Q11 3 10.78 3L10.22 3Q10 3 10 3.22L10 4.78Q10 5 10.22 5L12.78 5Q13 5 13 5.22L13 5.78Q13 6 13.22 6L13.78 6Q14 6 14 6.22L14 6.78Q14 7 13.78 7L2 7Z"/>
-  <path fill="#ce0000" fill-rule="evenodd" d="M1 10L12.78 10Q13 10 13 10.22L13 12L2 12L2 11.22Q2 11 1.78 11L1.22 11Q1 11 1 10.78Z"/>
-  <path fill="#ff009c" fill-rule="evenodd" d="M2 12L13.78 12Q14 12 14 12.22L14 13.78Q14 14 13.78 14L2.22 14Q2 14 2 13.78Z"/>
-  <path fill="#ff6300" fill-rule="evenodd" d="M1 8L12 8L12 10L1 10Z"/>
-  <path fill="#ffff00" fill-rule="evenodd" d="M1 7.22Q1 7 1.22 7L13 7L13 7.78Q13 8 12.78 8L1 8Z"/>
+  <defs>
+  <clipPath id="fruit">
+  <path fill="#111" d="M9 4.3C6 2.5 2.6 4.2 2.6 8.1c0 3.3 2.7 6.55 4.65 6.55.7 0 .95-.46 1.75-.46s1.05.46 1.75.46c1.9 0 3.8-2.9 4.25-4.6C12.3 9 12 6.75 14 5.5c-1-1.8-3.5-2.1-5-1.2Z"/>
+  </clipPath>
+  </defs>
+  <g clip-path="url(#fruit)">
+  <rect x="1" y="3.5" width="15" height="1.96" rx="0" fill="#1fc500"/>
+  <rect x="1" y="5.45" width="15" height="1.96" rx="0" fill="#a6d900"/>
+  <rect x="1" y="7.4" width="15" height="1.96" rx="0" fill="#f3e000"/>
+  <rect x="1" y="9.35" width="15" height="1.96" rx="0" fill="#ff8500"/>
+  <rect x="1" y="11.3" width="15" height="1.96" rx="0" fill="#e60034"/>
+  <rect x="1" y="13.25" width="15" height="1.96" rx="0" fill="#551fb2"/>
+  </g>
+  <path fill="#1fc500" d="M8.8 3.7C8.8 2 10.35.7 12 .65c-.2 1.65-1.35 3-3.2 3.05Z"/>
 </svg>
