@@ -115,8 +115,8 @@ import java.time.Instant
     "Offline"->{
      HelpText("Download a base-map area",fontSize=20.sp)
      HelpText("Uses your configured map provider. Choose a small region and preview the tile count before downloading.")
-     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {HelpField(UiHelp.field("South"),south,{south=it;plan=emptyList()},Modifier.weight(1f),label={HelpText("South")},fill=true);HelpField(UiHelp.field("North"),north,{north=it;plan=emptyList()},Modifier.weight(1f),label={HelpText("North")},fill=true)}
-     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {HelpField(UiHelp.field("West"),west,{west=it;plan=emptyList()},Modifier.weight(1f),label={HelpText("West")},fill=true);HelpField(UiHelp.field("East"),east,{east=it;plan=emptyList()},Modifier.weight(1f),label={HelpText("East")},fill=true)}
+     LocationField("Southwest corner",south,west) {a,b->south=a;west=b;plan=emptyList()}
+     LocationField("Northeast corner",north,east) {a,b->north=a;east=b;plan=emptyList()}
      Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {HelpField(UiHelp.field("Minimum zoom"),zoomMin,{zoomMin=it;plan=emptyList()},Modifier.weight(1f),label={HelpText("Minimum zoom")},fill=true);HelpField(UiHelp.field("Maximum zoom"),zoomMax,{zoomMax=it;plan=emptyList()},Modifier.weight(1f),label={HelpText("Maximum zoom")},fill=true)}
      Row {
       HelpButton(UiHelp.action("Preview"),onClick={runCatching {TilePlan.region(south.toDouble(),west.toDouble(),north.toDouble(),east.toDouble(),zoomMin.toInt(),zoomMax.toInt(),preferences.getProperty("offline.maximum_tiles").toInt())}.onSuccess {plan=it;result="${it.size} tiles"}.onFailure {result=it.message ?: "Check area and zoom range"}}){HelpText("Preview")}

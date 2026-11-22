@@ -10,6 +10,18 @@ import net.osmand.shared.aprs.*
 import kotlin.test.*
 
 class TacticalIntegrationTest {
+ @Test fun geometryAcceptsFlexibleLocationsAndRejectsInvalidVertices() {
+  val e=entity().apply {
+   setProperty("latitude","37.42");setProperty("longitude","-122.08")
+   setProperty("vertices",encodedNames(listOf("35 N, 77 30 W","https://maps.google.com/?q=35,-77.5","CWC8+R9")))
+  }
+  val points=ObjectGeometry.points(e)
+  assertEquals(35.0,points[0].latitude);assertEquals(-77.5,points[0].longitude)
+  assertEquals(points[0],points[1])
+  assertEquals(37.4220625,points[2].latitude,0.000001)
+  e.setProperty("vertices",encodedNames(listOf("not a location")))
+  assertFailsWith<IllegalArgumentException> {ObjectGeometry.points(e)}
+ }
  private fun home()=Files.createTempDirectory("APRS tactical test").also {PortableHome.prepare(it)}
  private fun entity()=Properties().apply {
   BeaconPreferences.entityFields.forEach {setProperty(it.key,it.default)}

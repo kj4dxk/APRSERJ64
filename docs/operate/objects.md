@@ -24,7 +24,7 @@ This editor saves the object **disabled**. Open **Settings → Objects & items**
 
 ## Draw lines, polygons and areas
 
-In the object's fields choose geometry `line`, `polygon` or `area`. Lines/polygons use one `latitude,longitude` vertex per line in the editor. These shapes require fixed object reports. Area fields are encoded APRS area parameters; they are not all distances in meters. Check the displayed result and the [object settings reference](../reference/objects.md).
+In the object's fields choose geometry `line`, `polygon` or `area`. Lines/polygons use one location per line: coordinates, a Google Maps coordinate link or a Plus Code. Review the decoded preview for each vertex; shortened Plus Codes use the object's location as their reference. These shapes require fixed object reports. Area fields are encoded APRS area parameters; they are not all distances in meters. Check the displayed result and the [object settings reference](../reference/objects.md).
 
 ## Use QRU as a client
 

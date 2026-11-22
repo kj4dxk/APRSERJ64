@@ -5,7 +5,7 @@ A beacon publishes your selected current position. Its position does not come fr
 ## Choose a fixed position
 
 1. Open **Settings → My position**.
-2. Select `fixed` and enter latitude/longitude in decimal degrees. North/east are positive; south/west are negative.
+2. Select **Fixed location** and enter coordinates, a Google Maps coordinate link or a Plus Code in the single location box. Check the decoded latitude/longitude preview before saving. [Accepted formats](maps.md#accepted-location-formats) also include degrees/minutes/seconds and compact APRS coordinates.
 3. Set altitude in meters if you use it.
 4. Save and check the beacon status before transmitting.
 

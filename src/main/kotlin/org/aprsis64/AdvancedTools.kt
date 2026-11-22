@@ -89,7 +89,7 @@ import kotlin.math.*
  HelpText("Frequency object")
  Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){HelpField(UiHelp.field("Object name"),name,{name=it},Modifier.weight(1f),label={HelpText("Object name")},fill=true);HelpField(UiHelp.field("MHz (146.940)"),mhz,{mhz=it},Modifier.weight(1f),label={HelpText("MHz (146.940)")},fill=true)}
  Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){HelpField(UiHelp.field("Tone (T123 / Toff)"),tone,{tone=it},Modifier.weight(1f),label={HelpText("Tone (T123 / Toff)")},fill=true);HelpField(UiHelp.field("Offset (+060 / -060)"),offset,{offset=it},Modifier.weight(1f),label={HelpText("Offset (+060 / -060)")},fill=true);HelpField(UiHelp.field("Range miles"),range,{range=it},Modifier.weight(1f),label={HelpText("Range miles")},fill=true)}
- Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){HelpField(UiHelp.field("Latitude"),latitude,{latitude=it},Modifier.weight(1f),label={HelpText("Latitude")},fill=true);HelpField(UiHelp.field("Longitude"),longitude,{longitude=it},Modifier.weight(1f),label={HelpText("Longitude")},fill=true)}
+ LocationField("Object location",latitude,longitude) {a,b->latitude=a;longitude=b}
  HelpButton(UiHelp.action("Create object"),onClick={result=runCatching {
   require(name.length in 3..9 && mhz.matches(Regex("[0-9]{3}\\.[0-9]{3}")) && tone.matches(Regex("[TCD][0-9]{3}|Toff")) && offset.matches(Regex("[+-][0-9]{3}")) && range.toInt() in 0..99)
   require(model.entities.none {it.getProperty("name")==name}){"Object name already exists"};AprsFix(latitude.toDouble(),longitude.toDouble(),0)

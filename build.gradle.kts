@@ -8,6 +8,15 @@ group = "org.aprsfoundation.community"
 version = "0.8.0"
 repositories { google(); mavenCentral() }
 kotlin { jvmToolchain(25) }
+
+tasks.register<JavaExec>("exportWindowsIcon") {
+    group = "build"
+    description = "Render the Windows ICO from the application's SVG logo"
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("org.aprsis64.ExportIconKt")
+    javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(25)) })
+    args(layout.projectDirectory.file("assets/aprsis64.ico").asFile.absolutePath)
+}
 dependencies {
     implementation(project(":core"))
     implementation("com.github.davidmoten:predict4java:1.3.1")

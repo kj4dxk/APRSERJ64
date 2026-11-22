@@ -80,6 +80,12 @@ import kotlinx.serialization.json.*
 }
 
 @Composable private fun SettingField(field: BeaconField, values: MutableMap<String,String>) {
+    if(field.key in listOf("longitude","position.longitude")) return
+    if(field.key in listOf("latitude","position.latitude")) {
+        val lonKey=field.key.replace("latitude","longitude")
+        LocationField(if(field.key=="latitude") "Object location" else "Fixed location",values[field.key]?:field.default,values[lonKey].orEmpty()) {a,b->values[field.key]=a;values[lonKey]=b}
+        return
+    }
     val value=values[field.key] ?: field.default
     if(field.key in listOf("beacon.symbol","symbol")) {
         var picker by remember {mutableStateOf(false)}
@@ -107,6 +113,14 @@ import kotlinx.serialization.json.*
         field.kind==SettingKind.STRINGS -> {
             val text=Json.parseToJsonElement(value).jsonArray.joinToString("\n") {it.jsonPrimitive.content}
             HelpField(UiHelp.setting(field),text,{values[field.key]=JsonArray(it.split('\n').map {line->JsonPrimitive(line)}).toString()},label={HelpText(field.label)},modifier=Modifier.fillMaxWidth(),maxLines=6,fill=true)
+            if(field.key=="vertices") {
+                val reference=runCatching {MapLocation(values["latitude"]!!.toDouble(),values["longitude"]!!.toDouble())}.getOrNull()
+                text.lines().filter {it.isNotBlank()}.forEachIndexed {index,line->
+                    val parsed=CoordinateInput.parse(line,reference)
+                    HelpText("${index+1}: ${parsed.location?.display() ?: parsed.error}",color=if(parsed.location==null) MaterialTheme.colors.error else MaterialTheme.colors.onSurface)
+                    if(parsed.explanation.isNotBlank()) HelpText(parsed.explanation)
+                }
+            }
         }
         else -> HelpField(UiHelp.setting(field),value,{values[field.key]=it},label={HelpText(field.label)},modifier=Modifier.fillMaxWidth(),singleLine=true,fill=true)
     }

@@ -8,14 +8,19 @@ internal object ObjectGeometry {
   BeaconField("qru_group","QRU group (blank: not queryable)",""),
   BeaconField("query_only","Transmit only when queried","false",SettingKind.BOOLEAN),
   BeaconField("shape","Object geometry","point",choices=listOf("point","line","polygon","area")),
-  BeaconField("vertices","Line/polygon vertices: latitude,longitude per line","[]",SettingKind.STRINGS),
+  BeaconField("vertices","Line/polygon vertices: coordinates, map link or Plus Code per line","[]",SettingKind.STRINGS),
   BeaconField("line_style","Multiline style (a–l)","j",choices=('a'..'l').map {it.toString()}),
   BeaconField("area_type","Area type","4",choices=(0..9).map {it.toString()}),
   BeaconField("area_color","Area color (0–15)","4",SettingKind.INTEGER),
   BeaconField("area_latitude_code","Area north/south extent code (0–99)","10",SettingKind.INTEGER),
   BeaconField("area_longitude_code","Area east/west extent code (0–99)","10",SettingKind.INTEGER)
  )
- fun points(e:Properties)=names(e.getProperty("vertices","[]")).map {line->val parts=line.split(',');require(parts.size==2);AprsFix(parts[0].trim().toDouble(),parts[1].trim().toDouble(),0)}
+ fun points(e:Properties)=names(e.getProperty("vertices","[]")).map {line->
+  val reference=runCatching {MapLocation(e.getProperty("latitude").toDouble(),e.getProperty("longitude").toDouble())}.getOrNull()
+  val result=CoordinateInput.parse(line,reference)
+  val point=requireNotNull(result.location) {result.error}
+  AprsFix(point.latitude,point.longitude,0)
+ }
  fun validate(e:Properties) {
   val group=e.getProperty("qru_group","");require(group.isEmpty() || group.matches(Regex("[A-Z0-9_-]{1,20}")))
   if(group.isNotEmpty())require(e.getProperty("kind")=="object" && e.getProperty("name").none {it==' '})

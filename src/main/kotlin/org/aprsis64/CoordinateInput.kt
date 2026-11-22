@@ -30,7 +30,7 @@ object CoordinateInput {
    val code=OpenLocationCode(codeText)
    val full=if(code.isFull) code else {
     require(reference!=null) {"A shortened Plus Code needs a nearby reference. Center the map near it first, or enter the full code."}
-    notes.add("Short Plus Code resolved near map center ${reference.display()}")
+    notes.add("Short Plus Code resolved near reference location ${reference.display()}")
     code.recover(reference.latitude,reference.longitude)
    }
    val area=full.decode()

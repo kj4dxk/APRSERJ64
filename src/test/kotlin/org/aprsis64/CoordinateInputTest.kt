@@ -60,7 +60,7 @@ class CoordinateInputTest {
  @Test fun shortPlusCodesRequireAndExplainReference() {
   assertNull(CoordinateInput.parse("CWC8+R9").location)
   val r=point("CWC8+R9",37.4220625,-122.0840625,MapLocation(37.42,-122.08))
-  assertTrue(r.explanation.contains("map center"));assertTrue(r.explanation.contains("849VCWC8+R9"))
+  assertTrue(r.explanation.contains("reference location"));assertTrue(r.explanation.contains("849VCWC8+R9"))
   assertNull(CoordinateInput.parse("CWC8+R9 Mountain View",MapLocation(28.5,-81.2)).location)
  }
  @Test fun statusLabelsDistinguishPracticeAndVerification() {

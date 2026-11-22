@@ -80,10 +80,7 @@ import java.util.Locale
    var range by remember {mutableStateOf("10")}
    var width by remember {mutableStateOf("10")}
    HelpField(UiHelp.field("Measurement name"),name,{name=it},label={HelpText("Measurement name")},singleLine=true)
-   Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-    HelpField(UiHelp.field("Latitude"),latitude,{latitude=it},Modifier.weight(1f),label={HelpText("Latitude")},singleLine=true,fill=true)
-    HelpField(UiHelp.field("Longitude"),longitude,{longitude=it},Modifier.weight(1f),label={HelpText("Longitude")},singleLine=true,fill=true)
-   }
+   LocationField("Bearing origin",latitude,longitude) {a,b->latitude=a;longitude=b}
    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
     HelpField(UiHelp.field("True bearing °"),bearing,{bearing=it},Modifier.weight(1f),label={HelpText("True bearing °")},singleLine=true,fill=true)
     HelpField(UiHelp.field("Range km"),range,{range=it},Modifier.weight(1f),label={HelpText("Range km")},singleLine=true,fill=true)

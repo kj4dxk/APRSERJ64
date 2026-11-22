@@ -428,7 +428,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     var autoConnect by remember {mutableStateOf(model.settings.getProperty("autoConnect","true").toBoolean())}
     var lat by remember {mutableStateOf(model.settings.getProperty("latitude","28.536725"))}
     var lon by remember {mutableStateOf(model.settings.getProperty("longitude","-81.242932"))}
-    DialogWindow(icon=AppIcon.window,onCloseRequest=dismiss,title="Connection",state=rememberDialogState(width=560.dp,height=650.dp)) {
+    DialogWindow(icon=AppIcon.window,onCloseRequest=dismiss,title="Connection",state=rememberDialogState(width=560.dp,height=730.dp)) {
         Surface {Column(Modifier.fillMaxSize().padding(22.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             HelpText("APRS-IS connection",fontSize=22.sp)
             Row {
@@ -449,7 +449,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
                 }
             }
             HelpField(UiHelp.field("Server URL or host:port"),host,{host=it},label={HelpText("Server URL or host:port")},enabled=preset<0,singleLine=true,modifier=Modifier.fillMaxWidth(),fill=true)
-            Row {HelpField(UiHelp.field("Filter latitude"),lat,{lat=it},Modifier.weight(1f),label={HelpText("Filter latitude")},fill=true); Spacer(Modifier.width(8.dp)); HelpField(UiHelp.field("Filter longitude"),lon,{lon=it},Modifier.weight(1f),label={HelpText("Filter longitude")},fill=true)}
+            LocationField("Receive-area center",lat,lon) {a,b->lat=a;lon=b}
             Row(verticalAlignment=Alignment.CenterVertically) {HelpCheckbox(UiHelp.action("Connect on startup"),autoConnect,{autoConnect=it}); HelpText("Connect on startup")}
             Spacer(Modifier.weight(1f))
             Row {HelpTextButton(UiHelp.action("Cancel"),onClick=dismiss){HelpText("Cancel")}; Spacer(Modifier.weight(1f)); HelpButton(UiHelp.action("Connect"),onClick={if(model.connect(call,pass,host,lat.toDoubleOrNull()?:Double.NaN,lon.toDoubleOrNull()?:Double.NaN,autoConnect)) dismiss()}){HelpText("Connect")}}

@@ -6,6 +6,8 @@ Pan and zoom the map. Use **+**, **−**, **Home**, or open the magnifying-glass
 
 ### Accepted location formats
 
+These formats work throughout location entry: map navigation, fixed station position, receive-area center, object and repeater locations, direction-finding origins, offline-map corners, and each line of polygon vertices. Editors show the decoded coordinates; invalid input cannot retain an earlier valid location for saving. Short Plus Codes use the editor's original location as a nearby reference (map navigation uses the map center, and polygon vertices use the object's location).
+
 | Format | Example |
 | --- | --- |
 | Decimal degrees, latitude first | `28.536725, -81.242932` |
