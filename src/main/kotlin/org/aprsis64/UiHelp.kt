@@ -150,7 +150,7 @@ internal object UiHelp {
   return "$label. Select this option for the current view or editor. Disabled controls become available when their required inputs or selection are ready."
  }
  fun field(label:String):String=when {
-  label.contains("Passcode",true)->"Enter your APRS-IS passcode. Blank or -1 receives only. The passcode is saved as readable text in your local settings.toml; it is never displayed in this tooltip."
+  label.contains("Passcode",true)->"Enter the APRS-IS passcode for your callsign, or explicitly select Receive only. The passcode is saved as readable text in your local settings.toml; it is never displayed in this tooltip."
   label.contains("Callsign",true)->"Enter the exact callsign and optional -SSID suffix (0–15), for example N0CALL-13. Different suffixes are separate stations/conversations."
   label=="Location"->"Paste decimal degrees, degrees/minutes/seconds, degrees and decimal minutes, APRS coordinates, a Google Maps coordinate URL, or a Plus Code. Latitude comes first unless directions specify otherwise. Short Plus Codes use the map center. Review the preview before Go."
   label=="Message"->"Enter up to 300 printable ASCII characters. Longer APRS text is split into independent parts. Reserved {, | and ~ and line breaks are not accepted. Ctrl+Enter sends; Tab moves to the next control."

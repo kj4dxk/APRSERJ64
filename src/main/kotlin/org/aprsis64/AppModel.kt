@@ -17,6 +17,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
     val stations = MutableStateFlow<List<AprsStation>>(emptyList())
     val error = MutableStateFlow("")
     val serverMessages=MutableStateFlow<List<String>>(emptyList())
+    val connectionSetupIssue=MutableStateFlow<String?>(null)
     val demo = MutableStateFlow(demoMode)
     private var client: AprsIsClient? = null
     private var chat: ChatSession? = null
@@ -73,7 +74,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
     fun connect(call: String, password: String, endpoint: String, latitude: Double, longitude: Double, autoConnect: Boolean = true): Boolean {
         try {
             val address = AprsEndpoint.parse(endpoint)
-            val config = AprsIsConfig(call.trim().uppercase(),password.trim().ifBlank { "-1" },address.host,address.port,
+            val config = AprsIsConfig(ConnectionSetup.normalizedCall(call),password.trim().ifBlank { "-1" },address.host,address.port,
                 latitude,longitude,radiusKm=settings.getProperty("radiusKm").toInt(),application="APRSIS64",applicationVersion=AppVersion.value,
                 filterMode=settings.getProperty("operating.filter_mode"),customFilter=OperatingPreferences.filterTerms(settings),
                 fallbackServers=if(settings.getProperty("connectivity.failover").toBoolean()) servers.take(16).map {AprsEndpoint(it.host,it.port)} else emptyList())
@@ -88,7 +89,9 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         } catch (_: Exception) { error.value = "Check connection settings and that this folder is writable."; return false }
     }
     fun connectSaved() {
-        if(settings.getProperty("autoConnect", "true").toBoolean() && settings.getProperty("callsign", "").isNotBlank())
+        connectionSetupIssue.value=ConnectionSetup.problem(settings.getProperty("callsign",""),settings.getProperty("passcode",""))
+        if(connectionSetupIssue.value!=null) return
+        if(settings.getProperty("autoConnect", "true").toBoolean())
             connect(settings.getProperty("callsign"), settings.getProperty("passcode", "-1"),
                 settings.getProperty("endpoint"),
                 settings.getProperty("latitude", "28.536725").toDoubleOrNull() ?: Double.NaN,
@@ -101,11 +104,18 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         start(AprsIsConfig("N0CALL-12","12345","127.0.0.1",server!!.port,28.536725,-81.242932,application="APRSIS64",applicationVersion=AppVersion.value))
     }
     private fun start(config: AprsIsConfig) {
+        connectionSetupIssue.value=null
         account.value = config.callsign;groups.activate(account.value); error.value = ""
         val connection = AprsIsClient(); client = connection
         if(radio?.call==config.callsign && !demo.value) radio?.attach(connection) else startPorts()
         observing = scope.launch {
-            launch {connection.serverMessages.collect {serverMessages.value=it}}
+            launch {connection.serverMessages.collect {messages->
+                serverMessages.value=messages
+                val login=messages.lastOrNull {it.startsWith("# logresp",ignoreCase=true)}
+                if(!demo.value && config.passcode!="-1" && login!=null && ConnectionSetup.rejected(login,config.callsign))
+                    connectionSetupIssue.value="The APRS-IS server did not verify your login. Check your callsign and passcode. You can receive, but messages and beacons cannot be sent through APRS-IS."
+                else if(login!=null && AprsProtocol.verifiedLogin(login,config.callsign)) connectionSetupIssue.value=null
+            }}
             launch { connection.state.collect { if(state.value!=it)activity.event("connection",it.name,"Connection: $it");state.value=it; println("APRS_CONNECTION ${config.callsign} $it ${connection.activeEndpoint.value?.host}:${connection.activeEndpoint.value?.port}") } }
             launch { connection.stations.collect { internetStations.value=it; if(it.size == 1 || it.size % 50 == 0) println("APRS_STATIONS ${it.size}") } }
         }

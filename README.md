@@ -6,8 +6,8 @@ Portable Windows APRS mapping, conversations, beaconing, radio ports and operati
 
 1. **[Download APRSIS64.exe](https://github.com/kj4dxk/APRSIS64/releases/latest/download/APRSIS64.exe)** ([release notes](https://github.com/kj4dxk/APRSIS64/releases)). Put it in a writable folder and run it; no installer or separate Java is needed.
 2. Open **Settings → My position** and enter your actual fixed location or configure your GPS. Automatic beaconing defaults on: set your position before connecting.
-3. Open **Connection**, enter **your own callsign-SSID** and APRS-IS passcode, select a server, and check the receive-area coordinates. No operator identity is preinstalled.
-4. Select **Connect**. **APRS-IS connected and verified** means the server permits transmission. Incoming stations should appear; click one to open its chat.
+3. Click **your callsign at the top left**, enter **your own callsign-SSID** and APRS-IS passcode, select a server, and check the receive-area coordinates. No operator identity is preinstalled.
+4. Select **Save & connect**. **APRS-IS connected and verified** means the server permits transmission. Incoming stations should appear; click one to open its chat.
 
 Use your existing callsign's APRS-IS passcode if you have one. For requests, follow the [APRSIS32 passcode instructions](https://github.com/kj4dxk/APRSIS32/blob/main/docs/manual/doc-passcode.md): email the group owners with your licensed name and callsign, explaining which application you use. The legacy service specifies APRSISCE/32 users; do not claim to use a different application. Passcode `-1` permits receive-only access.
 

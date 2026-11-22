@@ -13,18 +13,18 @@ A map opening at a particular place does not set your transmitting position. The
 
 ## Connect to APRS-IS
 
-1. Select **Connect / Connection** on the main toolbar.
+1. Click **your callsign at the top left**, or choose **Menu → My callsign & passcode**. On first launch, missing credentials open this editor automatically.
 2. Enter your **callsign with SSID**, such as your call followed by `-13`. Examples in this manual use `N0CALL`; replace them with your own identity.
 3. Enter your APRS-IS passcode. It is stored as readable text in `settings.toml`. An existing passcode for your callsign works across APRS clients. For a request, follow the [APRSIS32 passcode instructions](https://github.com/kj4dxk/APRSIS32/blob/main/docs/manual/doc-passcode.md), providing your licensed name, callsign and the application you actually use. The legacy service specifies APRSISCE/32 users.
 4. Choose a saved server or enter a custom host and port. The seeded endpoint is `rotate.aprs2.net:14580`.
-5. Check the **Receive-area center** location and its decoded preview. Coordinates, Google Maps coordinate links and Plus Codes are accepted. The radius is under **Settings → Receive area & filters**. Set **Connect on startup** if desired.
-6. Select **Connect**. Wait for the connection state and station list to update.
+5. Check the **Receive-area center** location and its decoded preview. Coordinates, Google Maps coordinate links and Plus Codes are accepted. The radius is under **Settings → Receive area & filters**. **Connect on startup** is enabled by default.
+6. Select **Save & connect**. Wait for the connection state and station list to update.
 
 **Success check:** incoming stations appear, and a transmitting login shows **APRS-IS connected and verified**. Verification means the server permits transmission; it does not confirm delivery of a particular packet. A working socket or a visible map alone does not prove the login is verified. [Connection troubleshooting](../help/troubleshooting.md#connected-but-not-transmitting) explains the difference.
 
 ## Receive-only use
 
-Use passcode `-1` for an unverified receive-only APRS-IS login. Also turn off **Settings → Beaconing → Beaconing enabled** if you do not want scheduled station/object beacons. Existing RF ports are separate from Internet verification: disable their transmit/routing switches if you want the entire installation to receive only.
+Choose **Receive only** in **My callsign & passcode** for an unverified receive-only APRS-IS login. Also turn off **Settings → Beaconing → Beaconing enabled** if you do not want scheduled station/object beacons. Existing RF ports are separate from Internet verification: disable their transmit/routing switches if you want the entire installation to receive only.
 
 **Menu → Disconnect APRS-IS** stops the Internet connection; it does not close every RF port. See [output controls](../connect/routing.md#stop-or-limit-transmissions).
 
@@ -40,3 +40,5 @@ Use passcode `-1` for an unverified receive-only APRS-IS login. Also turn off **
 When APRS-IS is stopped, **Menu → Practice with local demo** supplies local test data. It is useful for exploring the display and is isolated from real RF operation. Demo stations are not evidence of a successful public-network connection.
 
 Next: [Learn the main window](workspace.md).
+
+Missing or malformed credentials prompt for correction. If the server rejects a numeric passcode, the editor opens with an explanation; receiving may continue, but APRS-IS transmission requires verification. **How do I get a passcode?** shows the preserved wiki instructions and their APRSISCE/32-only request-service limitation. **Disconnect APRS-IS** stops this session without changing the saved startup preference.

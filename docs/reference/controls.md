@@ -6,7 +6,7 @@ Pause the pointer over buttons, fields, indicators, navigation entries or menu c
 
 | Location | Tasks |
 | --- | --- |
-| Click your callsign at the top left, Connection, or Menu → My callsign & passcode | Edit callsign-SSID, passcode and APRS-IS server |
+| Click your callsign at the top left, or Menu → My callsign & passcode | Edit callsign-SSID, passcode and APRS-IS server |
 | Settings → My position, Beaconing, Station status | [Position and beaconing](../operate/beacons.md) |
 | Settings → Objects & items | [Objects, items and companion stations](../operate/objects.md) |
 | Settings → Map appearance, Service addresses, Station display, Tracking windows | [Maps and tracking windows](../operate/maps.md) |

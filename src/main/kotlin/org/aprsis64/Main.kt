@@ -87,6 +87,7 @@ fun main(args: Array<String>) {
     val stations by model.stations.collectAsState()
     val demo by model.demo.collectAsState()
     val error by model.error.collectAsState()
+    val setupIssue by model.connectionSetupIssue.collectAsState()
     val revision by model.database.revision.collectAsState()
     val settingsRevision by model.settingsRevision.collectAsState()
     val beacon by model.beaconState.collectAsState()
@@ -111,6 +112,7 @@ fun main(args: Array<String>) {
     }.let {list->when(sort) {"recent"->list.sortedByDescending {it.heardAtMillis};"distance"->list.sortedBy {AdaptiveBeaconPolicy.distance(AprsFix(model.settings.getProperty("position.latitude").toDouble(),model.settings.getProperty("position.longitude").toDouble(),0),AprsFix(it.latitude,it.longitude,0))};else->list.sortedBy {it.callsign}}}
 
     var settings by remember { mutableStateOf(false) }
+    LaunchedEffect(setupIssue) {if(setupIssue!=null) settings=true}
     var about by remember { mutableStateOf(false) }
     var preferences by remember { mutableStateOf(false) }
     var preferencesPage by remember {mutableStateOf("Position")}
@@ -129,7 +131,7 @@ fun main(args: Array<String>) {
             destination=="action:about"->about=true
             destination=="action:alltools"->openTool("Station")
             destination=="action:practice"->model.localDemo()
-            destination=="action:disconnect"->model.disconnect(remember=true)
+            destination=="action:disconnect"->model.disconnect()
         }
     }
     var rows by remember { mutableStateOf<List<ChatRow>>(emptyList()) }
@@ -147,8 +149,6 @@ fun main(args: Array<String>) {
                 }
                 HelpText(connectionLabel(connection,demo),color=Muted,fontSize=12.sp)
             }
-            HelpOutlinedButton(UiHelp.action(if(connection==AprsConnectionState.STOPPED) "Connect" else "Connection"),onClick={settings=true}) {HelpText(if(connection==AprsConnectionState.STOPPED) "Connect" else "Connection")}
-            Spacer(Modifier.width(10.dp))
             HelpButton(UiHelp.action("Beacon now"),onClick={model.transmitBeacon()},enabled=beacon.enabled && account.isNotBlank()) {Icon(AppIcons.Send,null,Modifier.size(16.dp));Spacer(Modifier.width(6.dp));HelpText("Beacon now")}
             Spacer(Modifier.width(10.dp))
             HelpOutlinedButton(UiHelp.action("Settings"),onClick={preferences=true}) {Icon(AppIcons.Settings,null,Modifier.size(18.dp));Spacer(Modifier.width(6.dp));HelpText("Settings")}
@@ -173,13 +173,17 @@ fun main(args: Array<String>) {
                     HelpMenuItem(UiHelp.action("Packet monitor…"),onClick={appMenu=false;packetMonitor=true}) {HelpText("Packet monitor…")}
                     Divider()
                     if(connection==AprsConnectionState.STOPPED) HelpMenuItem(UiHelp.action("Practice with local demo"),onClick={appMenu=false;model.localDemo()}) {HelpText("Practice with local demo")}
-                    else HelpMenuItem(UiHelp.action(if(demo) "Stop practice" else "Disconnect APRS-IS"),onClick={appMenu=false;model.disconnect(remember=true)}) {HelpText(if(demo) "Stop practice" else "Disconnect APRS-IS")}
+                    else HelpMenuItem(UiHelp.action(if(demo) "Stop practice" else "Disconnect APRS-IS"),onClick={appMenu=false;model.disconnect()}) {HelpText(if(demo) "Stop practice" else "Disconnect APRS-IS")}
                     HelpMenuItem(UiHelp.action("About & license"),onClick={appMenu=false;about=true}) {HelpText("About & license")}
                     }
                 }
             }
         }
         if(error.isNotBlank()) HelpText(error,Modifier.fillMaxWidth().background(Color(0xFF6B332B)).padding(10.dp))
+        if(setupIssue!=null) Row(Modifier.fillMaxWidth().background(Panel).padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically) {
+            HelpText(setupIssue!!,Modifier.weight(1f),fontSize=12.sp)
+            HelpTextButton("Open your callsign and passcode settings.",onClick={settings=true}) {HelpText("Fix sign-in")}
+        }
         if(notices.isNotEmpty()) Row(Modifier.fillMaxWidth().background(Panel).padding(horizontal=12.dp)) {
             HelpText(notices.last().text,Modifier.weight(1f),fontSize=12.sp)
             HelpTextButton(UiHelp.action("View alerts"),onClick={openTool("Alerts")}) {HelpText("View alerts")};HelpTextButton(UiHelp.action("Dismiss"),onClick={model.activity.dismiss()}){HelpText("Dismiss")}
@@ -451,6 +455,11 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     var call by remember {mutableStateOf(model.settings.getProperty("callsign",""))}
     var ssidMenu by remember {mutableStateOf(false)}
     var pass by remember {mutableStateOf(model.settings.getProperty("passcode",""))}
+    var receiveOnly by remember {mutableStateOf(pass=="-1")}
+    var showPasscodeHelp by remember {mutableStateOf(false)}
+    var showPasscode by remember {mutableStateOf(false)}
+    var validation by remember {mutableStateOf("")}
+    val setupIssue by model.connectionSetupIssue.collectAsState()
     var host by remember {mutableStateOf(model.settings.getProperty("endpoint"))}
     val presets=model.servers
     var preset by remember {mutableStateOf(presets.indexOfFirst {it.endpoint==host})}
@@ -458,9 +467,12 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     var autoConnect by remember {mutableStateOf(model.settings.getProperty("autoConnect","true").toBoolean())}
     var lat by remember {mutableStateOf(model.settings.getProperty("latitude","28.536725"))}
     var lon by remember {mutableStateOf(model.settings.getProperty("longitude","-81.242932"))}
-    DialogWindow(icon=AppIcon.window,onCloseRequest=dismiss,title="Connection",state=rememberDialogState(width=560.dp,height=730.dp)) {
+    DialogWindow(icon=AppIcon.window,onCloseRequest=dismiss,title="My callsign & passcode",state=rememberDialogState(width=640.dp,height=800.dp)) {
         Surface {Column(Modifier.fillMaxSize().padding(22.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            HelpText("APRS-IS connection",fontSize=22.sp)
+            HelpText("My callsign & passcode",fontSize=22.sp)
+            ScrollableForm(Modifier.weight(1f).fillMaxWidth()) {
+            if(setupIssue!=null) HelpText(setupIssue!!,color=MaterialTheme.colors.error)
+            if(validation.isNotBlank()) HelpText(validation,color=MaterialTheme.colors.error)
             Row {
                 HelpField(UiHelp.field("Callsign-SSID"),call,{call=it.uppercase()},label={HelpText("Callsign-SSID")},singleLine=true,modifier=Modifier.weight(1f),fill=true)
                 Box {
@@ -470,7 +482,20 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
                     }}
                 }
             }
-            HelpField(UiHelp.field("Passcode (blank = receive only)"),pass,{pass=it},label={HelpText("Passcode (blank = receive only)")},visualTransformation=PasswordVisualTransformation(),singleLine=true,modifier=Modifier.fillMaxWidth(),fill=true)
+            HelpField(UiHelp.field("APRS-IS passcode"),if(receiveOnly) "" else pass,{pass=it},label={HelpText("APRS-IS passcode")},enabled=!receiveOnly,visualTransformation=if(showPasscode) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),singleLine=true,modifier=Modifier.fillMaxWidth(),fill=true)
+            Row(verticalAlignment=Alignment.CenterVertically) {
+                HelpCheckbox("Receive stations without sending Internet messages or beacons. A passcode is not needed in this mode.",receiveOnly,{receiveOnly=it;if(!it && pass=="-1")pass=""});HelpText("Receive only (no APRS-IS transmissions)")
+            }
+            Row {
+                HelpTextButton("Show or hide the passcode on this screen.",onClick={showPasscode=!showPasscode},enabled=!receiveOnly){HelpText(if(showPasscode) "Hide passcode" else "Show passcode")}
+                HelpTextButton("Read APRSISCE/32 wiki guidance for existing and new passcodes.",onClick={showPasscodeHelp=!showPasscodeHelp}){HelpText(if(showPasscodeHelp) "Hide passcode help" else "How do I get a passcode?")}
+            }
+            if(showPasscodeHelp) {
+                HelpText("Already used APRS-IS? Use the same passcode for your callsign; it works across clients and SSIDs. This is not your website password.")
+                HelpText("The APRSISCE/32 wiki directs licensed APRSISCE/32 users to email APRSISCE+owner@groups.io with their licensed name, callsign and passcode request. That service is specifically for APRSISCE/32 users. If you only use APRSIS64, ask its maintainer for passcode assistance and identify the software accurately. You can choose Receive only while arranging a passcode.")
+                HelpTextButton("Open the preserved APRSISCE/32 wiki passcode instructions.",onClick={runCatching {Desktop.getDesktop().browse(URI(model.settings.getProperty("services.passcode_help_url")))}}){HelpText("Read APRSISCE/32 passcode instructions")}
+                HelpTextButton("Open the APRSIS64 project for maintainer support.",onClick={runCatching {Desktop.getDesktop().browse(URI(model.settings.getProperty("services.source_url")))}}){HelpText("APRSIS64 project & support")}
+            }
             Box {
                 HelpOutlinedButton(UiHelp.action(if(preset>=0) presets[preset].name else "Custom server"),onClick={menu=true},modifier=Modifier.fillMaxWidth(),fill=true) {HelpText(if(preset>=0) presets[preset].name else "Custom server",Modifier.weight(1f));Icon(AppIcons.ArrowDropDown,null)}
                 DropdownMenu(expanded=menu,onDismissRequest={menu=false}) {
@@ -481,8 +506,18 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
             HelpField(UiHelp.field("Server URL or host:port"),host,{host=it},label={HelpText("Server URL or host:port")},enabled=preset<0,singleLine=true,modifier=Modifier.fillMaxWidth(),fill=true)
             LocationField("Receive-area center",lat,lon) {a,b->lat=a;lon=b}
             Row(verticalAlignment=Alignment.CenterVertically) {HelpCheckbox(UiHelp.action("Connect on startup"),autoConnect,{autoConnect=it}); HelpText("Connect on startup")}
-            Spacer(Modifier.weight(1f))
-            Row {HelpTextButton(UiHelp.action("Cancel"),onClick=dismiss){HelpText("Cancel")}; Spacer(Modifier.weight(1f)); HelpButton(UiHelp.action("Connect"),onClick={if(model.connect(call,pass,host,lat.toDoubleOrNull()?:Double.NaN,lon.toDoubleOrNull()?:Double.NaN,autoConnect)) dismiss()}){HelpText("Connect")}}
+            HelpText("Your beacon position is separate: check Settings → My position before transmitting.",fontSize=12.sp)
+            }
+            Row {HelpTextButton(UiHelp.action("Cancel"),onClick=dismiss){HelpText("Cancel")}; Spacer(Modifier.weight(1f)); HelpButton("Save your login and connect now. The startup preference controls future launches.",onClick={
+                val credential=if(receiveOnly) "-1" else pass.trim()
+                validation=ConnectionSetup.problem(call,credential).orEmpty()
+                if(validation.isBlank() && runCatching {AprsEndpoint.parse(host)}.isFailure) validation="Enter a valid APRS-IS server hostname and port, or choose a server from the list."
+                if(validation.isBlank() && runCatching {MapLocation(lat.toDouble(),lon.toDouble())}.isFailure) validation="Enter a valid receive-area center and check its decoded coordinates."
+                if(validation.isBlank()) {
+                    if(model.connect(call,credential,host,lat.toDoubleOrNull()?:Double.NaN,lon.toDoubleOrNull()?:Double.NaN,autoConnect)) dismiss()
+                    else validation=model.error.value
+                }
+            }){HelpText("Save & connect")}}
         } }
     }
 }
