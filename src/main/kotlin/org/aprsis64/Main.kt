@@ -335,7 +335,21 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
                     Text(if(row.outgoing) "You" else row.peer,color=Accent,fontSize=11.sp)
                     Text(row.body,Modifier.padding(vertical=5.dp),fontSize=14.sp)
                     if(row.outgoing && row.status in listOf("NO_ACK","REJECTED")) TextButton(onClick={scope.launch {model.database.retry(account,row.id)}}) {Text("Retry as new message")}
-                    Text(DateTimeFormatter.ofPattern("MMM d HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(row.time))+" · "+row.status.replace('_',' '),fontSize=9.sp,color=Muted)
+                    val deliveryStatus = when (row.status) {
+                        "QUEUED" -> "Queued — waiting for a connection or eligible route"
+                        "SENDING" -> "Sending…"
+                        "WAITING" -> "Sent — waiting for acknowledgment"
+                        "ACKNOWLEDGED" -> "Delivered — acknowledgment received"
+                        "SENT" -> "Sent — acknowledgment not requested"
+                        "NO_ACK" -> "No acknowledgment — delivery unconfirmed"
+                        "REJECTED" -> "Rejected by recipient"
+                        "RECEIVED" -> "Received"
+                        else -> row.status.replace('_', ' ')
+                    }
+                    Text(deliveryStatus,fontSize=12.sp,color=if(row.status=="ACKNOWLEDGED") Accent else Muted)
+                    Text(DateTimeFormatter.ofPattern("MMM d HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(row.time))+
+                        if(row.outgoing && row.attempts>0) " · ${row.attempts} send attempt${if(row.attempts==1) "" else "s"}" else "",
+                        fontSize=10.sp,color=Muted)
                 } }
             }
             OutlinedTextField(draft,{draft=it},Modifier.fillMaxWidth().onPreviewKeyEvent {event->if(event.type==KeyEventType.KeyDown && event.key==Key.Tab) {focusManager.moveFocus(if(event.isShiftPressed) FocusDirection.Previous else FocusDirection.Next);true} else false}.padding(top=8.dp),label={Text("Message")},maxLines=3)

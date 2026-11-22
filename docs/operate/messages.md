@@ -22,6 +22,8 @@ A recently learned local client that disappears causes a local-send failure rath
 
 ## Delivery states
 
+The chat shows plain-language status on its own line, with the timestamp and send-attempt count below it. **Sent — waiting for acknowledgment** means the local send succeeded but remote receipt is not yet confirmed. **Delivered — acknowledgment received** confirms an acknowledgment came back. The stored state names below remain useful for diagnostics.
+
 | State | Meaning and next action |
 | --- | --- |
 | QUEUED | Waiting for an eligible send attempt; check the route and connection |
