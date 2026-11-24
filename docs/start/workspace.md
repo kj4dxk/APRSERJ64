@@ -4,7 +4,7 @@ The main window has three operating areas: the station list on the left, the map
 
 ## Main toolbar
 
-Use **Hide ribbon** to give the map more room. **Connection**, **Find station**, **Beacon now**, **Settings** and **Search** stay visible. Choose **Show ribbon** to restore the command groups.
+Use **Hide ribbon** to give the map more room. **Connection**, **Find station**, **Beacon now**, **Settings** and **Search** stay visible. Select a tab to display its command groups. The selected tab stays open while you work. Clicking a tab also reopens a collapsed ribbon.
 
 | Control | Purpose |
 | --- | --- |

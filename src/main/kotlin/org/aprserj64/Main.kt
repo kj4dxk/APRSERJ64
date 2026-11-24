@@ -185,51 +185,61 @@ fun main(args: Array<String>) {
                 }
             }
         }
-        if(expanded) Row(Modifier.fillMaxWidth().background(Color(0xFF203940)).padding(horizontal=8.dp),verticalAlignment=Alignment.CenterVertically) {
-                Row(Modifier.weight(1f).horizontalScroll(rememberScrollState())) {
-                    RibbonGroup("Enables") { close ->
-                        RibbonItem("APRS-IS " + if(connection==AprsConnectionState.STOPPED) "connect…" else "disconnect",close) {
-                            if(connection==AprsConnectionState.STOPPED) settings=true else model.disconnect(remember=!demo)
-                        }
-                        model.ports.forEachIndexed { index, port ->
-                            val enabled=port.getProperty("enabled").toBoolean()
-                            RibbonItem((if(enabled) "Disable " else "Enable ") + port.getProperty("name"),close) {
-                                val ports=model.ports.mapIndexed { i,p -> if(i!=index) p else java.util.Properties().apply { putAll(p);setProperty("enabled",(!enabled).toString()) } }
-                                model.savePreferences(java.util.Properties().apply {putAll(model.settings)},model.entities,ports)
+        val tabs=listOf("Enables","Messages","Screen","View","Configure","Clear","Help")
+        var tab by remember {mutableStateOf("Enables")}
+        Row(Modifier.fillMaxWidth().background(Panel),verticalAlignment=Alignment.CenterVertically) {
+            Row(Modifier.weight(1f).horizontalScroll(rememberScrollState())) {
+                tabs.dropLast(1).forEach { label -> RibbonTab(label,tab==label && expanded){tab=label;expanded=true} }
+            }
+            RibbonTab("Help",tab=="Help" && expanded){tab="Help";expanded=true}
+        }
+        if(expanded) key(tab) {
+            Row(Modifier.fillMaxWidth().background(Color(0xFF203940)).horizontalScroll(rememberScrollState()).padding(horizontal=8.dp,vertical=4.dp)) {
+                when(tab) {
+                    "Enables" -> {
+                        CommandGroup("APRS-IS") { Command(if(connection==AprsConnectionState.STOPPED) "Connect…" else "Disconnect"){if(connection==AprsConnectionState.STOPPED) settings=true else model.disconnect(remember=!demo)} }
+                        CommandGroup("Radio ports") {
+                            model.ports.forEachIndexed {index,port ->
+                                val enabled=port.getProperty("enabled").toBoolean()
+                                Command((if(enabled) "Disable " else "Enable ")+port.getProperty("name")) {
+                                    val ports=model.ports.mapIndexed {i,p->if(i!=index) p else java.util.Properties().apply {putAll(p);setProperty("enabled",(!enabled).toString())}}
+                                    model.savePreferences(java.util.Properties().apply {putAll(model.settings)},model.entities,ports)
+                                }
                             }
+                            Command("Manage ports…",icon=AppIcons.Settings){portWorkspace=true}
                         }
-                        RibbonItem("Packet monitor…",close) {packetMonitor=true}
+                        CommandGroup("Diagnostics"){Command("Packet monitor…",icon=AppIcons.Search){packetMonitor=true}}
                     }
-                    RibbonGroup("Messages") { close ->
-                        RibbonItem("Read / send message",close) {showChat=true}
-                        listOf("Email" to "Send EMail","Groups" to "Group messages","Bulletins" to "Bulletins").forEach {(page,label)->RibbonItem(label,close){openTool(page)}}
+                    "Messages" -> {
+                        CommandGroup("Conversation"){Command("Read / send",icon=AppIcons.Send){showChat=true};Command("Send email",icon=AppIcons.Send){openTool("Email")}}
+                        CommandGroup("Broadcast"){Command("Groups"){openTool("Groups")};Command("Bulletins"){openTool("Bulletins")}}
                     }
-                    RibbonGroup("Screen") { close ->
-                        RibbonItem("Map settings…",close) {navigate("settings:Map")}
-                        RibbonItem(if(showStations) "Hide station list" else "Show station list",close) {showStations=!showStations}
-                        RibbonItem(if(showChat) "Hide messages" else "Show messages",close) {showChat=!showChat}
+                    "Screen" -> {
+                        CommandGroup("Map"){Command("Appearance…",icon=AppIcons.Settings){navigate("settings:Map")}}
+                        CommandGroup("Panes"){Command(if(showStations) "Hide stations" else "Show stations"){showStations=!showStations};Command(if(showChat) "Hide messages" else "Show messages"){showChat=!showChat}}
                     }
-                    RibbonGroup("View") { close ->
-                        stationKinds.forEach {(value,label)->RibbonItem(label,close){kind=value;if(value=="all") search=""}}
-                        Divider()
-                        stationSort.forEach {(value,label)->RibbonItem("Sort by $label",close){sort=value}}
-                        if(selected!=null) RibbonItem("Track selected station",close){selected?.let {if(it !in tracking && tracking.size<8) tracking.add(it)}}
+                    "View" -> {
+                        CommandGroup("Station filter"){ChoiceMenu("Show",kind,stationKinds,Modifier.width(185.dp)){kind=it;if(it=="all") search=""}}
+                        CommandGroup("Order"){ChoiceMenu("Sort by",sort,stationSort,Modifier.width(150.dp)){sort=it}}
+                        CommandGroup("Tracking"){Command("Track selected",selected!=null && selected !in tracking && tracking.size<8){selected?.let(tracking::add)}}
                     }
-                    RibbonGroup("Configure") { close ->
-                        RibbonItem("General settings…",close){preferences=true}
-                        RibbonItem("GeniusBeaconing / SmartBeaconing…",close){navigate("settings:Beacon")}
-                        RibbonItem("Radio & GPS ports…",close){portWorkspace=true}
+                    "Configure" -> {
+                        CommandGroup("Station"){Command("General settings…",icon=AppIcons.Settings){preferences=true};Command("Beaconing…",icon=AppIcons.Send){navigate("settings:Beacon")}}
+                        CommandGroup("Connections"){Command("Radio & GPS ports…",icon=AppIcons.Settings){portWorkspace=true};Command("Station login…"){settings=true}}
                     }
-                    RibbonGroup("Clear") { close ->
-                        RibbonItem("Clear station filters",close){search="";kind="all"}
-                        RibbonItem("Dismiss activity notices",close){model.activity.dismiss()}
+                    "Clear" -> CommandGroup("Current session"){
+                        var open by remember {mutableStateOf(false)}
+                        Box { Command("Clear…"){open=true};DropdownMenu(open,{open=false}){
+                            DropdownMenuItem({open=false;search="";kind="all"}){Text("Clear station filters")}
+                            DropdownMenuItem({open=false;model.activity.dismiss()}){Text("Dismiss activity notices")}
+                        } }
+                    }
+                    "Help" -> {
+                        CommandGroup("APRSERJ64"){Command("Version "+AppVersion.value){about=true};Command("License"){about=true}}
+                        CommandGroup("Documentation"){Command("User manual",icon=AppIcons.Menu){Desktop.getDesktop().browse(URI(model.settings.getProperty("services.manual_url")))}}
                     }
                 }
-                RibbonGroup("Help") { close ->
-                    RibbonItem("Version "+AppVersion.value,close){about=true}
-                    RibbonItem("About & license",close){about=true}
-                    RibbonItem("APRSERJ64 manual",close){Desktop.getDesktop().browse(URI(model.settings.getProperty("services.manual_url")))}
-                }
+            }
         }
         if(error.isNotBlank()) HelpText(error,Modifier.fillMaxWidth().background(Color(0xFF6B332B)).padding(10.dp))
         if(setupIssue!=null) Row(Modifier.fillMaxWidth().background(Panel).padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -526,8 +536,12 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
 
 @Composable private fun ConnectionDialog(model: AppModel, dismiss: ()->Unit) {
     var call by remember {mutableStateOf(model.settings.getProperty("callsign",""))}
-    var ssidMenu by remember {mutableStateOf(false)}
     var pass by remember {mutableStateOf(model.settings.getProperty("passcode",""))}
+    var manual by remember {mutableStateOf(ConnectionSetup.problem(call,pass)==null)}
+    var imported by remember {mutableStateOf(false)}
+    var importMessage by remember {mutableStateOf("")}
+    var ssidMenu by remember {mutableStateOf(false)}
+
     var receiveOnly by remember {mutableStateOf(pass=="-1")}
     var showPasscodeHelp by remember {mutableStateOf(false)}
     var validation by remember {mutableStateOf("")}
@@ -552,12 +566,30 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     LaunchedEffect(call,pass,receiveOnly,host) {testJob?.cancel();testing=false;testResult=""}
     var lat by remember {mutableStateOf(model.settings.getProperty("latitude","28.536725"))}
     var lon by remember {mutableStateOf(model.settings.getProperty("longitude","-81.242932"))}
-    DialogWindow(icon=AppIcon.window,onCloseRequest=dismiss,title="My callsign & passcode",state=rememberDialogState(width=640.dp,height=800.dp)) {
+    val bounds=remember {windowBounds(680,780)}
+    DialogWindow(icon=AppIcon.window,onCloseRequest=dismiss,title="Station setup",state=rememberDialogState(position=bounds.composePosition,width=bounds.width.dp,height=bounds.height.dp)) {
         Surface {Column(Modifier.fillMaxSize().padding(22.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            HelpText("My callsign & passcode",fontSize=22.sp)
+            HelpText("Station setup",fontSize=22.sp)
             ScrollableForm(Modifier.weight(1f).fillMaxWidth()) {
-            if(setupIssue!=null) HelpText(setupIssue!!,color=MaterialTheme.colors.error)
+            HelpButton("Choose the XML saved by APRSIS32",onClick={
+                val picker=javax.swing.JFileChooser().apply {fileFilter=javax.swing.filechooser.FileNameExtensionFilter("APRSIS32 settings (*.xml)","xml")}
+                if(picker.showOpenDialog(window)==javax.swing.JFileChooser.APPROVE_OPTION) {
+                    try {
+                        val profile=readLegacyLogin(picker.selectedFile.toPath())
+                        call=profile.call;pass=profile.pass;receiveOnly=profile.receiveOnly
+                        profile.endpoint?.let {host=it;preset=presets.indexOfFirst {server->server.endpoint==it}}
+                        if(profile.latitude!=null && profile.longitude!=null){lat=profile.latitude.toString();lon=profile.longitude.toString()}
+                        imported=true;manual=false;validation="";importMessage=""
+                    } catch(e:Exception) {importMessage=if(e is IllegalArgumentException && e.message in listOf("Choose an APRSIS32 XML file under 32 MB.","Choose an APRSIS32 configuration XML file.","This XML has no usable station callsign.","The saved APRS-IS passcode is invalid. Use manual setup.")) e.message.orEmpty() else "Unable to import this APRSIS32 configuration. Check the file or use manual setup."}
+                }
+            }){HelpText("Import APRSIS32 settings…")}
+            HelpText("Import your callsign, APRS-IS passcode, server and receive-area coordinates. Radio ports and beacon settings are configured separately.",fontSize=12.sp)
+            if(importMessage.isNotBlank()) HelpText(importMessage,color=MaterialTheme.colors.error)
+            if(imported && !manual) HelpText("$call · "+(if(receiveOnly) "Receive only" else "Saved passcode loaded")+" · $host")
+            if(!manual) HelpTextButton("Enter or edit station settings",onClick={manual=true}){HelpText(if(imported) "Edit imported settings" else "Enter settings manually")}
+            if(manual && setupIssue!=null) HelpText(setupIssue!!,color=MaterialTheme.colors.error)
             if(validation.isNotBlank()) HelpText(validation,color=MaterialTheme.colors.error)
+            if(manual) {
             Row {
                 HelpField(UiHelp.field("Callsign-SSID"),call,{call=it.uppercase()},label={HelpText("Callsign-SSID")},singleLine=true,modifier=Modifier.weight(1f),fill=true)
                 Box {
@@ -567,7 +599,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
                     }}
                 }
             }
-            HelpField(UiHelp.field("APRS-IS passcode"),pass.takeUnless {it=="-1"}.orEmpty(),{pass=it},label={HelpText("APRS-IS passcode")},enabled=!receiveOnly,singleLine=true,modifier=Modifier.fillMaxWidth(),fill=true)
+            HelpField(UiHelp.field("APRS-IS passcode"),pass.takeUnless {it=="-1"}.orEmpty(),{pass=it},label={HelpText("APRS-IS passcode")},visualTransformation=androidx.compose.ui.text.input.PasswordVisualTransformation(),enabled=!receiveOnly,singleLine=true,modifier=Modifier.fillMaxWidth(),fill=true)
             Row(verticalAlignment=Alignment.CenterVertically) {
                 HelpCheckbox("Receive stations without sending Internet messages or beacons. A passcode is not needed in this mode.",receiveOnly,{receiveOnly=it;if(!it && pass=="-1")pass=""});HelpText("Receive only (no APRS-IS transmissions)")
             }
@@ -626,7 +658,8 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
             if(testResult.isNotBlank()) androidx.compose.foundation.text.selection.SelectionContainer {Text(testResult)}
             HelpText("Your beacon position is separate: check Settings → My position before transmitting.",fontSize=12.sp)
             }
-            Row {HelpTextButton(UiHelp.action("Cancel"),onClick=dismiss){HelpText("Cancel")}; Spacer(Modifier.weight(1f)); HelpButton("Save your login and connect now. Reconnect automatically until you explicitly disconnect.",enabled=!testing,onClick={
+            }
+            Row {HelpTextButton(UiHelp.action("Cancel"),onClick=dismiss){HelpText("Cancel")}; Spacer(Modifier.weight(1f)); HelpButton("Save your login and connect now. Reconnect automatically until you explicitly disconnect.",enabled=!testing && (manual || imported),onClick={
                 val credential=if(receiveOnly) "-1" else pass.trim()
                 validation=ConnectionSetup.problem(call,credential).orEmpty()
                 if(validation.isBlank() && runCatching {AprsEndpoint.parse(host)}.isFailure) validation="Enter a valid APRS-IS server hostname and port, or choose a server from the list."
@@ -644,14 +677,21 @@ private val stationKinds=listOf("all" to "All stations","weather" to "Weather","
 
 private val stationSort=listOf("callsign" to "Callsign","recent" to "Most recent","distance" to "Nearest first")
 
-@Composable private fun RibbonGroup(label:String, items:@Composable ColumnScope.(()->Unit)->Unit) {
-    var open by remember {mutableStateOf(false)}
-    Box {
-        HelpTextButton("Open $label",onClick={open=true}) { HelpText(label,color=Color.White) }
-        DropdownMenu(expanded=open,onDismissRequest={open=false}) { items {open=false} }
+@Composable private fun RibbonTab(label:String,selected:Boolean,onClick:()->Unit) {
+    Column(horizontalAlignment=Alignment.CenterHorizontally) {
+        Tab(selected=selected,onClick=onClick,modifier=Modifier.widthIn(min=70.dp),text={Text(label,color=if(selected) Accent else Color.White)})
+        Spacer(Modifier.width(40.dp).height(3.dp).background(if(selected) Accent else Color.Transparent))
     }
 }
 
-@Composable private fun RibbonItem(label:String,close:()->Unit,action:()->Unit) {
-    HelpMenuItem(label,onClick={close();action()}) {HelpText(label)}
+@Composable private fun CommandGroup(label:String,commands:@Composable RowScope.()->Unit) {
+    Column(Modifier.padding(horizontal=8.dp),horizontalAlignment=Alignment.CenterHorizontally) {
+        Row(Modifier.height(52.dp),verticalAlignment=Alignment.CenterVertically,content=commands)
+        Text(label,color=Muted,fontSize=11.sp)
+    }
+    Divider(Modifier.height(66.dp).width(1.dp))
+}
+
+@Composable private fun Command(label:String,enabled:Boolean=true,icon:androidx.compose.ui.graphics.vector.ImageVector?=null,action:()->Unit) {
+    HelpTextButton(label,onClick=action,enabled=enabled){Column(horizontalAlignment=Alignment.CenterHorizontally){if(icon!=null) Icon(icon,null,Modifier.size(19.dp));HelpText(label)}}
 }

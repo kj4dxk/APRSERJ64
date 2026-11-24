@@ -13,6 +13,8 @@ A map opening at a particular place does not set your transmitting position. The
 
 ## Connect to APRS-IS
 
+On first launch, choose **Import APRSIS32 settings…** and browse to your station’s XML file. Review the callsign, receive-only status and server, then choose **Save & connect**. The importer reads the saved passcode, APRS-IS server and receive-area coordinates when present. A blank passcode selects receive-only operation. Use **Enter settings manually** if you do not have an APRSIS32 profile. Reopen **Connection** to import another profile.
+
 1. Click **your callsign at the top left**, or choose **Search → My callsign & passcode**. On first launch, missing credentials open this editor automatically.
 2. Enter your **callsign with SSID**, such as your call followed by `-13`. Examples in this manual use `N0CALL`; replace them with your own identity.
 3. Enter your APRS-IS passcode. It is stored as readable text in `settings.toml`. An existing passcode for your callsign works across APRS clients. For a request, follow the [APRSIS32 passcode instructions](https://github.com/kj4dxk/APRSIS32/blob/main/docs/manual/doc-passcode.md), providing your licensed name, callsign and the application you actually use. The legacy service specifies APRSISCE/32 users.
