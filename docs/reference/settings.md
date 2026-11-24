@@ -36,6 +36,7 @@ Each `[[aprs.servers]]` entry is a separate record. The example contains 12 entr
 
 | Key | Example default | Meaning / UI label |
 | --- | --- | --- |
+| `map.compatibility_mode` | `false` | compatibility mode |
 | `map.latitude` | `28.536725` | latitude |
 | `map.longitude` | `-81.242932` | longitude |
 | `map.source_name` | `"pdeffenb"` | source name |
@@ -91,7 +92,7 @@ Each `[[aprs.servers]]` entry is a separate record. The example contains 12 entr
 | `beacon.distance_meters` | `1609.344` | Maximum distance (meters) |
 | `beacon.moving_knots` | `0.5` | Moving speed threshold (knots) |
 | `beacon.on_reconnect` | `true` | Beacon on reconnect |
-| `beacon.on_gps_change` | `true` | Beacon on GPS fix gained / lost |
+| `beacon.on_gps_change` | `true` | Beacon when a GPS fix becomes available |
 | `beacon.recenter_after_transmit` | `false` | Recenter map after transmitting |
 | `beacon.symbol_table` | `"/"` | Symbol table or overlay |
 | `beacon.symbol` | `"-"` | Symbol code |
@@ -122,6 +123,7 @@ Each `[[aprs.servers]]` entry is a separate record. The example contains 12 entr
 
 | Key | Example default | Meaning / UI label |
 | --- | --- | --- |
+| `position.fixed_confirmed` | `false` | Use these coordinates for fixed-position beacons |
 | `position.source` | `"fixed"` | Position source |
 | `position.port_name` | `""` | Named NMEA port |
 | `position.latitude` | `28.536725` | Fixed latitude |
@@ -245,6 +247,8 @@ Each `[[aprs.servers]]` entry is a separate record. The example contains 12 entr
 
 | Key | Example default | Meaning / UI label |
 | --- | --- | --- |
+| `imports.bundled_osm` | `false` | Show bundled Boston map |
+| `imports.osm_file` | `""` | Local OpenStreetMap XML file |
 | `imports.gpx_files` | `[]` | GPX files to display (one per line) |
 | `imports.maximum_points` | `20000` | Maximum imported points |
 
@@ -271,7 +275,7 @@ Each `[[aprs.servers]]` entry is a separate record. The example contains 12 entr
 | Key | Example default | Meaning / UI label |
 | --- | --- | --- |
 | `logging.csv` | `false` | Automatically log tracks to CSV |
-| `logging.gpx` | `false` | Automatically log tracks to GPX |
+| `logging.gpx` | `true` | Automatically log tracks to GPX |
 | `logging.calls` | `[]` | Stations to log (empty: all received positions) |
 | `logging.retention_days` | `30` | Automatic track file retention (days) |
 
@@ -388,6 +392,7 @@ Each `[[aprs.servers]]` entry is a separate record. The example contains 12 entr
 
 | Key | Example default | Meaning / UI label |
 | --- | --- | --- |
+| `weather.units` | `"metric"` | Weather units |
 | `weather.enabled` | `false` | Fetch weather alerts |
 | `weather.alerts_url` | `"https://api.weather.gov/alerts/active?point={lat},{lon}"` | GeoJSON alert service URL |
 | `weather.refresh_seconds` | `300` | Alert refresh interval (seconds) |
