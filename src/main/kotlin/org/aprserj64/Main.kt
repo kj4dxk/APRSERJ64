@@ -678,7 +678,7 @@ private val stationKinds=listOf("all" to "All stations","weather" to "Weather","
 private val stationSort=listOf("callsign" to "Callsign","recent" to "Most recent","distance" to "Nearest first")
 
 @Composable private fun RibbonTab(label:String,selected:Boolean,onClick:()->Unit) {
-    Column(horizontalAlignment=Alignment.CenterHorizontally) {
+    Column(Modifier.width(96.dp),horizontalAlignment=Alignment.CenterHorizontally) {
         Tab(selected=selected,onClick=onClick,modifier=Modifier.widthIn(min=70.dp),text={Text(label,color=if(selected) Accent else Color.White)})
         Spacer(Modifier.width(40.dp).height(3.dp).background(if(selected) Accent else Color.Transparent))
     }
