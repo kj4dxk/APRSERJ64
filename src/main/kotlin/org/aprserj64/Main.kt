@@ -97,6 +97,9 @@ fun main(args: Array<String>) {
     var toolPage by remember {mutableStateOf("Station")}
     var toolRequest by remember {mutableStateOf(0)}
     var appMenu by remember {mutableStateOf(false)}
+    var expanded by remember { mutableStateOf(true) }
+    var showStations by remember { mutableStateOf(true) }
+    var showChat by remember { mutableStateOf(true) }
     var listMenu by remember {mutableStateOf(false)}
     fun openTool(page:String) {toolPage=page;toolRequest++;tools=true}
     val tracking=remember {mutableStateListOf<String>().apply {addAll(names(model.settings.getProperty("display.tracking_calls")))}}
@@ -141,7 +144,7 @@ fun main(args: Array<String>) {
     }
     LaunchedEffect(account) { selected=null }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colors.background)) {
-        Row(Modifier.fillMaxWidth().background(Panel).padding(18.dp,12.dp),verticalAlignment=Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().background(Panel).padding(12.dp,2.dp),verticalAlignment=Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 HelpTextButton("Change your callsign, SSID or APRS-IS passcode.",onClick={settings=true},contentPadding=PaddingValues(0.dp)) {
                     HelpText(if(demo) "Practice · $account" else account.ifBlank {"Set up your station"},color=Accent,fontWeight=FontWeight.Bold)
@@ -149,11 +152,13 @@ fun main(args: Array<String>) {
                 }
                 HelpText(connectionLabel(connection,demo),color=Muted,fontSize=12.sp)
             }
+            HelpTextButton("Open connection settings",onClick={settings=true}) { HelpText("Connection") }
+            HelpField(UiHelp.field("Find station"),search,{search=it;showStations=true},label={HelpText("Find station")},singleLine=true,modifier=Modifier.width(150.dp),fill=true)
             HelpButton(UiHelp.action("Beacon now"),onClick={model.transmitBeacon()},enabled=beacon.enabled && account.isNotBlank() && beacon.position?.current==true) {Icon(AppIcons.Send,null,Modifier.size(16.dp));Spacer(Modifier.width(6.dp));HelpText("Beacon now")}
             Spacer(Modifier.width(10.dp))
             HelpOutlinedButton(UiHelp.action("Settings"),onClick={preferences=true}) {Icon(AppIcons.Settings,null,Modifier.size(18.dp));Spacer(Modifier.width(6.dp));HelpText("Settings")}
             Box {
-                HelpTextButton(UiHelp.action("Menu"),onClick={appMenu=true}) {Icon(AppIcons.Menu,null);Spacer(Modifier.width(6.dp));HelpText("Menu")}
+                HelpTextButton(UiHelp.action("Menu"),onClick={appMenu=true}) {Icon(AppIcons.Menu,null);Spacer(Modifier.width(6.dp));HelpText("Search")}
                 DropdownMenu(expanded=appMenu,onDismissRequest={appMenu=false}) {
                     HelpField("Search all settings and tools. Try my callsign, passcode, map or beacon.",menuQuery,{menuQuery=it},modifier=Modifier.width(340.dp).padding(8.dp),label={HelpText("Search settings & tools")},singleLine=true,fill=true)
                     if(menuQuery.isNotBlank()) {
@@ -179,6 +184,55 @@ fun main(args: Array<String>) {
                 }
             }
         }
+        Row(Modifier.fillMaxWidth().background(Color(0xFF203940)).padding(horizontal=8.dp),verticalAlignment=Alignment.CenterVertically) {
+            HelpTextButton("Expand or collapse the ribbon",onClick={expanded=!expanded}) { HelpText(if(expanded) "▴" else "▾") }
+            if(expanded) {
+                Row(Modifier.weight(1f).horizontalScroll(rememberScrollState())) {
+                    RibbonGroup("Enables") { close ->
+                        RibbonItem("APRS-IS " + if(connection==AprsConnectionState.STOPPED) "connect…" else "disconnect",close) {
+                            if(connection==AprsConnectionState.STOPPED) settings=true else model.disconnect(remember=!demo)
+                        }
+                        model.ports.forEachIndexed { index, port ->
+                            val enabled=port.getProperty("enabled").toBoolean()
+                            RibbonItem((if(enabled) "Disable " else "Enable ") + port.getProperty("name"),close) {
+                                val ports=model.ports.mapIndexed { i,p -> if(i!=index) p else java.util.Properties().apply { putAll(p);setProperty("enabled",(!enabled).toString()) } }
+                                model.savePreferences(java.util.Properties().apply {putAll(model.settings)},model.entities,ports)
+                            }
+                        }
+                        RibbonItem("Packet monitor…",close) {packetMonitor=true}
+                    }
+                    RibbonGroup("Messages") { close ->
+                        RibbonItem("Read / send message",close) {showChat=true}
+                        listOf("Email" to "Send EMail","Groups" to "Group messages","Bulletins" to "Bulletins").forEach {(page,label)->RibbonItem(label,close){openTool(page)}}
+                    }
+                    RibbonGroup("Screen") { close ->
+                        RibbonItem("Map settings…",close) {navigate("settings:Map")}
+                        RibbonItem(if(showStations) "Hide station list" else "Show station list",close) {showStations=!showStations}
+                        RibbonItem(if(showChat) "Hide messages" else "Show messages",close) {showChat=!showChat}
+                    }
+                    RibbonGroup("View") { close ->
+                        stationKinds.forEach {(value,label)->RibbonItem(label,close){kind=value;if(value=="all") search=""}}
+                        Divider()
+                        stationSort.forEach {(value,label)->RibbonItem("Sort by $label",close){sort=value}}
+                        if(selected!=null) RibbonItem("Track selected station",close){selected?.let {if(it !in tracking && tracking.size<8) tracking.add(it)}}
+                    }
+                    RibbonGroup("Configure") { close ->
+                        RibbonItem("General settings…",close){preferences=true}
+                        RibbonItem("GeniusBeaconing / SmartBeaconing…",close){navigate("settings:Beacon")}
+                        RibbonItem("Radio & GPS ports…",close){portWorkspace=true}
+                    }
+                    RibbonGroup("Clear") { close ->
+                        RibbonItem("Clear station filters",close){search="";kind="all"}
+                        RibbonItem("Dismiss activity notices",close){model.activity.dismiss()}
+                    }
+                }
+                RibbonGroup("Help") { close ->
+                    RibbonItem("Version "+AppVersion.value,close){about=true}
+                    RibbonItem("About & license",close){about=true}
+                    RibbonItem("APRSERJ64 manual",close){Desktop.getDesktop().browse(URI(model.settings.getProperty("services.manual_url")))}
+                }
+            }
+        }
         if(error.isNotBlank()) HelpText(error,Modifier.fillMaxWidth().background(Color(0xFF6B332B)).padding(10.dp))
         if(setupIssue!=null) Row(Modifier.fillMaxWidth().background(Panel).padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically) {
             HelpText(setupIssue!!,Modifier.weight(1f),fontSize=12.sp)
@@ -189,7 +243,7 @@ fun main(args: Array<String>) {
             HelpTextButton(UiHelp.action("View alerts"),onClick={openTool("Alerts")}) {HelpText("View alerts")};HelpTextButton(UiHelp.action("Dismiss"),onClick={model.activity.dismiss()}){HelpText("Dismiss")}
         }
         Row(Modifier.weight(1f)) {
-            Column(Modifier.width(225.dp).fillMaxHeight().background(Panel).padding(14.dp)) {
+            if(showStations) Column(Modifier.width(225.dp).fillMaxHeight().background(Panel).padding(14.dp)) {
                 Row(verticalAlignment=Alignment.CenterVertically) {
                     HelpText("STATIONS",Modifier.weight(1f),color=Muted,fontSize=12.sp)
                     Box {
@@ -200,9 +254,9 @@ fun main(args: Array<String>) {
                         }
                     }
                 }
-                HelpField(UiHelp.field("Find station"),search,{search=it},label={HelpText("Find station")},singleLine=true,modifier=Modifier.fillMaxWidth(),fill=true)
-                ChoiceMenu("Show",kind,listOf("all" to "All stations","weather" to "Weather","moving" to "Moving stations","objects" to "Objects & items","rf" to "Heard on radio","message-capable" to "Messaging stations","frequency" to "Repeaters / frequency","frequency-issues" to "Frequency issues","telemetry" to "Telemetry","status" to "Status reports","altitude" to "Altitude reports","direct-rf" to "Direct radio","igates" to "IGates","ambiguous" to "Approximate positions","mic-e" to "Mic-E"),Modifier.fillMaxWidth()) {kind=it}
-                ChoiceMenu("Sort by",sort,listOf("callsign" to "Callsign","recent" to "Most recent","distance" to "Nearest first"),Modifier.fillMaxWidth()) {sort=it}
+
+                ChoiceMenu("Show",kind,stationKinds,Modifier.fillMaxWidth()) {kind=it}
+                ChoiceMenu("Sort by",sort,stationSort,Modifier.fillMaxWidth()) {sort=it}
                 HelpText("${filtered.size} / ${stations.size}",Modifier.padding(vertical=6.dp),fontSize=16.sp,help="${filtered.size} stations match the current list filters out of ${stations.size} received stations. Search, category and age limits affect this count.")
                 if(search.isNotBlank() || kind!="all") HelpTextButton(UiHelp.action("Clear filters"),onClick={search="";kind="all"}) {HelpText("Clear filters")}
                 if(account.isBlank()) {
@@ -227,7 +281,7 @@ fun main(args: Array<String>) {
                 model.settings.getProperty("beacon.symbol_table").single(),model.settings.getProperty("beacon.symbol").single(),"",p.fix.timeMillis,p.course,p.speedKnots,p.altitudeMeters)}
             val localStations=listOfNotNull(own)+beacon.entities
             key(mapConfigurationKey(model)) {MapPanel(localStations+filtered.filter {remote->localStations.none {it.callsign==remote.callsign}},selected,model,beaconCenter,Modifier.weight(1f).fillMaxHeight()) { selected=it }}
-            ChatPanel(account,selected,{selected=it},rows,model,Modifier.width(350.dp).fillMaxHeight())
+            if(showChat) ChatPanel(account,selected,{selected=it},rows,model,Modifier.width(350.dp).fillMaxHeight())
         }
     }
     tracking.toList().forEach {call->key(call) {TrackingWindow(model,call) {tracking.remove(call)}}}
@@ -586,4 +640,20 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
             }){HelpText("Save & connect")}}
         } }
     }
+}
+
+private val stationKinds=listOf("all" to "All stations","weather" to "Weather","moving" to "Moving stations","objects" to "Objects & items","rf" to "Heard on radio","message-capable" to "Messaging stations","frequency" to "Repeaters / frequency","frequency-issues" to "Frequency issues","telemetry" to "Telemetry","status" to "Status reports","altitude" to "Altitude reports","direct-rf" to "Direct radio","igates" to "IGates","ambiguous" to "Approximate positions","mic-e" to "Mic-E")
+
+private val stationSort=listOf("callsign" to "Callsign","recent" to "Most recent","distance" to "Nearest first")
+
+@Composable private fun RibbonGroup(label:String, items:@Composable ColumnScope.(()->Unit)->Unit) {
+    var open by remember {mutableStateOf(false)}
+    Box {
+        HelpTextButton("Open $label",onClick={open=true}) { HelpText(label,color=Color.White) }
+        DropdownMenu(expanded=open,onDismissRequest={open=false}) { items {open=false} }
+    }
+}
+
+@Composable private fun RibbonItem(label:String,close:()->Unit,action:()->Unit) {
+    HelpMenuItem(label,onClick={close();action()}) {HelpText(label)}
 }
