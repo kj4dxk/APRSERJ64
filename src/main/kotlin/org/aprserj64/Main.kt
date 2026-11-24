@@ -679,7 +679,7 @@ private val stationSort=listOf("callsign" to "Callsign","recent" to "Most recent
 
 @Composable private fun RibbonTab(label:String,selected:Boolean,onClick:()->Unit) {
     Column(Modifier.width(96.dp),horizontalAlignment=Alignment.CenterHorizontally) {
-        Tab(selected=selected,onClick=onClick,modifier=Modifier.widthIn(min=70.dp),text={Text(label,color=if(selected) Accent else Color.White)})
+        Tab(selected=selected,onClick=onClick,modifier=Modifier.height(36.dp)) { Text(label,maxLines=1,color=if(selected) Accent else Color.White) }
         Spacer(Modifier.width(40.dp).height(3.dp).background(if(selected) Accent else Color.Transparent))
     }
 }
