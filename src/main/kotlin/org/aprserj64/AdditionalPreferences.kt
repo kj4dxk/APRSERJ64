@@ -31,7 +31,7 @@ object AdditionalPreferences {
   BeaconField("telemetry.bit_names","Eight digital channel names","[\"Bit1\",\"Bit2\",\"Bit3\",\"Bit4\",\"Bit5\",\"Bit6\",\"Bit7\",\"Bit8\"]",SettingKind.STRINGS),
   BeaconField("telemetry.title","Telemetry project title","Station telemetry"),
   BeaconField("logging.csv","Automatically log tracks to CSV","false",SettingKind.BOOLEAN),
-  BeaconField("logging.gpx","Automatically log tracks to GPX","false",SettingKind.BOOLEAN),
+  BeaconField("logging.gpx","Automatically log tracks to GPX","true",SettingKind.BOOLEAN),
   BeaconField("logging.calls","Stations to log (empty: all received positions)","[]",SettingKind.STRINGS),
   BeaconField("logging.retention_days","Automatic track file retention (days)","30",SettingKind.INTEGER),
   BeaconField("legacyweather.enabled","Receive APRS NWS warnings","false",SettingKind.BOOLEAN),

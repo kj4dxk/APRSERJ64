@@ -43,6 +43,7 @@ class AutomationIntegrationTest {
  @Test fun scheduledReportsAndChatRouteTraverseOnlyIntendedOutput():Unit=runBlocking {
   val home=Files.createTempDirectory("APRS automation integration");PortableHome.prepare(home)
   val settings=SettingsStore(home)
+  settings.values.setProperty("position.fixed_confirmed","true")
   settings.values.setProperty("beacon.mic_e","true")
   settings.values.setProperty("telemetry.enabled","true")
   settings.values.setProperty("bulletins.enabled","true")

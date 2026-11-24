@@ -69,7 +69,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
             launch {combine(current.stations,internetStations,digitalStations) {rf,inet,digital->(rf+inet+digital).distinctBy {it.callsign}}.collect {if(!stress) stations.value=it}}
             launch {current.statuses.collect {portStatuses.value=it}}
         }
-        if(AprsProtocol.validCallsign(account.value)) startBeacons(current,account.value)
+        startBeacons(current,account.value)
     }
     fun connect(call: String, password: String, endpoint: String, latitude: Double, longitude: Double, autoConnect: Boolean = true): Boolean {
         try {
@@ -135,7 +135,10 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
     private fun startBeacons(connection: RadioPorts, call: String) {
         beaconObserver?.cancel(); broadcaster?.close()
         val snapshot=Properties().apply {putAll(settings)}
-        if(demo.value) snapshot.setProperty("position.source","fixed")
+        if(demo.value) {
+            snapshot.setProperty("position.source","fixed")
+            snapshot.setProperty("position.fixed_confirmed","true")
+        }
         val entities=store.entities.map {Properties().apply {putAll(it)}}
         val odometer=directory.resolve("data/odometer-$call.txt")
         val distance=runCatching {Files.readString(odometer).trim().toDouble().takeIf {it.isFinite() && it>=0}}.getOrNull() ?: 0.0
@@ -153,7 +156,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
                 val position=value.position
                 if(snapshot.getProperty("position.source")!="fixed" && position?.current==true && position.fix.timeMillis!=recordedTime) {
                     recordedTime=position.fix.timeMillis
-                    archive.offer(BeaconPackets.position(call,position,BeaconFormat()).trimEnd('\r','\n'),position.fix.timeMillis)
+                    if(AprsProtocol.validCallsign(call)) archive.offer(BeaconPackets.position(call,position,BeaconFormat()).trimEnd('\r','\n'),position.fix.timeMillis)
                 }
             }
         }
@@ -167,23 +170,29 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
             PortPreferences.validateAll(values,ports,entities)
             settings.clear(); settings.putAll(values); store.entities=entities;store.ports=ports
             store.save(); settingsRevision.value++;imports.reload();satellites.reload()
-            // Display and tactical preferences are read live. Do not discard heard
-            // stations or restart beacon timers when editing a nickname or layer.
-            val changed= (previous.stringPropertyNames()+values.stringPropertyNames()).filter {previous.getProperty(it)!=values.getProperty(it)}
-            val liveOnly=entities==previousEntities && ports==previousPorts && changed.all {
-                listOf("display.","messaging.","bulletins.","telemetry.","logging.","qru.").any {prefix->it.startsWith(prefix)} ||
-                    (it.startsWith("tactical.") && it !in setOf("tactical.qru_enabled","tactical.qru_address"))
+            val changed=(previous.stringPropertyNames()+values.stringPropertyNames()).filter {previous.getProperty(it)!=values.getProperty(it)}
+            val radioChanged=changed.any {it.startsWith("radio.")}
+            val beaconChanged=previousEntities!=entities || changed.any {key->
+                listOf("position.","beacon.","status.","odometer.").any(key::startsWith)
             }
-            if(liveOnly) {error.value="";return true}
-            if(client!=null && !demo.value) {
+            val internetChanged=changed.any {it in setOf("endpoint","passcode","latitude","longitude","radiusKm","connectivity.failover") || it.startsWith("operating.filter")}
+            if(radioChanged) startPorts()
+            else radio?.let {current->
+                if(previousPorts!=ports && !demo.value) current.updatePorts(ports)
+                if(beaconChanged) startBeacons(current,account.value)
+            }
+            monitor.configure(settings,demo.value)
+            weatherAlerts.configure(demo.value)
+            activity.configure()
+            if(client!=null && !demo.value && internetChanged) {
                 val config=AprsIsConfig(account.value,settings.getProperty("passcode").ifBlank {"-1"},
                     AprsEndpoint.parse(settings.getProperty("endpoint")).host,AprsEndpoint.parse(settings.getProperty("endpoint")).port,
                     settings.getProperty("latitude").toDouble(),settings.getProperty("longitude").toDouble(),
                     radiusKm=settings.getProperty("radiusKm").toInt(),application="APRSERJ64",applicationVersion=AppVersion.value,
                     filterMode=settings.getProperty("operating.filter_mode"),customFilter=OperatingPreferences.filterTerms(settings),
                 fallbackServers=if(settings.getProperty("connectivity.failover").toBoolean()) servers.take(16).map {AprsEndpoint(it.host,it.port)} else emptyList())
-                disconnect();startPorts();start(config)
-            } else startPorts()
+                disconnect();start(config)
+            }
             beaconState.value=beaconState.value.copy(enabled=settings.getProperty("beacon.enabled").toBoolean())
             error.value=""; return true
         } catch(_: Exception) {settings.clear();settings.putAll(previous);store.entities=previousEntities;store.ports=previousPorts;error.value="Check the settings values and folder write access.";return false}
@@ -241,6 +250,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
     }
     fun localWeather(name:String)=radio?.weather(name)
     fun gpsSky()=radio?.sky().orEmpty() + listOfNotNull(broadcaster?.gpsSky()?.let {"Position" to it}).toMap()
+    suspend fun queryModem(name: String)=radio?.queryModem(name)==true
     fun transmitBeacon() {broadcaster?.transmit()}
     suspend fun reportDx():Boolean {
         if(!settings.getProperty("beacon.enabled").toBoolean())return false

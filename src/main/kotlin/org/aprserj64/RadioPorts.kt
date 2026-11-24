@@ -24,24 +24,20 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
     private val heardHours=java.util.concurrent.ConcurrentHashMap<String,LongArray>()
     private val heardForChat=java.util.concurrent.ConcurrentHashMap<String,Pair<String,Long>>()
     private val heardMillis=values.getProperty("radio.heard_seconds").toLong()*1000
-    private val devices=linkedMapOf<String,DevicePort>()
+    @Volatile private var devices: Map<String,DevicePort> = emptyMap()
     private val positions=java.util.concurrent.ConcurrentHashMap<String,AprsFix>()
     private val igates=java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
-    private val filters=configs.associate {it.getProperty("name") to PacketFilter(it.getProperty("gate_filter",""))}
+
     private val weatherReadings=java.util.concurrent.ConcurrentHashMap<String,AprsWeather>()
     private val fixes=java.util.concurrent.ConcurrentHashMap<String,GpsReading>()
     private val store=AprsStationStore()
     val stations=MutableStateFlow<List<AprsStation>>(emptyList())
     val statuses=MutableStateFlow<List<PortStatus>>(emptyList())
+    private var statusObserver: Job?=null
     @Volatile private var client: AprsIsClient?=null
     private var internetJob: Job?=null
     init {
-        configs.filter {it.getProperty("enabled").toBoolean()}.forEach {props->
-            val config=PortConfig(props)
-            devices[config.name]=DevicePort(config,scope,{events.trySend(config.name to it).isSuccess},{reading->
-                fixes[config.name]=if(!reading.valid && reading.position==null) fixes[config.name]?.copy(valid=false,detail=reading.detail) ?: reading else reading
-            },{packet->traffic(config.name,"TX",packet.line())},{sample->weatherReadings[config.name]=sample})
-        }
+        updatePorts(configs)
         scope.launch {for((name,packet) in events) routing.withLock {
             val now=System.currentTimeMillis();val device=devices[name] ?: return@withLock
             if(!device.config.isRf) {
@@ -59,7 +55,7 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
                 if(device.config.flag("is_to_rf"))for((target,rf) in devices.filter {it.value.config.isRf}) {
                     val action="local:$target"
                     if(rf.config.flag("is_to_rf") && !rf.config.flag("passall") && !router.duplicate(action,packet,now))
-                        router.toRadio(target,packet,now,rf.config.path("message_path"),rf.config.list("gate_calls"),rf.config.list("gate_objects"),filters[target]?.matches(packet,positions[call],positions,igates)==true)?.let {if(rf.transmit(it)){router.transmitted(action,packet,now);router.gatedToRadio(target,packet,now)}}
+                        router.toRadio(target,packet,now,rf.config.path("message_path"),rf.config.list("gate_calls"),rf.config.list("gate_objects"),rf.config.gateFilter.matches(packet,positions[call],positions,igates))?.let {if(rf.transmit(it)){router.transmitted(action,packet,now);router.gatedToRadio(target,packet,now)}}
                 }
                 AprsMessages.parse(packet.line())?.takeIf {it.recipient==call && it.sender!=call}?.let {incoming.send(it)}
                 return@withLock
@@ -95,7 +91,31 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
                 }
             }
         } }
-        scope.launch {while(isActive) {statuses.value=devices.values.map {it.status.value};routing.withLock {stations.value=store.snapshot(System.currentTimeMillis())};delay(1000)}}
+        scope.launch {while(isActive) {routing.withLock {stations.value=store.snapshot(System.currentTimeMillis())};delay(1000)}}
+    }
+    @Synchronized fun updatePorts(configs: List<Properties>) {
+        val enabled=configs.filter {it.getProperty("enabled").toBoolean()}.map(::PortConfig)
+        val previous=devices
+        val unchanged=enabled.filter {previous[it.name]?.config?.values==it.values}.map {it.name}.toSet()
+        previous.filterKeys {it !in unchanged}.forEach {(name,port)->
+            port.close()
+            fixes.remove(name)
+            weatherReadings.remove(name)
+        }
+        devices=enabled.associate {config->
+            val name=config.name
+            name to (previous[name]?.takeIf {name in unchanged} ?: DevicePort(config,scope,{events.trySend(name to it).isSuccess},{reading->
+                fixes[name]=if(!reading.valid && reading.position==null) fixes[name]?.copy(valid=false,detail=reading.detail) ?: reading else reading
+            },{packet->traffic(name,"TX",packet.line())},{sample->weatherReadings[name]=sample}))
+        }
+        statusObserver?.cancel()
+        val current=devices
+        statuses.value=current.values.map {it.status.value}
+        if(current.isNotEmpty()) statusObserver=scope.launch {
+            combine(current.values.map {it.status}) {it.toList()}.collect {latest->
+                if(devices===current) statuses.value=latest
+            }
+        }
     }
     fun attach(value: AprsIsClient?) {
         internetJob?.cancel();client=value
@@ -113,13 +133,14 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
                 for((name,device) in devices) {
                     val config=device.config;val action="is:$name"
                     if(!config.isRf || !config.flag("is_to_rf") || !config.canTransmit || config.flag("passall") || router.duplicate(action,packet,now)) continue
-                    router.toRadio(name,packet,now,config.path("message_path"),config.list("gate_calls"),config.list("gate_objects"),filters[name]?.matches(packet,positions[call],positions,igates)==true)?.let {
+                    router.toRadio(name,packet,now,config.path("message_path"),config.list("gate_calls"),config.list("gate_objects"),config.gateFilter.matches(packet,positions[call],positions,igates))?.let {
                         if(device.transmit(it)) {router.transmitted(action,packet,now);router.gatedToRadio(name,packet,now)}
                     }
                 }
             }
         } }
     }
+    suspend fun queryModem(name: String)=devices[name]?.queryModem()==true
     fun isService(name:String)=devices[name]?.config?.protocol in PortPreferences.services
     fun weather(name:String)=weatherReadings[name]
     fun sky()=devices.mapValues {it.value.gpsSky.value}.filterValues {it.time>0}
@@ -176,6 +197,10 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
         val fallback=checkNotNull(candidates.firstOrNull()) {"No messaging output"}
         check(fallback.transmit(packet.copy(path=fallback.config.path("message_path"))))
     }
+    fun beaconAvailable(useIs: Boolean, useRf: Boolean)=
+        useIs && client?.canSend()==true || useRf && devices.values.any {
+            it.ready && it.config.isRf && it.config.canTransmit && it.config.flag("beacon")
+        }
     fun available()=client?.state?.value==AprsConnectionState.VERIFIED || devices.values.any {it.ready && it.config.canTransmit}
     /** Immediate directed Internet item reply: never queue a stale object or fall back to RF. */
     suspend fun queryItem(recipient:String,text:String):Boolean {
@@ -201,6 +226,9 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
         }
         return sent
     }
-    suspend fun shutdown() {devices.values.forEach {it.shutdown()};close()}
+    suspend fun shutdown() {
+        try {coroutineScope {devices.values.forEach {port->launch {port.shutdown()}}}}
+        finally {close()}
+    }
     override fun close() {internetJob?.cancel();devices.values.forEach {it.close()};events.close();incoming.close();scope.cancel()}
 }

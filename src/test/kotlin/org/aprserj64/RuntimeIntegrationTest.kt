@@ -18,8 +18,8 @@ class RuntimeIntegrationTest {
         setProperty("transport","tcp"); setProperty("endpoint","127.0.0.1:${server.localPort}")
         setProperty("minimum_transmit_ms","100")
     })
-    @Test fun kissAndAgwUseRealTcpStreams(): Unit = runBlocking {
-        for(protocol in listOf("Simply(KISS)","AGW")) {
+    @Test fun kissAgwAndTnc2UseRealTcpStreams(): Unit = runBlocking {
+        for(protocol in listOf("Simply(KISS)","AGW","TEXT")) {
             val parent=CoroutineScope(SupervisorJob()+Dispatchers.IO)
             val received=Channel<RadioPacket>(8)
             listener().use { server ->
@@ -29,19 +29,26 @@ class RuntimeIntegrationTest {
                         socket.soTimeout=5000
                         ready(port)
                         val packet=RadioPacket.parse("N1CALL-7>APRS,WIDE1-1:!2832.20N/08114.58W>TCP test")!!
-                        val encoded=if(protocol=="AGW") Agw.packet(0,packet) else Kiss.encode(packet,0)
+                        val encoded=when(protocol) {
+                            "AGW"->Agw.packet(0,packet)
+                            "TEXT"->(packet.line()+"\r\n").toByteArray()
+                            else->Kiss.encode(packet,0)
+                        }
                         // Split the wire frame to exercise incremental decoding in the live reader.
                         socket.getOutputStream().apply { write(encoded,0,7);flush();write(encoded,7,encoded.size-7);flush() }
                         assertEquals(packet,withTimeout(5000) {received.receive()})
                         assertTrue(port.transmit(packet))
-                        val kiss=KissDecoder();val agw=AgwDecoder();var decoded: RadioPacket?=null
+                        val kiss=KissDecoder();val agw=AgwDecoder();val text=AprsTnc(AprsTnc.Protocol.TNC2);var decoded: RadioPacket?=null
                         withContext(Dispatchers.IO) {
                             val bytes=ByteArray(512)
                             while(decoded==null) {
                                 val count=socket.getInputStream().read(bytes);assertTrue(count>0)
                                 val part=bytes.copyOf(count)
-                                decoded=if(protocol=="AGW") agw.accept(part).firstOrNull {it.kind=='K'}?.let {Ax25Ui.decode(it.data.drop(1).toByteArray())}
-                                    else kiss.accept(part).firstOrNull()
+                                decoded=when(protocol) {
+                                    "AGW"->agw.accept(part).firstOrNull {it.kind=='K'}?.let {Ax25Ui.decode(it.data.drop(1).toByteArray())}
+                                    "TEXT"->text.receive(part).firstOrNull()
+                                    else->kiss.accept(part).firstOrNull()
+                                }
                             }
                         }
                         assertEquals(packet,decoded)

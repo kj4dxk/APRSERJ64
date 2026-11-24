@@ -57,12 +57,13 @@ class BeaconController(private val account: String, private val ports: RadioPort
     fun transmitStatus() {statusNow.set(true)}
     fun reportOdometer(reset: Boolean=false) {odometerNow.set(true); resetOdometer.set(reset)}
     private fun position(now: Long): BeaconPosition? {
-        if(config.text("position.source")=="fixed") return config.fixed(now)
+        if(config.text("position.source")=="fixed") return config.fixed(now).copy(current=config.bool("position.fixed_confirmed"))
         val reading=if(config.text("position.source")=="port") ports.gps(config.text("position.port_name")) else gps!!.reading.value
         val position=reading.position
         val valid=reading.valid && position!=null && now-position.fix.timeMillis in 0..config.integer("position.maximum_age_seconds")*1000L &&
             position.fix.accuracyMeters<=config.number("position.maximum_accuracy_meters")
-        if(valid!=gpsValid && config.bool("beacon.on_gps_change")) gpsEvent=if(valid) "GPS acquired" else "GPS lost"
+        if(!valid) gpsEvent=null
+        else if(!gpsValid && config.bool("beacon.on_gps_change")) gpsEvent="GPS acquired"
         gpsValid=valid
         return position?.copy(current=valid)
     }
@@ -88,12 +89,13 @@ class BeaconController(private val account: String, private val ports: RadioPort
         }
         state.value=state.value.copy(position=p,odometerMeters=traveled,entities=localEntities)
         if(!config.bool("beacon.enabled")) {manual.set(false); statusNow.set(false); odometerNow.set(false);state.value=state.value.copy(detail="Off");return}
-        val verified=ports.available()
+        val verified=ports.beaconAvailable(config.bool("beacon.internet"),config.bool("beacon.radio"))
         if(verified && !connected) reconnect=config.bool("beacon.on_reconnect")
         connected=verified
-        if(!verified) {manual.set(false);state.value=state.value.copy(detail="Waiting for an output port");return}
-        if(p==null || !p.current) state.value=state.value.copy(detail="Waiting for GPS fix")
-        if(p!=null && (p.current || gpsEvent=="GPS lost")) {
+        if(!verified) {manual.set(false);state.value=state.value.copy(detail="Waiting for a station beacon output")}
+        val waiting=if(config.text("position.source")=="fixed") "Confirm your fixed beacon position in Settings" else "Waiting for GPS fix"
+        if(p?.current!=true) state.value=state.value.copy(detail=waiting)
+        if(verified && p?.current==true) {
             if(odometerNow.get()) {
                 val km=(traveled/10).toInt()/100.0
                 if(send(BeaconPackets.position(account,p,config.format,"Odometer=${km}km","Odometer"),now,p,"Odometer")) {
@@ -140,7 +142,8 @@ class BeaconController(private val account: String, private val ports: RadioPort
             if(!alive) {entity.kills++; entity.killedAt=now;journal?.write(e,entity.kills,now)}
             return
         }
-        state.value=state.value.copy(detail=if(config.text("position.source")=="fixed") "Fixed" else if(p?.current==true) "GPS fix" else "Waiting for GPS fix")
+        if(!verified) return
+        state.value=state.value.copy(detail=if(p?.current!=true) waiting else if(config.text("position.source")=="fixed") "Fixed" else "GPS fix")
     }
     private suspend fun send(packet: String, now: Long, position: BeaconPosition, reason: String, entity: Properties?=null): Boolean {
         val useIs=entity?.getProperty("internet")?.toBooleanStrict() ?: config.bool("beacon.internet")

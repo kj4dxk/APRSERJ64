@@ -35,9 +35,25 @@ dependencies {
     implementation("org.tomlj:tomlj:1.1.1")
     compileOnly("org.checkerframework:checker-qual:3.43.0")
     implementation("com.fazecast:jSerialComm:2.11.0")
+    implementation("org.jmdns:jmdns:3.6.2")
     testImplementation(kotlin("test-junit"))
 }
+val bleOutput = layout.buildDirectory.dir("ble-kiss/publish")
+val buildBleBridge = tasks.register<Exec>("buildBleBridge") {
+    val source = layout.projectDirectory.dir("native/ble-kiss")
+    val intermediates = layout.buildDirectory.dir("ble-kiss/obj")
+    inputs.files(source.file("Program.cs"), source.file("BleKiss.csproj"))
+    outputs.dir(bleOutput)
+    commandLine(providers.environmentVariable("APRSERJ64_DOTNET").getOrElse("dotnet"),
+        "publish", source.file("BleKiss.csproj").asFile.absolutePath,
+        "--artifacts-path", intermediates.get().asFile.absolutePath,
+        "-c", "Release", "-o", bleOutput.get().asFile.absolutePath)
+}
 tasks.processResources {
+    if (System.getProperty("os.name").startsWith("Windows")) {
+        dependsOn(buildBleBridge)
+        from(bleOutput) { include("APRSERJ64.BleKiss.exe"); into("windows") }
+    }
     from("version.txt")
     from("assets/aprs-symbols") {
         include("primary/*.svg", "alternate/*.svg")

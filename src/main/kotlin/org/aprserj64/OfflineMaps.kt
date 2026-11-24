@@ -35,6 +35,9 @@ class OfflineMaps(private val home:Path,private val scope:CoroutineScope,private
  private val server=HttpServer.create(InetSocketAddress("127.0.0.1",0),0)
  private val client=HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(5)).build()
  private fun key(url:String)=MessageDigest.getInstance("SHA-256").digest(url.toByteArray()).take(12).joinToString("") {"%02x".format(it)}
+ private val rasterCache=object:LinkedHashMap<Pair<String,Tile>,ByteArray>(64,0.75f,true) {
+  override fun removeEldestEntry(eldest:MutableMap.MutableEntry<Pair<String,Tile>,ByteArray>?)=size>64
+ }
  private fun path(url:String,t:Tile)=home.resolve("cache/offline/${key(url)}/${t.z}/${t.x}/${t.y}.tile")
  fun template()="http://127.0.0.1:${server.address.port}/${key(setting("map.tile_url"))}/{z}/{x}/{y}"
  init {
@@ -48,6 +51,22 @@ class OfflineMaps(private val home:Path,private val scope:CoroutineScope,private
    else {val bytes=Files.readAllBytes(file);exchange.responseHeaders.set("Content-Type","image/png");exchange.sendResponseHeaders(200,bytes.size.toLong());exchange.responseBody.use {it.write(bytes)}}
   }catch(_:Exception){runCatching {exchange.sendResponseHeaders(404,-1)}}finally{exchange.close()}}
   server.start()
+ }
+ internal suspend fun visibleTile(template:String,t:Tile,offline:Boolean):ByteArray?=runInterruptible(Dispatchers.IO) {
+  val disk=path(template,t)
+  if(Files.isRegularFile(disk)) return@runInterruptible Files.readAllBytes(disk)
+  val key=template to t
+  synchronized(rasterCache) {rasterCache[key]}?.let {return@runInterruptible it}
+  if(offline) return@runInterruptible null
+  val url=template.replace("{z}",t.z.toString()).replace("{x}",t.x.toString()).replace("{y}",t.y.toString())
+  val request=HttpRequest.newBuilder(URI(url)).timeout(java.time.Duration.ofSeconds(4))
+   .header("User-Agent","APRSERJ64/${AppVersion.value} (+${setting("services.source_url")})").build()
+  val response=client.send(request,HttpResponse.BodyHandlers.ofInputStream())
+  val bytes=response.body().use {it.readNBytes(2_000_001)}
+  check(response.statusCode()==200) {"Map server returned HTTP ${response.statusCode()}"}
+  check(bytes.size in 1..2_000_000 && response.headers().firstValue("content-type").orElse("").startsWith("image/")) {"Map server returned an invalid tile"}
+  synchronized(rasterCache) {rasterCache[key]=bytes}
+  bytes
  }
  fun download(tiles:List<Tile>) {
   if(running.value)return

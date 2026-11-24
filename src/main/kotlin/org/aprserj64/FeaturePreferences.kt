@@ -21,6 +21,7 @@ object FeaturePreferences {
   BeaconField("offline.enabled","Use downloaded base map only","false",SettingKind.BOOLEAN),
   BeaconField("offline.maximum_tiles","Maximum tiles per download","1000",SettingKind.INTEGER),
   BeaconField("offline.maximum_megabytes","Offline tile storage budget (MB)","1024",SettingKind.INTEGER),
+  BeaconField("weather.units","Weather units","metric",choices=listOf("metric","us")),
   BeaconField("weather.enabled","Fetch weather alerts","false",SettingKind.BOOLEAN),
   BeaconField("weather.alerts_url","GeoJSON alert service URL","https://api.weather.gov/alerts/active?point={lat},{lon}"),
   BeaconField("weather.refresh_seconds","Alert refresh interval (seconds)","300",SettingKind.INTEGER),

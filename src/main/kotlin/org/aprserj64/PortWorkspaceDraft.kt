@@ -91,9 +91,11 @@ internal class PortWorkspaceDraft(settings: Properties, ports: List<Properties>,
     fun set(id: String, key: String, value: String)=change {devices.first {it.id==id}.values[key]=value}
     fun profile(port: PortDraft, protocol: String)=change {
         val seed=PortPreferences.defaults(protocol).entriesMap()
-        val keep=setOf("name","enabled","device","endpoint","baud","transport")
+        val keep=setOf("name","enabled","device","endpoint","baud","transport","notes","frequency_mhz",
+            "transmit","beacon_path","message_path")
         seed.filterKeys {it !in keep}.forEach {(key,value)->port.values[key]=value}
-        if(protocol=="AGW") port.values["transport"]="tcp"
+        if(protocol=="AGW" || protocol in PortPreferences.services) port.values["transport"]="tcp"
+        else if(protocol!="Simply(KISS)" && port.values["transport"]=="ble") port.values["transport"]="serial"
     }
     fun useGps(port: PortDraft, enable: Boolean=false)=change {
         port.values["provides_nmea"]="true";if(enable) port.values["enabled"]="true"
@@ -129,11 +131,12 @@ internal class PortWorkspaceDraft(settings: Properties, ports: List<Properties>,
     fun issues(): List<String> = buildList {
         if(devices.map {it.name}.distinct().size!=devices.size) add("Give each port a unique name.")
         devices.forEach {p->
-            if(p.enabled && p.values["transport"]=="serial" && p.values["device"].isNullOrBlank()) add("${p.name}: choose a serial device.")
+            if(p.enabled && p.values["transport"] in PortPreferences.comTransports && p.values["device"].isNullOrBlank()) add("${p.name}: choose a serial device.")
+            if(p.enabled && p.values["transport"]=="ble" && p.values["device"].isNullOrBlank()) add("${p.name}: enter a Bluetooth LE address.")
             if(p.enabled && p.values["transport"]=="tcp" && p.values["endpoint"].isNullOrBlank()) add("${p.name}: enter a TCP host and port.")
             try {PortConfig(p.values.properties())} catch(_: Exception) {if(none {it.startsWith(p.name+":")}) add("${p.name}: check the connection, paths, commands and numeric settings.")}
         }
-        devices.filter {it.enabled && it.values["transport"]=="serial" && !it.values["device"].isNullOrBlank()}
+        devices.filter {it.enabled && it.values["transport"] in PortPreferences.comTransports && !it.values["device"].isNullOrBlank()}
             .groupBy {it.values["device"]!!.uppercase()}.filterValues {it.size>1}.forEach {(device,ports)->add("$device is assigned to ${ports.joinToString {it.name}}. Use one owner per device.")}
         if(values["position.source"]=="port" && devices.none {it.name==values["position.port_name"] && (it.protocol=="NMEA" || it.values["provides_nmea"]=="true")})
             add("Choose a GPS source, or explicitly select fixed position.")

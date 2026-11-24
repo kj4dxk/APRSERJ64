@@ -8,6 +8,9 @@ import org.tomlj.TomlTable
 
 object PortPreferences {
     val protocols=listOf("Weather","NMEA","Simply(KISS)","KISS","AGW","KWD700(KISS)","KWD700(RO+GPS)","KWD710(APRS)","KWD710(Pkt)","CONVerse","TEXT","FTM350v1.3(RO)","CWOP","Dummy","IS-Server","Local-Server","UDP-Listen","Syslog-UDP")
+    val kissProtocols=setOf("Simply(KISS)","KISS","KWD700(KISS)")
+    val comTransports=setOf("serial","spp")
+    val transports=listOf("serial","spp","ble","tcp")
     val services=setOf("CWOP","Dummy","IS-Server","Local-Server","UDP-Listen","Syslog-UDP")
     val readOnly=setOf("Weather","NMEA","KWD700(RO+GPS)","FTM350v1.3(RO)")
     val nmeaProtocols=setOf("NMEA","TEXT","CONVerse","KWD700(RO+GPS)","KWD710(APRS)","KWD710(Pkt)","FTM350v1.3(RO)")
@@ -18,7 +21,7 @@ object PortPreferences {
         BeaconField("frequency_mhz","Radio frequency reminder (MHz)",""),
         BeaconField("enabled","Enabled","true",b),
         BeaconField("protocol","Protocol","Simply(KISS)",choices=protocols),
-        BeaconField("transport","Connection","serial",choices=listOf("serial","tcp")),
+        BeaconField("transport","Connection","serial",choices=transports),
         BeaconField("device","Serial device (e.g. COM3)",""),
         BeaconField("endpoint","TCP host:port",""),
         BeaconField("baud","Serial baud","9600",i),
@@ -107,7 +110,7 @@ object PortPreferences {
         ports.forEach {PortConfig(it)}
         val names=ports.map {it.getProperty("name")}.toSet()
         ports.forEach {require(PortConfig(it).list("digi_outputs").all {name->name in names})}
-        val serial=ports.filter {it.getProperty("enabled").toBoolean() && it.getProperty("transport")=="serial"}.map {it.getProperty("device").uppercase()}
+        val serial=ports.filter {it.getProperty("enabled").toBoolean() && it.getProperty("transport") in comTransports}.map {it.getProperty("device").uppercase()}
         require(serial.distinct().size==serial.size) {"A serial device can belong to only one enabled port"}
     }
     fun validateAll(values: Properties, ports: List<Properties>, objects: List<Properties>) {
@@ -116,7 +119,7 @@ object PortPreferences {
             it.getProperty("name")==values.getProperty("position.port_name") && (it.getProperty("protocol")=="NMEA" || it.getProperty("provides_nmea").toBoolean())
         }) {"Select a named NMEA-capable port"}
         if(values.getProperty("position.source")=="gps_serial") require(ports.none {
-            it.getProperty("enabled").toBoolean() && it.getProperty("transport")=="serial" &&
+            it.getProperty("enabled").toBoolean() && it.getProperty("transport") in comTransports &&
                 (values.getProperty("position.serial_port").isBlank() || it.getProperty("device").equals(values.getProperty("position.serial_port"),ignoreCase=true))
         }) {"Use a named GPS port instead of opening the serial device twice"}
         val names=ports.map {it.getProperty("name")}.toSet()
@@ -131,18 +134,34 @@ class PortConfig(val values: Properties) {
     fun number(key: String)=text(key).toInt()
     fun list(key: String)=Json.parseToJsonElement(text(key)).jsonArray.map {it.jsonPrimitive.content}
     val name=text("name");val protocol=text("protocol")
+    val connection: String
+        get() {
+            val transport=text("transport")
+            val label=when(transport) {
+                "serial" -> "Serial"
+                "spp" -> "Bluetooth Classic SPP"
+                "ble" -> "Bluetooth LE"
+                else -> "TCP"
+            }
+            val endpoint=text(if(transport=="tcp") "endpoint" else "device")
+            val channel=if(protocol in PortPreferences.kissProtocols) " · KISS channel ${number("channel")}"
+                else if(protocol=="AGW") " · AGW radio ${number("channel")}" else ""
+            return "$label · $endpoint · $protocol$channel"
+        }
+    val gateFilter=PacketFilter(text("gate_filter"))
     val isRf=protocol !in PortPreferences.services && protocol !in listOf("NMEA","Weather")
     val canTransmit=flag("transmit") && protocol !in PortPreferences.readOnly
     fun path(key: String)=text(key).split(',').map {it.trim()}.filter {it.isNotEmpty()}
     init {
         require(name.isNotBlank() && name.length<=64 && protocol in PortPreferences.protocols)
-        require(text("transport") in listOf("serial","tcp"))
+        require(text("transport") in PortPreferences.transports)
         if(flag("enabled")) {
-            if(text("transport")=="serial") require(text("device").isNotBlank())
+            if(text("transport") in PortPreferences.comTransports) require(text("device").isNotBlank())
+            else if(text("transport")=="ble") require(text("device").matches(Regex("(?i)([0-9a-f]{2}[:-]){5}[0-9a-f]{2}|[0-9a-f]{12}"))) {"Enter the BLE device address"}
             else {require(text("endpoint").contains(':'));AprsEndpoint.parse(text("endpoint"))}
         }
         require(protocol!="AGW" && protocol !in PortPreferences.services || text("transport")=="tcp")
-        PacketFilter(text("gate_filter"))
+        require(text("transport")!="ble" || protocol=="Simply(KISS)") {"Bluetooth LE uses Simply(KISS)"}
         require(number("service_max_clients") in 1..32 && number("service_heartbeat_seconds") in 5..120)
         require(text("agw_user").length<=255 && text("agw_password").length<=255)
         if(protocol=="CWOP" && flag("enabled"))require(text("service_call").matches(Regex("[A-Z0-9]{3,9}")))

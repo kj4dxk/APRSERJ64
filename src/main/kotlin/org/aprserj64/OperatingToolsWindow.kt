@@ -11,6 +11,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.aprsfoundation.core.*
 import java.time.Instant
 
@@ -50,7 +52,8 @@ import java.time.Instant
  var zoomMin by remember {mutableStateOf("10")};var zoomMax by remember {mutableStateOf("13")}
  var plan by remember {mutableStateOf<List<Tile>>(emptyList())}
  fun send(peer:String,text:String){scope.launch {result=runCatching {model.send(peer,text);"Queued to $peer; see Messages for delivery"}.getOrElse {"Unable to queue: check callsigns and message length"}}}
- Window(icon=AppIcon.window,onCloseRequest=dismiss,title="Tools",state=rememberWindowState(width=1100.dp,height=800.dp)) {
+ val bounds=remember {windowBounds(1100,800)}
+ Window(icon=AppIcon.window,onCloseRequest=dismiss,title="Tools",state=rememberWindowState(position=bounds.composePosition,width=bounds.width.dp,height=bounds.height.dp)) {
   LaunchedEffect(initialTab,requestId) {tab=initialTab;result="";window.toFront();window.requestFocus()}
   MaterialTheme(colors=MaterialTheme.colors) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
    Row(Modifier.weight(1f)) {
@@ -64,11 +67,12 @@ import java.time.Instant
     "Frequency","Platforms","Email"->{AdditionalTools(model,tab);if(tab=="Frequency")FrequencyEditor(model)}
     "Station","Radio DX","Direction finding"->TacticalTools(model,selected,tab)
     "Weather"->{
+     val weatherUnits=preferences.getProperty("weather.units","metric")
+     ChoiceMenu("Weather units",weatherUnits,listOf("metric" to "Metric","us" to "US customary")) {model.updateFeature("weather.units",it)}
      HelpText("Received APRS weather",fontSize=20.sp)
      weather.values.sortedBy {it.call}.forEach {w->
       HelpText("${w.call} · ${Instant.ofEpochMilli(w.time)}",color=MaterialTheme.colors.primary)
-      fun f(n:Double?)=n?.let {"%.1f".format(it)} ?: "—"
-      HelpText("${f(w.temperatureC)} °C · wind ${w.windDegrees ?: "—"}° ${f(w.windKph)} km/h · gust ${f(w.gustKph)} km/h · RH ${w.humidity ?: "—"}% · ${f(w.pressureHpa)} hPa · rain 1h ${f(w.rainHourMm)} mm / 24h ${f(w.rainDayMm)} mm")
+      HelpText(WeatherDisplay.from(weatherUnits).report(w))
       Divider()
      }
      if(weather.isEmpty())HelpText("No weather packets received yet.")
@@ -104,6 +108,18 @@ import java.time.Instant
     }
     "Tracks"->{
      HelpText("Automatic CSV: ${preferences.getProperty("logging.csv")} · GPX: ${preferences.getProperty("logging.gpx")}. Configure under Settings → Track logging.")
+     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+      listOf("Open latest GPX","Save latest GPX").forEach {label->
+       HelpButton(UiHelp.action(label),enabled=model.account.value.isNotBlank(),onClick={scope.launch {
+        result=runCatching {
+         val save=label.startsWith("Save")
+         val path=model.archive.latestGpx(model.account.value,save)
+         if(!save) withContext(Dispatchers.IO) {java.awt.Desktop.getDesktop().open(path.toFile())}
+         if(save) "Saved $path" else "Opened $path"
+        }.getOrElse {it.message ?: "Unable to access recording"}
+       }}) {HelpText(label)}
+      }
+     }
      if(archiveStatus.isNotBlank())HelpText(archiveStatus)
      if(dropped>0)HelpText("$dropped packets omitted from history because the input queue filled")
      HelpField(UiHelp.field("Station or object name"),call,{call=it.uppercase()},label={HelpText("Station or object name")},singleLine=true)
@@ -113,6 +129,22 @@ import java.time.Instant
      HelpButton(UiHelp.action("Send position in message"),onClick={scope.launch {val point=model.archive.track(call).lastOrNull();if(point==null) result="No recorded position" else send(message,"$call ${"%.5f".format(java.util.Locale.US,point.latitude)},${"%.5f".format(java.util.Locale.US,point.longitude)}")}}){HelpText("Send position in message")}
     }
     "Offline"->{
+     val localMap by model.imports.localMap.collectAsState()
+     val mapStatus by model.imports.localMapStatus.collectAsState()
+     var osmPath by remember {mutableStateOf(preferences.getProperty("imports.osm_file"))}
+     Row(horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
+      val bundled=preferences.getProperty("imports.bundled_osm").toBoolean()
+      HelpCheckbox(UiHelp.action("Show bundled Boston map"),bundled,{model.updateFeature("imports.bundled_osm",it.toString())})
+      HelpText("Show bundled Boston map")
+      HelpTextButton(UiHelp.action("Center on local map"),onClick={model.beaconCenter.value=localMap?.center},enabled=localMap!=null) {HelpText("Center on local map")}
+     }
+     HelpField(UiHelp.field("Local OpenStreetMap XML file"),osmPath,{osmPath=it},label={HelpText("Local OpenStreetMap XML file")},singleLine=true,modifier=Modifier.fillMaxWidth(),fill=true)
+     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+      HelpOutlinedButton(UiHelp.action("Load local map"),enabled=osmPath.isNotBlank(),onClick={model.updateFeature("imports.osm_file",osmPath.trim())}) {HelpText("Load local map")}
+      HelpTextButton(UiHelp.action("Remove local map file"),onClick={osmPath="";model.updateFeature("imports.osm_file","")},enabled=preferences.getProperty("imports.osm_file").isNotBlank()) {HelpText("Remove local map file")}
+     }
+     if(mapStatus.isNotBlank()) HelpText(mapStatus)
+     Divider()
      HelpText("Download a base-map area",fontSize=20.sp)
      HelpText("Uses your configured map provider. Choose a small region and preview the tile count before downloading.")
      LocationField("Southwest corner",south,west) {a,b->south=a;west=b;plan=emptyList()}
@@ -125,7 +157,7 @@ import java.time.Instant
      }
      HelpText(download)
      Row {HelpCheckbox(UiHelp.action("Use downloaded base map only"),preferences.getProperty("offline.enabled").toBoolean(),{model.updateFeature("offline.enabled",it.toString())});HelpText("Use downloaded base map only",Modifier.padding(top=12.dp))}
-     HelpText("Offline mode disables network overlays. Areas or zoom levels not downloaded remain blank.")
+     HelpText("Offline mode disables network overlays. Downloaded tiles and enabled local map files remain available.")
     }
     "Groups"->{
      val memberships by model.groups.entries.collectAsState();val groupReplies by model.groups.replies.collectAsState()

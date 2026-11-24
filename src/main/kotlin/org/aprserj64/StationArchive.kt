@@ -70,6 +70,14 @@ class StationArchive(private val home: Path,parent: CoroutineScope,private val s
  suspend fun track(call: String): List<AprsFix> = withContext(Dispatchers.IO) {synchronized(lock) {
   db.prepareStatement("SELECT time,lat,lon FROM tracks WHERE call=? ORDER BY id DESC LIMIT ?").use {s->s.setString(1,call);s.setInt(2,setting("history.track_points").toInt());s.executeQuery().use {r->buildList {while(r.next()) add(AprsFix(r.getDouble(2),r.getDouble(3),r.getLong(1)))}.reversed()}}
  }}
+ suspend fun latestGpx(call: String, save: Boolean): Path = withContext(Dispatchers.IO) {synchronized(lock) {
+  val source=requireNotNull(trackLog.latestGpx(call)) {"No GPX recording for $call"}
+  if(!save) source else {
+   val folder=home.resolve("exports");Files.createDirectories(folder)
+   val target=Files.createTempFile(folder,"gps-track-",".gpx")
+   Files.copy(source,target,StandardCopyOption.REPLACE_EXISTING)
+  }
+ }}
  suspend fun export(call: String,format: String): Path {
   val points=track(call);require(points.isNotEmpty()) {"No recorded positions for this station"}
   return withContext(Dispatchers.IO) {

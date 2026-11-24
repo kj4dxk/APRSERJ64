@@ -10,13 +10,32 @@ data class ImportedWaypoint(val name:String,val fix:AprsFix)
 data class GpxContent(val shapes:List<TacticalGeometry>,val waypoints:List<ImportedWaypoint>)
 class MapImports(private val model:AppModel,private val scope:CoroutineScope) {
  val content=MutableStateFlow(GpxContent(emptyList(),emptyList()));val status=MutableStateFlow("")
+ internal val localMap=MutableStateFlow<LocalOsmMap?>(null)
+ val localMapStatus=MutableStateFlow("")
+ private var mapJob:Job?=null
  private var job:Job?=null
- fun reload(){job?.cancel();job=scope.launch(Dispatchers.IO){
+ fun reload(){
+  refreshLocalMap()
+  job?.cancel();job=scope.launch(Dispatchers.IO){
   val files=names(model.settings.getProperty("imports.gpx_files"));val limit=model.settings.getProperty("imports.maximum_points").toInt()
   runCatching {val data=files.map {parse(model.directory.resolve(it),limit)};require(data.sumOf {it.waypoints.size+it.shapes.sumOf {s->s.shape.points.size}}<=limit){"Too many GPX points"};GpxContent(data.flatMap {it.shapes},data.flatMap {it.waypoints})}
    .onSuccess {content.value=it;status.value="${it.shapes.size} tracks/routes, ${it.waypoints.size} waypoints"}
    .onFailure {content.value=GpxContent(emptyList(),emptyList());status.value=it.message?:"GPX import failed"}
  }}
+ private fun refreshLocalMap() {
+  mapJob?.cancel()
+  val path=model.settings.getProperty("imports.osm_file")
+  val bundled=model.settings.getProperty("imports.bundled_osm").toBoolean()
+  mapJob=scope.launch(Dispatchers.IO) {
+   val result=runCatching {
+    if(path.isNotBlank()) OsmMaps.imported(model.directory.resolve(path))
+    else if(bundled) OsmMaps.bundled() else null
+   }
+   ensureActive()
+   localMap.value=result.getOrNull()
+   localMapStatus.value=result.fold({if(it==null) "" else "Local map loaded"},{it.message ?: "OSM import failed"})
+  }
+ }
  companion object {
   fun parse(path:Path,limit:Int):GpxContent {
    require(Files.size(path)<=20_000_000){"GPX file exceeds 20 MB"}

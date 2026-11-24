@@ -24,6 +24,8 @@ object AdvancedPreferences {
   BeaconField("satellites.names","Satellite names to track (empty: first 20)","[]",SettingKind.STRINGS),
   BeaconField("satellites.maximum_age_days","Maximum TLE age (days)","14",SettingKind.INTEGER),
   BeaconField("satellites.prediction_hours","Pass prediction window (hours)","24",SettingKind.INTEGER),
+  BeaconField("imports.bundled_osm","Show bundled Boston map","false",SettingKind.BOOLEAN),
+  BeaconField("imports.osm_file","Local OpenStreetMap XML file",""),
   BeaconField("imports.gpx_files","GPX files to display (one per line)","[]",SettingKind.STRINGS),
   BeaconField("imports.maximum_points","Maximum imported points","20000",SettingKind.INTEGER),
   BeaconField("platforms.entries","Platform overrides: destination-prefix=name","[]",SettingKind.STRINGS),

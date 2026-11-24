@@ -22,6 +22,7 @@ object BeaconPreferences {
         BeaconField("position.latitude","Fixed latitude","28.536725",d),
         BeaconField("position.longitude","Fixed longitude","-81.242932",d),
         BeaconField("position.altitude_meters","Fixed altitude (meters)","0",d),
+        BeaconField("position.fixed_confirmed","Use these coordinates for fixed-position beacons","false",b),
         BeaconField("position.gps_endpoint","GPS network host:port",ServicePreferences.defaultText("gps_defaults.tcp_endpoint")),
         BeaconField("position.gpsd_endpoint","GPSd host:port",ServicePreferences.defaultText("gps_defaults.gpsd_endpoint")),
         BeaconField("position.serial_port","GPS serial port (blank: use only attached port)",""),
@@ -43,7 +44,7 @@ object BeaconPreferences {
         BeaconField("beacon.distance_meters","Maximum distance (meters)","1609.344",d),
         BeaconField("beacon.moving_knots","Moving speed threshold (knots)","0.5",d),
         BeaconField("beacon.on_reconnect","Beacon on reconnect","true",b),
-        BeaconField("beacon.on_gps_change","Beacon on GPS fix gained / lost","true",b),
+        BeaconField("beacon.on_gps_change","Beacon when a GPS fix becomes available","true",b),
         BeaconField("beacon.recenter_after_transmit","Recenter map after transmitting","false",b),
         BeaconField("beacon.symbol_table","Symbol table or overlay","/"),
         BeaconField("beacon.symbol","Symbol code","-"),
@@ -141,7 +142,9 @@ class BeaconConfiguration(val values: Properties, val entities: List<Properties>
     val timing=BeaconTiming(integer("beacon.minimum_seconds"),integer("beacon.maximum_seconds"),bool("beacon.time_only"),
         bool("beacon.start_stop"),number("beacon.heading_degrees"),number("beacon.forecast_error_meters"),number("beacon.distance_meters"),number("beacon.moving_knots"),bool("beacon.smart"),number("beacon.smart_slow_knots"),number("beacon.smart_fast_knots"),
         integer("beacon.smart_fast_seconds"),number("beacon.smart_turn_slope"),integer("beacon.smart_turn_seconds"))
-    val format=BeaconFormat(text("beacon.symbol_table").single(),text("beacon.symbol").single(),BeaconTimestamp.valueOf(text("beacon.timestamp").uppercase()),
+    private val symbolTable=text("beacon.symbol_table").singleOrNull()?.takeIf {it in "/\\0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"}
+        ?: throw IllegalArgumentException("Use /, \\, A–Z or 0–9 for Symbol table or overlay. The APRS symbol goes in Symbol code.")
+    val format=BeaconFormat(symbolTable,text("beacon.symbol").single(),BeaconTimestamp.valueOf(text("beacon.timestamp").uppercase()),
         bool("beacon.compressed"),bool("beacon.course_speed"),bool("beacon.altitude"),integer("beacon.precision"),bool("beacon.messaging"),bool("beacon.include_reason"),text("beacon.status_tag"),bool("beacon.mic_e"))
     val comments=Json.parseToJsonElement(text("beacon.comments")).jsonArray.map {it.jsonPrimitive.content}
     init {

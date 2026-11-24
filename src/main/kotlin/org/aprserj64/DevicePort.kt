@@ -10,11 +10,14 @@ import java.net.InetSocketAddress
 import java.net.SocketTimeoutException
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.aprsfoundation.core.*
 
-data class PortStatus(val name: String, val detail: String, val received: Long=0, val transmitted: Long=0, val dropped: Long=0)
+data class PortStatus(val name: String, val detail: String, val received: Long=0, val transmitted: Long=0, val dropped: Long=0,
+    val connection: String="", val modemSettings: List<String> = emptyList(), val connected: Boolean=false,
+    val canQueryModem: Boolean=false)
 
 /** One serial/TCP owner. No disconnected transmit queue; reconnect creates fresh decoders. */
 class DevicePort(val config: PortConfig, parent: CoroutineScope,
@@ -22,8 +25,12 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
                  private val nmea: (GpsReading)->Unit,
                  private val transmitted: (RadioPacket)->Unit = {}, private val weather:(AprsWeather)->Unit = {}) : AutoCloseable {
     private val scope=CoroutineScope(parent.coroutineContext+SupervisorJob(parent.coroutineContext[Job]))
-    val status=MutableStateFlow(PortStatus(config.name,"Opening"))
+    val status=MutableStateFlow(PortStatus(config.name,"Opening",connection=config.connection))
     private val writes=Mutex()
+    private val lifecycle=Any()
+    @Volatile private var stopped=false
+    private var opened=false
+    @Volatile private var codec: AprsTnc?=null
     @Volatile private var resource: AutoCloseable?=null
     @Volatile private var output: OutputStream?=null
     @Volatile var ready=false;private set
@@ -33,36 +40,109 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
     private var service:ServicePort?=null
     val gpsSky=MutableStateFlow(GpsSky())
     init {scope.launch(Dispatchers.IO) {
-        while(isActive) {
-            try {session()} catch(cancelled: CancellationException) {throw cancelled}
-            catch(_: Exception) {status.value=status.value.copy(detail="Disconnected; retrying")}
-            finally {ready=false;output=null;expected?.second?.cancel();expected=null;runCatching {resource?.close()};resource=null;nmea(GpsReading(detail="Port disconnected"))}
-            delay(config.number("reconnect_seconds")*1000L)
+        var attempt=0
+        while(isActive && !stopped) {
+            opened=false
+            status.update {it.copy(detail="Opening",connected=false,canQueryModem=false,modemSettings=emptyList())}
+            var failure=""
+            try {session()} catch(timeout: TimeoutCancellationException) {failure="Initialization timed out"}
+            catch(cancelled: CancellationException) {throw cancelled}
+            catch(error: Exception) {failure=error.message?.take(140).orEmpty()}
+            finally {
+                ready=false
+                release()
+                writes.withLock {output=null;codec=null}
+                expected?.second?.cancel();expected=null
+                if(!stopped) nmea(GpsReading(detail="Port disconnected"))
+            }
+            if(stopped) break
+            if(opened) attempt=0
+            val wait=MobileRadio.retrySeconds(attempt)
+            attempt=(attempt+1).coerceAtMost(6)
+            val reason=failure.ifBlank {"Disconnected"}
+            status.update {it.copy(detail="$reason · retry in ${wait}s",connected=false,canQueryModem=false)}
+            delay(wait*1000L)
         }
     }}
+    private fun own(value: AutoCloseable) = synchronized(lifecycle) {
+        if(stopped) {
+            value.close()
+            throw CancellationException("Port closed")
+        }
+        resource=value
+    }
+    private fun release() = synchronized(lifecycle) {
+        runCatching {resource?.close()}
+        resource=null
+    }
+    private fun connected(detail: String) = synchronized(lifecycle) {
+        if(stopped) throw CancellationException("Port closed")
+        opened=true
+        ready=true
+        status.update {it.copy(detail=detail,connected=true,canQueryModem=isKiss())}
+    }
+    suspend fun queryModem(): Boolean = withContext(Dispatchers.IO) {
+        writes.withLock {
+            val session=codec?.takeIf {ready && isKiss()} ?: return@withLock false
+            status.update {it.copy(modemSettings=emptyList())}
+            try {
+                session.mobilinkdSetupQueries().forEach(::raw)
+                true
+            } catch(error: java.io.IOException) {
+                ready=false
+                release()
+                false
+            }
+        }
+    }
     fun replyTo(recipient:String,packet:RadioPacket):Boolean {
         if(!ready || !config.canTransmit)return false
         val sent=runCatching {service?.send(packet,recipient)==true}.getOrDefault(false)
-        if(sent){transmitted(packet);status.value=status.value.copy(transmitted=status.value.transmitted+1)}
+        if(sent) recordWrite(packet)
         return sent
+    }
+    private fun recordWrite(value: RadioPacket) {
+        status.update {it.copy(transmitted=it.transmitted+1)}
+        runCatching {transmitted(value)}
     }
     private suspend fun session()=coroutineScope {
         if(config.protocol in PortPreferences.services) {
-            val endpoint=ServicePort(config,this,{value->status.value=status.value.copy(received=status.value.received+1);if(!packet(value))status.value=status.value.copy(dropped=status.value.dropped+1)},{detail->ready=true;status.value=status.value.copy(detail=detail)})
-            service=endpoint;resource=endpoint
+            val endpoint=ServicePort(config,this,{value->status.update {it.copy(received=it.received+1)};if(!packet(value))status.update {it.copy(dropped=it.dropped+1)}},::connected)
+            service=endpoint;own(endpoint)
             try {endpoint.run()}finally{endpoint.close();service=null};return@coroutineScope
         }
         val input: InputStream
-        if(config.text("transport")=="serial") {
-            val port=SerialPort.getCommPort(config.text("device"));resource=AutoCloseable {port.closePort()}
+        if(config.text("transport") in PortPreferences.comTransports) {
+            val port=SerialPort.getCommPort(config.text("device"))
             port.setComPortParameters(config.number("baud"),8,SerialPort.ONE_STOP_BIT,SerialPort.NO_PARITY)
             port.setFlowControl(SerialPort.FLOW_CONTROL_DISABLED)
             port.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING,1000,1000)
-            check(port.openPort());input=port.inputStream;output=port.outputStream
+            val handle=AutoCloseable {port.closePort()}
+            own(handle)
+            check(port.openPort()) {"Unable to open ${config.text("device")}"}
+            own(handle)
+            input=port.inputStream
+            output=port.outputStream
+        } else if(config.text("transport")=="ble") {
+            val bridge=WindowsBleKiss(config.text("device"))
+            own(bridge)
+            bridge.awaitReady()
+            input=bridge.input
+            output=bridge.output
         } else {
-            val endpoint=AprsEndpoint.parse(config.text("endpoint"));val socket=Socket();resource=socket
+            val endpoint=AprsEndpoint.parse(config.text("endpoint"));val socket=Socket();own(socket)
             socket.connect(InetSocketAddress(endpoint.host,endpoint.port),5000);socket.soTimeout=1000
             input=socket.getInputStream();output=socket.getOutputStream()
+        }
+        codec=when {
+            isKiss()->AprsTnc(AprsTnc.Protocol.KISS,config.number("channel"))
+            config.protocol=="AGW"->AprsTnc(AprsTnc.Protocol.AGW,config.number("channel"))
+            config.protocol=="TEXT"->AprsTnc(AprsTnc.Protocol.TNC2)
+            else->null
+        }?.apply {
+            diagnostic={report->status.update {old->
+                old.copy(modemSettings=old.modemSettings.filterNot {it.substringBefore(':')==report.substringBefore(':')}+report)
+            }}
         }
         val reader=async(Dispatchers.IO) {read(input)}
         try {
@@ -74,16 +154,16 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
                     config.text("agw_password").toByteArray(Charsets.US_ASCII).copyInto(credentials,255)
                     raw(Agw.encode(config.number("channel"),'P',credentials))
                 }
-                if(config.protocol=="AGW") raw(Agw.encode(config.number("channel"),'k'))
+                codec?.openCommand()?.let(::raw)
                 if(isKiss()) listOf("kiss_txdelay","kiss_persistence","kiss_slot","kiss_tail","kiss_duplex").forEachIndexed {index,key->
                     if(config.number(key)>=0) raw(Kiss.command(config.number("channel"),index+1,byteArrayOf(config.number(key).toByte())))
                 }
             }
-            ready=true;status.value=status.value.copy(detail="Connected")
+            connected("Connected")
             reader.await()
-        } finally {ready=false;runCatching {resource?.close()};reader.cancelAndJoin()}
+        } finally {ready=false;release();reader.cancelAndJoin()}
     }
-    private fun isKiss()=config.protocol in listOf("Simply(KISS)","KISS","KWD700(KISS)")
+    private fun isKiss()=config.protocol in PortPreferences.kissProtocols
     private fun raw(bytes: ByteArray) {checkNotNull(output).apply {write(bytes);flush()}}
     private suspend fun command(command: String) {
         val parts=command.split('|',limit=2);val response=parts.getOrNull(1)
@@ -99,7 +179,7 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
         if(!ready || !config.canTransmit) return@withLock false
         if(config.protocol in PortPreferences.services) {
             val sent=runCatching {service?.send(value)==true}.getOrDefault(false)
-            if(sent){transmitted(value);status.value=status.value.copy(transmitted=status.value.transmitted+1)}
+            if(sent) recordWrite(value)
             return@withLock sent
         }
         if(!RadioPacket.address(value.source) || !RadioPacket.address(value.destination) || value.path.size>8 ||
@@ -113,9 +193,7 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
         try {
             require(value.path.none {it.startsWith('q') || it.trimEnd('*') in listOf("TCPIP","TCPXX")} && value.payload.length<=256)
             when {
-                isKiss()->raw(Kiss.encode(value,config.number("channel")))
-                config.protocol=="AGW"->raw(Agw.packet(config.number("channel"),value))
-                config.protocol=="TEXT"->raw((value.line()+"\r\n").toByteArray(Charsets.US_ASCII))
+                codec!=null->raw(checkNotNull(codec).encode(value))
                 else->{
                     // Command-mode TNCs cannot preserve repeated address bits. Do not fake a digi.
                     require(value.usedHops==0 && value.payload.all {it.code in 32..126})
@@ -128,24 +206,25 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
                     if(config.protocol=="KWD710(APRS)") {command("TC 1\r");command("TC 1\r")}
                 }
             }
-            transmitted(value);lastTransmit=now;transmissions.addLast(now);status.value=status.value.copy(transmitted=status.value.transmitted+1);true
+            lastTransmit=System.currentTimeMillis()
+            transmissions.addLast(lastTransmit)
+            recordWrite(value)
+            true
         } catch(cancelled: CancellationException) {throw cancelled}
-        catch(_: Exception) {ready=false;runCatching {resource?.close()};status.value=status.value.copy(detail="Transmit failed; reconnecting");false}
+        catch(_: Exception) {ready=false;release();status.update {it.copy(detail="Transmit failed; reconnecting",connected=false,canQueryModem=false)};false}
     } }
     private suspend fun read(input: InputStream) {
-        val kiss=KissDecoder(config.number("channel").coerceAtMost(15));val agw=AgwDecoder();val text=TncTextDecoder();val gps=NmeaPositionDecoder();val diagnostics=GpsDiagnostics()
+        val decoder=codec;val text=TncTextDecoder();val gps=NmeaPositionDecoder();val diagnostics=GpsDiagnostics()
         val line=StringBuilder();val response=StringBuilder();var overflow=false;val buffer=ByteArray(512)
         var lastWaiting: CompletableDeferred<Unit>?=null
-        suspend fun received(p: RadioPacket) {status.value=status.value.copy(received=status.value.received+1)
-            if(!packet(p)) status.value=status.value.copy(dropped=status.value.dropped+1)}
+        suspend fun received(p: RadioPacket) {status.update {it.copy(received=it.received+1)}
+            if(!packet(p)) status.update {it.copy(dropped=it.dropped+1)}}
         while(currentCoroutineContext().isActive) {
             val size=try {input.read(buffer)} catch(_: SocketTimeoutException) {continue} catch(_: SerialPortTimeoutException) {continue}
             if(size<0) return
             val bytes=buffer.copyOf(size)
-            if(isKiss() && ready) kiss.accept(bytes).forEach {received(it)}
-            else if(config.protocol=="AGW") agw.accept(bytes).filter {it.kind=='K' && it.port==config.number("channel")}.forEach {
-                if(it.data.isNotEmpty()) Ax25Ui.decode(it.data.drop(1).toByteArray())?.let {p->received(p)}
-            }
+            if(config.protocol=="AGW" || isKiss() && (ready || expected==null))
+                decoder?.receive(bytes)?.forEach {received(it)}
             if(!isKiss() && config.protocol!="AGW" || !ready || expected!=null) bytes.forEach {byte->
                 val c=(byte.toInt() and 255).toChar();response.append(c)
                 if(lastWaiting!==expected?.second) {response.clear();response.append(c);lastWaiting=expected?.second}
@@ -161,7 +240,11 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
                             diagnostics.accept(value,System.currentTimeMillis())?.let {gpsSky.value=it}
                             val fix=gps.accept(value,System.currentTimeMillis())
                             if(fix!=null) nmea(GpsReading(fix,true,"GPS fix")) else if(!gps.valid) nmea(GpsReading(detail="No GPS fix"))
-                        } else if(config.protocol!="NMEA") text.accept(value)?.let {received(it)}
+                        } else if(config.protocol!="NMEA") {
+                            val legacy=text.accept(value)
+                            val parsed=if(config.protocol=="TEXT") decoder?.receive((value+"\n").toByteArray(Charsets.ISO_8859_1))?.firstOrNull() else null
+                            (parsed ?: legacy)?.let {received(it)}
+                        }
                     }
                     line.clear();overflow=false
                 } else if(line.length<1024) line.append(c) else overflow=true
@@ -169,9 +252,15 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
         }
     }
     suspend fun shutdown() {
+        synchronized(lifecycle) {stopped=true;ready=false}
         val closing=scope.launch(Dispatchers.IO) {writes.withLock {if(output!=null) config.list("close_commands").forEach {command(it)}}}
         try {withTimeoutOrNull(2000) {closing.join()}}
         finally {close()}
     }
-    override fun close() {ready=false;runCatching {resource?.close()};scope.cancel()}
+    override fun close() {
+        synchronized(lifecycle) {stopped=true;ready=false}
+        scope.cancel()
+        release()
+        status.update {it.copy(detail="Disconnected",connected=false,canQueryModem=false)}
+    }
 }

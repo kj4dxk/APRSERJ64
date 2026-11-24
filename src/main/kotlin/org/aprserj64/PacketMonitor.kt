@@ -13,7 +13,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.aprsfoundation.core.RadioPacket
 
-data class TrafficEntry(val sequence: Long,val time: Long,val port: String,val direction: String,val packet: String,val satellite: Boolean,val duplicate:Boolean=false,val invalid:Boolean=false)
+data class TrafficEntry(val sequence: Long,val time: Long,val port: String,val direction: String,val packet: String,val satellite: Boolean,val duplicate:Boolean=false,val invalid:Boolean=false,val issue:String?=null)
 
 /** Bounded monitor plus optional receive-only TNC2 feed. Never accepts transmit input. */
 class PacketMonitor(private val directory: Path,private val parent: CoroutineScope): AutoCloseable {
@@ -61,8 +61,11 @@ class PacketMonitor(private val directory: Path,private val parent: CoroutineSco
         val key=packet?.let {"$direction:${it.key}"}
         val duplicate=key!=null && key in seen
         if(key!=null) {seen.remove(key);seen[key]=now;while(seen.size>capacity)seen.remove(seen.keys.first())}
-        val invalid=packet==null || packet.payload.firstOrNull() in listOf('!','=','/','@','`','\'') && org.aprsfoundation.core.AprsProtocol.parse(clean,now)==null
-        entries.value=(entries.value+TrafficEntry(++sequence,now,port,direction,clean,satellite,duplicate,invalid)).takeLast(capacity)
+        val position=org.aprsfoundation.core.AprsProtocol.parse(clean,now)
+        val table=position?.symbolTable
+        val issue=if(table!=null && table !in "/\\0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ") "Invalid symbol table or overlay '$table'" else null
+        val invalid=issue!=null || packet==null || packet.payload.firstOrNull() in listOf('!','=','/','@','`','\'') && position==null
+        entries.value=(entries.value+TrafficEntry(++sequence,now,port,direction,clean,satellite,duplicate,invalid,issue)).takeLast(capacity)
         if(direction=="RX") peers.forEach {if(!it.queue.trySend(clean).isSuccess) {it.close();peers.remove(it)}}
     }
     suspend fun export(snapshot: List<TrafficEntry>): Path=withContext(Dispatchers.IO) {

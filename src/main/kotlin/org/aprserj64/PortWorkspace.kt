@@ -99,7 +99,13 @@ private val DigiColor=Color(0xFFD3A7FF)
                         Box(Modifier.width(390.dp).fillMaxHeight().background(WorkspacePanel)) {
                             if(port!=null) PortInspector(draft,port,statuses.firstOrNull {it.name==draft.savedName(port.id)},
                                 {selected=draft.duplicate(port)}, {draft.remove(port.id);selected=draft.devices.firstOrNull()?.id;wiring=false},
-                                {wiring=!wiring}, {page="Object routes"})
+                                {wiring=!wiring}, {page="Object routes"},model::queryModem) {
+                                    if(!draft.dirty && draft.matchesBaseline(model.settings,model.ports,model.entities)) {
+                                        draft.set(port.id,"enabled",(!port.enabled).toString())
+                                        if(draft.issues().isEmpty() && model.savePreferences(draft.values.properties(),draft.objectProperties(),draft.portProperties())) draft.markSaved()
+                                        else {failure=draft.issues().firstOrNull() ?: model.error.value;draft.undo()}
+                                    }
+                                }
                             else HelpText("Select a port",Modifier.padding(24.dp))
                         }
                     }
@@ -204,7 +210,7 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
                     border=BorderStroke(if(p.id==selected?.id || target) 2.dp else 1.dp,if(target) DigiColor else if(p.id==selected?.id) ReceiveColor else Color(0xFF314650))) {
                     Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                         HelpText(p.name,fontWeight=FontWeight.Bold,maxLines=1)
-                        HelpText("${p.protocol} · ${if(p.values["transport"]=="serial") p.values["device"].orEmpty().ifBlank {"Choose device"} else p.values["endpoint"].orEmpty().ifBlank {"Enter address"}}",fontSize=11.sp,color=WorkspaceMuted,maxLines=1)
+                        HelpText("${p.protocol} · ${if(p.values["transport"]!="tcp") p.values["device"].orEmpty().ifBlank {"Choose device"} else p.values["endpoint"].orEmpty().ifBlank {"Enter address"}}",fontSize=11.sp,color=WorkspaceMuted,maxLines=1)
                         HelpText(if(draft.portChanged(p.id)) "Pending Apply · live: ${status?.detail ?: "not running"}" else if(!p.enabled) "Disabled" else status?.detail ?: "Not running",fontSize=11.sp,color=if(p.enabled && status?.detail=="Connected") ReceiveColor else WorkspaceMuted,maxLines=1)
                         if(status!=null) HelpText("RX ${status.received} · TX ${status.transmitted}",fontSize=10.sp,color=WorkspaceMuted)
                     }
@@ -275,10 +281,18 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
         catch(_: Exception) {scanError=true}
         catch(_: LinkageError) {scanError=true} finally {scanning=false}
     }}
-    LaunchedEffect(Unit) {refresh()}
+    val transport=values["transport"].orEmpty()
+    LaunchedEffect(transport) {if(transport in PortPreferences.comTransports) refresh()}
     if(values["protocol"]=="AGW" || values["protocol"] in PortPreferences.services) HelpText("TCP connection",color=WorkspaceMuted)
-    else ChoiceField("Connection",values["transport"].orEmpty(),listOf("serial","tcp")) {set("transport",it)}
-    if(values["transport"]=="serial") {
+    else {
+        val labels=linkedMapOf("serial" to "USB / COM serial","spp" to "Bluetooth Classic SPP (COM)","tcp" to "TCP")
+        if(values["protocol"]=="Simply(KISS)") labels["ble"]="Bluetooth LE KISS"
+        ChoiceField("Connection",labels[transport].orEmpty(),labels.values.toList()) {label->
+            set("transport",labels.entries.first {it.value==label}.key)
+        }
+    }
+    if(transport in PortPreferences.comTransports) {
+        if(transport=="spp") HelpText("Pair the TNC in Windows and select its outgoing COM port.",color=WorkspaceMuted)
         var menu by remember {mutableStateOf(false)}
         Row(verticalAlignment=Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) {
@@ -293,13 +307,64 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
         HelpField(UiHelp.field("Serial device"),values["device"].orEmpty(),{set("device",it.trim())},label={HelpText("Serial device")},placeholder={HelpText("COM3")},modifier=Modifier.fillMaxWidth(),singleLine=true,fill=true)
         if(scanError) HelpText("Device discovery unavailable. Enter the COM name manually.",fontSize=11.sp,color=WorkspaceMuted)
         HelpField(UiHelp.field("Serial baud"),values["baud"].orEmpty(),{set("baud",it)},label={HelpText("Serial baud")},modifier=Modifier.fillMaxWidth(),singleLine=true,fill=true)
+    } else if(transport=="ble") {
+        HelpField(UiHelp.field("Bluetooth LE address"),values["device"].orEmpty(),{set("device",it.trim())},
+            label={HelpText("Bluetooth LE address")},placeholder={HelpText("AA:BB:CC:DD:EE:FF")},modifier=Modifier.fillMaxWidth(),singleLine=true,fill=true)
+        AdvertisedTncPicker("Find Bluetooth LE devices","No Bluetooth LE devices found",
+            {WindowsBleKiss.discover().map {it.name.ifBlank {"Bluetooth LE device"} to it.address}}) {set("device",it)}
     } else HelpField(UiHelp.field("Host:port"),values["endpoint"].orEmpty(),{set("endpoint",it.trim())},label={HelpText("Host:port")},placeholder={HelpText("Enter the TNC or GPS address")},modifier=Modifier.fillMaxWidth(),singleLine=true,fill=true)
+    if(transport=="tcp" && values["protocol"] in PortPreferences.kissProtocols)
+        AdvertisedTncPicker("Find advertised KISS TNCs","No KISS TNC advertisements found",
+            {discoverNetworkTncs().map {it.name to it.endpoint}}) {set("endpoint",it)}
     if(values["protocol"]=="CWOP")HelpField(UiHelp.field("CWOP station identifier"),values["service_call"].orEmpty(),{set("service_call",it.uppercase())},label={HelpText("CWOP station identifier")},modifier=Modifier.fillMaxWidth(),singleLine=true,fill=true)
     if(values["protocol"] in rawRadioProtocols && values["protocol"]!="TEXT")
         HelpField(UiHelp.field(if(values["protocol"]=="AGW") "AGW radio number (starts at 0)" else "KISS channel (usually 0)"),values["channel"].orEmpty(),{set("channel",it)},label={HelpText(if(values["protocol"]=="AGW") "AGW radio number (starts at 0)" else "KISS channel (usually 0)")},modifier=Modifier.fillMaxWidth(),singleLine=true,fill=true)
 }
 
-@Composable private fun PortInspector(draft: PortWorkspaceDraft,port: PortDraft,status: PortStatus?,duplicate: ()->Unit,remove: ()->Unit,wire: ()->Unit,objects: ()->Unit) {
+@Composable private fun AdvertisedTncPicker(label: String, empty: String, discover: suspend ()->List<Pair<String,String>>, select: (String)->Unit) {
+    val scope=rememberCoroutineScope()
+    var results by remember {mutableStateOf<List<Pair<String,String>>>(emptyList())}
+    var searching by remember {mutableStateOf(false)}
+    var message by remember {mutableStateOf("")}
+    var menu by remember {mutableStateOf(false)}
+    Box {
+        HelpOutlinedButton(UiHelp.action(label),enabled=!searching,onClick={scope.launch {
+            searching=true;message=""
+            try {
+                results=discover()
+                if(results.isEmpty()) message=empty else menu=true
+            } catch(cancelled: CancellationException) {throw cancelled}
+            catch(_: Exception) {message="Device discovery unavailable"}
+            finally {searching=false}
+        }}) {HelpText(if(searching) "Searching…" else label)}
+        DropdownMenu(menu,{menu=false}) {
+            results.forEach {(name,endpoint)->
+                HelpMenuItem(UiHelp.action(name),onClick={select(endpoint);menu=false}) {
+                    HelpText("$name · $endpoint")
+                }
+            }
+        }
+    }
+    if(message.isNotEmpty()) HelpText(message,fontSize=11.sp,color=WorkspaceMuted)
+}
+
+@Composable private fun PortDiagnostics(status: PortStatus, queryModem: suspend (String)->Boolean) {
+    val scope=rememberCoroutineScope()
+    var queryState by remember(status.name,status.connected) {mutableStateOf("")}
+    HelpText(status.connection,fontSize=12.sp,color=WorkspaceMuted)
+    HelpText("${status.detail} · RX packets ${status.received} · TX writes ${status.transmitted}"+
+        (if(status.dropped>0) " · Dropped ${status.dropped}" else ""),fontSize=12.sp,color=WorkspaceMuted)
+    if(status.canQueryModem) {
+        HelpOutlinedButton(UiHelp.action("Read Mobilinkd audio and PTT settings"),onClick={scope.launch {
+            queryState=if(queryModem(status.name)) "Query written to modem · waiting for a setting report" else "Query could not be written"
+        }}) {HelpText("Read Mobilinkd audio and PTT settings")}
+        if(status.modemSettings.isNotEmpty()) HelpText("Modem reports · "+status.modemSettings.joinToString(" · "),fontSize=12.sp)
+        else if(queryState.isNotEmpty()) HelpText(queryState,fontSize=12.sp)
+        HelpText("An APRS message ACK is shown in Messages when received.",fontSize=11.sp,color=WorkspaceMuted)
+    }
+}
+
+@Composable private fun PortInspector(draft: PortWorkspaceDraft,port: PortDraft,status: PortStatus?,duplicate: ()->Unit,remove: ()->Unit,wire: ()->Unit,objects: ()->Unit,queryModem: suspend (String)->Boolean,toggleConnection: ()->Unit) {
     var rename by remember(port.id) {mutableStateOf(false)}
     var name by remember(port.id) {mutableStateOf(port.name)}
     var delete by remember(port.id) {mutableStateOf(false)}
@@ -309,7 +374,11 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {HelpText(port.name,Modifier.weight(1f),fontSize=21.sp,fontWeight=FontWeight.Bold);HelpTextButton(UiHelp.action("Rename"),onClick={name=port.name;rename=true}) {HelpText("Rename")}}
         ChoiceField("Profile",port.protocol,PortPreferences.protocols) {if(it!=port.protocol) profileChange=it}
-        if(status!=null) HelpText("Live: ${status.detail} · RX ${status.received} · TX ${status.transmitted}"+(if(status.dropped>0) " · Dropped ${status.dropped}" else ""),fontSize=11.sp,color=WorkspaceMuted)
+        if(status!=null) PortDiagnostics(status,queryModem)
+        if(!draft.dirty && (port.enabled || port.values["device"].orEmpty().isNotBlank() || port.values["endpoint"].orEmpty().isNotBlank())) {
+            val action=if(port.enabled) "Disconnect port" else "Connect port"
+            HelpOutlinedButton(UiHelp.action(action),onClick=toggleConnection) {HelpText(action)}
+        }
         RouteSwitch("Port enabled","Applied changes open or close this connection.",port.enabled) {draft.set(port.id,"enabled",it.toString())}
         DeviceConnectionFields(port.values) {key,value->draft.set(port.id,key,value)}
         Divider(Modifier.padding(vertical=6.dp))
@@ -356,8 +425,8 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
         Divider(Modifier.padding(vertical=6.dp))
         HelpTextButton(UiHelp.action(if(advanced) "Hide advanced settings" else "Advanced device settings"),onClick={advanced=!advanced}) {HelpText(if(advanced) "Hide advanced settings" else "Advanced device settings")}
         if(advanced) {
-            PortPreferences.fields.filter {it.key in listOf("provides_nmea","no_gate_me","passall","gate_calls","gate_objects","gate_filter","service_input","service_peers","service_max_clients","service_call","agw_user","agw_password","open_commands","close_commands","command_prompt","command_timeout_ms","command_delay_ms","reconnect_seconds","transmit_per_minute","minimum_transmit_ms","kiss_txdelay","kiss_persistence","kiss_slot","kiss_tail","kiss_duplex")}
-                .filter {port.radio || it.key in listOf("open_commands","close_commands","command_prompt","command_timeout_ms","command_delay_ms","reconnect_seconds")}
+            PortPreferences.fields.filter {it.key in listOf("provides_nmea","no_gate_me","passall","gate_calls","gate_objects","gate_filter","service_input","service_peers","service_max_clients","service_call","agw_user","agw_password","open_commands","close_commands","command_prompt","command_timeout_ms","command_delay_ms","transmit_per_minute","minimum_transmit_ms","kiss_txdelay","kiss_persistence","kiss_slot","kiss_tail","kiss_duplex")}
+                .filter {port.radio || it.key in listOf("open_commands","close_commands","command_prompt","command_timeout_ms","command_delay_ms")}
                 .filter {it.key!="provides_nmea" || port.protocol in PortPreferences.nmeaProtocols}
                 .forEach {f->WorkspaceField(f,port.values[f.key].orEmpty()) {draft.set(port.id,f.key,it)}}
         }
@@ -369,7 +438,7 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
     }},confirmButton={HelpTextButton(UiHelp.action("Rename"),onClick={draft.rename(port.id,name.trim());rename=false},enabled=name.trim().isNotEmpty() && name.trim().length<=64 && draft.devices.none {it.id!=port.id && it.name==name.trim()}) {HelpText("Rename")}},dismissButton={HelpTextButton(UiHelp.action("Cancel"),onClick={rename=false}) {HelpText("Cancel")}})
     if(delete) AlertDialog(onDismissRequest={delete=false},title={HelpText("Remove ${port.name}?")},text={HelpText("Its wires will be removed. Routes with no remaining output are disabled. If this is your GPS source, choose a replacement before applying. You can undo this change.")},confirmButton={HelpTextButton(UiHelp.action("Remove"),onClick={delete=false;remove()}) {HelpText("Remove")}},dismissButton={HelpTextButton(UiHelp.action("Keep port"),onClick={delete=false}) {HelpText("Keep port")}})
     profileChange?.let {type->AlertDialog(onDismissRequest={profileChange=null},title={HelpText("Use $type?")},
-        text={HelpText("This restores the selected profile's commands and routing defaults. The port name and connection details stay in place; review the baud and address for the new device. Nothing changes on the device until you Apply.")},
+        text={HelpText("This loads the profile commands and route switches. Your port name, device address, transmit permission and RF paths are saved. Review the connection settings, then Apply.")},
         confirmButton={HelpTextButton(UiHelp.action("Use profile"),onClick={draft.profile(port,type);profileChange=null}) {HelpText("Use profile")}},dismissButton={HelpTextButton(UiHelp.action("Cancel"),onClick={profileChange=null}) {HelpText("Cancel")}})}
 }
 

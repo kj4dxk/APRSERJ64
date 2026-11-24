@@ -84,7 +84,9 @@ class SettingsStore(private val root: Path) {
         ServicePreferences.load(values,document)
         BeaconPreferences.loadFields(values,document,PortPreferences.global)
         BeaconPreferences.loadFields(values,document,OperatingPreferences.fields)
+        val legacyGpx=if(document==null) values.getProperty("logging.gpx")?.toBooleanStrictOrNull() else null
         BeaconPreferences.loadFields(values,document,FeaturePreferences.fields)
+        if(legacyGpx!=null) values.setProperty("logging.gpx",legacyGpx.toString())
         FeaturePreferences.validate(values)
         OperatingPreferences.validate(values)
         PortPreferences.validateAll(values,ports,entities)

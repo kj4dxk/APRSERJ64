@@ -9,6 +9,7 @@ radius_km = 100
 
 
 [map]
+compatibility_mode = false
 latitude = 28.536725
 longitude = -81.242932
 source_name = "pdeffenb"
@@ -143,6 +144,7 @@ minimum_meters = 3.0
 maximum_kph = 1000.0
 
 [position]
+fixed_confirmed = false
 source = "fixed"
 port_name = ""
 latitude = 28.536725
@@ -233,6 +235,8 @@ maximum_points = 100000
 track_points = 1000
 
 [imports]
+bundled_osm = false
+osm_file = ""
 gpx_files = []
 maximum_points = 20000
 
@@ -250,7 +254,7 @@ code_field = "UGC"
 
 [logging]
 csv = false
-gpx = false
+gpx = true
 calls = []
 retention_days = 30
 
@@ -337,6 +341,7 @@ bit_names = ["Bit1","Bit2","Bit3","Bit4","Bit5","Bit6","Bit7","Bit8"]
 title = "Station telemetry"
 
 [weather]
+units = "metric"
 enabled = false
 alerts_url = "https://api.weather.gov/alerts/active?point={lat},{lon}"
 refresh_seconds = 300

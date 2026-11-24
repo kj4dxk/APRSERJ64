@@ -27,7 +27,8 @@ import kotlinx.serialization.json.*
     var entity by remember {mutableStateOf(0)}
     var failure by remember {mutableStateOf("")}
     fun properties(values: Map<String,String>)=Properties().apply {values.forEach {(key,value)->setProperty(key,value)}}
-    DialogWindow(icon=AppIcon.window,onCloseRequest=dismiss,title="Settings",state=rememberDialogState(width=1000.dp,height=790.dp)) {
+    val bounds=remember {windowBounds(1000,790)}
+    DialogWindow(icon=AppIcon.window,onCloseRequest=dismiss,title="Settings",state=rememberDialogState(position=bounds.composePosition,width=bounds.width.dp,height=bounds.height.dp)) {
         LaunchedEffect(initialSection,requestId) {window.toFront();window.requestFocus()}
         MaterialTheme(colors=MaterialTheme.colors) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
             HelpText("Settings",style=MaterialTheme.typography.h5)
@@ -73,7 +74,21 @@ import kotlinx.serialization.json.*
                     }
                     val section=selected.lowercase()
                     val schema=when(selected) {"Display","History","Offline","Weather","Groups","Kiosk","Alerts","Connectivity","Tactical","Messaging","Bulletins","Telemetry","Logging","Legacyweather","Qru","Queries","Satellites","Imports","Platforms","Weatherstation","Multitrack","Digital"->FeaturePreferences.fields;"Operating"->OperatingPreferences.fields;"Map","Services"->ServicePreferences.fields;"Radio"->PortPreferences.global;else->BeaconPreferences.fields}
+                    if(selected=="Beacon") {
+                        val mode=when {
+                            values["beacon.time_only"]=="true" -> "time"
+                            values["beacon.smart"]=="true" -> "smart"
+                            else -> "genius"
+                        }
+                        ChoiceMenu("Beacon timing",mode,listOf("genius" to "GeniusBeaconing",
+                            "smart" to "SmartBeaconing","time" to "Time only"),
+                            help="Select the automatic position reporting policy.") {
+                            values["beacon.time_only"]=(it=="time").toString()
+                            values["beacon.smart"]=(it=="smart").toString()
+                        }
+                    }
                     schema.filter {it.key.startsWith("$section.") || selected=="Beacon" && it.key.startsWith("odometer.")}
+                        .filter {it.key !in setOf("beacon.smart","beacon.time_only")}
                         .filter {selected!="Position" || positionFieldVisible(it.key,values["position.source"].orEmpty())}
                         .forEach {field -> SettingField(field,values)}
                     if(selected=="Beacon") {
@@ -93,7 +108,7 @@ import kotlinx.serialization.json.*
                         if(model.settings.entriesMap()!=baselineSettings || model.ports.map {it.entriesMap()}!=baselinePorts || model.entities.map {it.entriesMap()}!=baselineObjects)
                             failure="Settings changed in another window. Close and reopen this editor before saving."
                         else if(model.savePreferences(props,entityProps)) dismiss() else failure="Check settings and folder write access."
-                    } catch(_: Exception) {failure="Check the selected options, numbers, coordinates and object names."}
+                    } catch(error: Exception) {failure=error.message ?: "Check the selected options, numbers, coordinates and object names."}
                 }) {HelpText("Save")}
             }
         } } }
@@ -104,7 +119,7 @@ import kotlinx.serialization.json.*
     if(field.key in listOf("longitude","position.longitude")) return
     if(field.key in listOf("latitude","position.latitude")) {
         val lonKey=field.key.replace("latitude","longitude")
-        LocationField(if(field.key=="latitude") "Object location" else "Fixed location",values[field.key]?:field.default,values[lonKey].orEmpty()) {a,b->values[field.key]=a;values[lonKey]=b}
+        LocationField(if(field.key=="latitude") "Object location" else "Fixed location",values[field.key]?:field.default,values[lonKey].orEmpty()) {a,b->values[field.key]=a;values[lonKey]=b;if(field.key=="position.latitude") values["position.fixed_confirmed"]="false"}
         return
     }
     val value=values[field.key] ?: field.default
@@ -153,7 +168,7 @@ private fun positionSourceLabel(source:String)=when(source) {
 
 private fun positionFieldVisible(key:String,source:String)=when(key) {
     "position.port_name"->source=="port"
-    "position.latitude","position.longitude","position.altitude_meters"->source=="fixed"
+    "position.latitude","position.longitude","position.altitude_meters","position.fixed_confirmed"->source=="fixed"
     "position.gps_endpoint"->source=="gps_tcp"
     "position.gpsd_endpoint"->source=="gpsd"
     "position.serial_port","position.serial_baud"->source=="gps_serial"

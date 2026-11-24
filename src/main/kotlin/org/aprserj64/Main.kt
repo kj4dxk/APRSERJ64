@@ -118,6 +118,7 @@ fun main(args: Array<String>) {
     var preferencesRequest by remember {mutableStateOf(0)}
     var menuQuery by remember {mutableStateOf("")}
     var packetMonitor by remember {mutableStateOf(false)}
+    val packetStreams=remember {mutableStateListOf<PacketStream>()}
     var portWorkspace by remember {mutableStateOf(false)}
     fun navigate(destination:String) {
         appMenu=false
@@ -148,7 +149,7 @@ fun main(args: Array<String>) {
                 }
                 HelpText(connectionLabel(connection,demo),color=Muted,fontSize=12.sp)
             }
-            HelpButton(UiHelp.action("Beacon now"),onClick={model.transmitBeacon()},enabled=beacon.enabled && account.isNotBlank()) {Icon(AppIcons.Send,null,Modifier.size(16.dp));Spacer(Modifier.width(6.dp));HelpText("Beacon now")}
+            HelpButton(UiHelp.action("Beacon now"),onClick={model.transmitBeacon()},enabled=beacon.enabled && account.isNotBlank() && beacon.position?.current==true) {Icon(AppIcons.Send,null,Modifier.size(16.dp));Spacer(Modifier.width(6.dp));HelpText("Beacon now")}
             Spacer(Modifier.width(10.dp))
             HelpOutlinedButton(UiHelp.action("Settings"),onClick={preferences=true}) {Icon(AppIcons.Settings,null,Modifier.size(18.dp));Spacer(Modifier.width(6.dp));HelpText("Settings")}
             Box {
@@ -233,7 +234,10 @@ fun main(args: Array<String>) {
     if(tools) OperatingToolsWindow(model,selected,toolPage,toolRequest,onNavigate=::navigate) {tools=false}
     if(settings) ConnectionDialog(model) {settings=false}
     if(preferences) PreferencesDialog(model,preferencesPage,preferencesRequest,onNavigate=::navigate) {preferences=false}
-    if(packetMonitor) PacketMonitorWindow(model) {packetMonitor=false}
+    if(packetMonitor) PacketMonitorWindow(model,openStream={if(it !in packetStreams) packetStreams.add(it)}) {packetMonitor=false}
+    packetStreams.toList().forEachIndexed {index,stream->key(stream) {
+        PacketMonitorWindow(model,stream,offset=(index%8+1)*24) {packetStreams.remove(stream)}
+    }}
     if(portWorkspace) PortWorkspaceWindow(model) {portWorkspace=false}
     if(about) AlertDialog(onDismissRequest={about=false},title={HelpText("APRSERJ64 ${AppVersion.value}")},text={
         Column(Modifier.heightIn(max=500.dp).verticalScroll(rememberScrollState())) {
@@ -254,6 +258,12 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
 }.toString()
 
 @Composable internal fun MapPanel(stations: List<AprsStation>, selected: String?, model: AppModel, beaconCenter: AprsFix?, modifier: Modifier, forceFollow:Boolean=false, viewSettings:java.util.Properties=model.settings, select: (String)->Unit) {
+    val compatibilityPreference=viewSettings.getProperty("map.compatibility_mode").toBoolean()
+    var compatibility by remember(compatibilityPreference) {mutableStateOf(compatibilityPreference)}
+    if(compatibility) {
+        RasterMapView(stations,selected,model,beaconCenter,modifier,viewSettings,{compatibility=false},select)
+        return
+    }
     val importedPoints by model.imports.content.collectAsState()
     val orbitPoints by model.satellites.positions.collectAsState()
     val extraPoints=importedPoints.waypoints.map {AprsStation(it.name.take(9),it.fix.latitude,it.fix.longitude,'/','/',it.name,System.currentTimeMillis())}+orbitPoints.map {AprsStation(it.name.take(9),it.latitude,it.longitude,'/','S',it.name,System.currentTimeMillis())}
@@ -274,6 +284,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     // The timer triggers expiry updates, but newly received packets can be newer
     // than its last tick. Use the current time when recalculating their age.
     val imported by model.imports.content.collectAsState()
+    val localMap by model.imports.localMap.collectAsState()
     val orbits by model.satellites.positions.collectAsState()
     val geometry=remember(stations,selected,selectedPath,warnings,clock,preferencesRevision,imported,orbits) {tacticalGeometry(stations,selected,selectedPath?.let {mapOf(it.call to it)}.orEmpty(),warnings,viewSettings,System.currentTimeMillis())+imported.shapes+model.satellites.geometry(System.currentTimeMillis())}
     var trail by remember(selected) {mutableStateOf<List<AprsFix>>(emptyList())}
@@ -287,6 +298,10 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
 
     val initial=remember {Position(viewSettings.getProperty("longitude").toDouble(),viewSettings.getProperty("latitude").toDouble())}
     val state=rememberMapState(baseStyle=style,initialCameraPosition=CameraPosition(center=if(forceFollow) stations.firstOrNull {it.callsign==selected}?.let {Position(it.longitude,it.latitude)} ?: initial else initial,zoom=viewSettings.getProperty("map.initial_zoom").toDouble())) {
+        localMap?.let {local->
+            val localSource=rememberGeoJsonSource(GeoJsonData.JsonString(local.lines))
+            LineLayer(id="local-osm",source=localSource,color=const(Color(0xFF476976)),width=const(1.6.dp))
+        }
         TacticalLayers(geometry) {chosenAlert=it}
         if(viewSettings.getProperty("display.trails").toBoolean() && trail.size>1) {
             val trailSource=rememberGeoJsonSource(GeoJsonData.JsonString(trailJson(trail)))
@@ -326,8 +341,12 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     LaunchedEffect(state) {state.events.collect { event -> when(event) {
         MapEvent.StyleLoaded -> {mapError=""; println("MAP style loaded")}
         MapEvent.Idle -> println("MAP idle")
-        is MapEvent.StyleLoadFailed -> {mapError="Unable to load map"; System.err.println("MAP style failed: ${event.reason}")}
-        is MapEvent.SourceDataFailed -> {mapError="Unable to load map data"; System.err.println("MAP source failed: ${event.sourceId}")}
+        is MapEvent.StyleLoadFailed -> {compatibility=true; System.err.println("MAP style failed: ${event.reason}")}
+        is MapEvent.SourceDataFailed -> {
+            if(event.sourceId=="base" && !viewSettings.getProperty("offline.enabled").toBoolean()) compatibility=true
+            else mapError="Unable to load map data"
+            System.err.println("MAP source failed: ${event.sourceId}")
+        }
         is MapEvent.FrameRendered -> if(event.stats?.frameCount == 1L) println("MAP_FIRST_FRAME ${event.stats}")
         else -> Unit
     } } }
@@ -342,7 +361,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
         text={Column(Modifier.heightIn(max=400.dp).verticalScroll(rememberScrollState())) {HelpText(alert.headline);HelpText(alert.description);HelpText("Expires ${alert.expires}")}},
         confirmButton={HelpTextButton(UiHelp.action("Close"),onClick={chosenAlert=null}) {HelpText("Close")}})}
     LaunchedEffect(mapReady,follow,followed?.latitude,followed?.longitude) {if(mapReady && follow && followed!=null) state.animateCamera(CameraUpdate(center=Position(followed.longitude,followed.latitude),bearing=0.0,pitch=0.0))}
-    LaunchedEffect(beaconCenter,mapReady) {if(mapReady) beaconCenter?.let {state.animateCamera(CameraUpdate(center=Position(it.longitude,it.latitude),bearing=0.0,pitch=0.0))}}
+    LaunchedEffect(beaconCenter,mapReady) {if(mapReady) beaconCenter?.let {state.animateCamera(CameraUpdate(center=Position(it.longitude,it.latitude),zoom=if(it==localMap?.center) 16.0 else null,bearing=0.0,pitch=0.0))}}
     Box(modifier) {
         MaplibreMap(state=state,interactions=MapInteractions {camera {rotate {enabled=false}; pitch {enabled=false}}},
             cameraConstraints=CameraConstraints {maxPitch=0.0; minZoom=viewSettings.getProperty("map.minimum_zoom").toDouble(); maxZoom=viewSettings.getProperty("map.maximum_zoom").toDouble()},renderOptions=RenderOptions {maximumFps=viewSettings.getProperty("map.maximum_fps").toInt()}, overlay={})
@@ -350,6 +369,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
             Row {
                 ActionIcon(AppIcons.Add,"Zoom in") {scope.launch {state.animateCamera(CameraUpdate(zoom=(state.cameraPosition.zoom+1).coerceAtMost(viewSettings.getProperty("map.maximum_zoom").toDouble())))}}
                 ActionIcon(AppIcons.Remove,"Zoom out") {scope.launch {state.animateCamera(CameraUpdate(zoom=(state.cameraPosition.zoom-1).coerceAtLeast(viewSettings.getProperty("map.minimum_zoom").toDouble())))}}
+                HelpTextButton("Show raster tiles without the native map renderer",onClick={compatibility=true}){HelpText("Compatibility map")}
                 HelpTextButton(UiHelp.action("Home"),onClick={scope.launch {state.animateCamera(CameraUpdate(center=initial,bearing=0.0,pitch=0.0))}}){HelpText("Home")}
                 HelpTextButton(UiHelp.action(if(follow) "Following" else "Follow station"),onClick={follow=!follow},enabled=followed!=null || follow){HelpText(if(follow) "Following" else "Follow station")}
                 ActionIcon(AppIcons.Search,"Go to coordinates") {showCoordinates=!showCoordinates}
@@ -367,7 +387,9 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
             }
             if(followed!=null) HelpText(navigationSummary(model,followed),fontSize=11.sp)
         }
-        HelpText(viewSettings.getProperty("map.attribution"),Modifier.align(Alignment.BottomEnd).padding(6.dp).background(Color.White.copy(alpha=0.88f))
+        val attribution=if(localMap!=null) (listOf(viewSettings.getProperty("map.attribution"),"© OpenStreetMap contributors").distinct().joinToString(" · "))
+            else viewSettings.getProperty("map.attribution")
+        HelpText(attribution,Modifier.align(Alignment.BottomEnd).padding(6.dp).background(Color.White.copy(alpha=0.88f))
             .clickable {Desktop.getDesktop().browse(URI(viewSettings.getProperty("map.attribution_url")))}.padding(5.dp),color=Color(0xFF263740),fontSize=11.sp)
         if(mapError.isNotEmpty()) HelpText(mapError,Modifier.align(Alignment.TopStart).padding(12.dp).background(Panel).padding(10.dp),color=Accent,fontSize=12.sp)
     }
