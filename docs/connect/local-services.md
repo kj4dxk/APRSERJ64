@@ -18,7 +18,7 @@ Open **Settings → Receive area & filters**, enable **Share received packets wi
 
 ## Set up a local server port
 
-1. Add an **IS-Server** or **Local-Server** port through **Menu → Radio & GPS ports…**.
+1. Add an **IS-Server** or **Local-Server** port through **Configure → Radio & GPS ports…**.
 2. Set the bind endpoint; a loopback address limits access to this PC.
 3. Decide whether to enable **Accept local service input**. It defaults off.
 4. Configure forwarding separately: accepting a local client's packet does not by itself enable RF or IS output.

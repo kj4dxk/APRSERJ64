@@ -152,6 +152,7 @@ fun main(args: Array<String>) {
                 }
                 HelpText(connectionLabel(connection,demo),color=Muted,fontSize=12.sp)
             }
+            HelpTextButton(if(expanded) "Collapse ribbon" else "Expand ribbon",onClick={expanded=!expanded}) { HelpText(if(expanded) "Hide ribbon" else "Show ribbon") }
             HelpTextButton("Open connection settings",onClick={settings=true}) { HelpText("Connection") }
             HelpField(UiHelp.field("Find station"),search,{search=it;showStations=true},label={HelpText("Find station")},singleLine=true,modifier=Modifier.width(150.dp),fill=true)
             HelpButton(UiHelp.action("Beacon now"),onClick={model.transmitBeacon()},enabled=beacon.enabled && account.isNotBlank() && beacon.position?.current==true) {Icon(AppIcons.Send,null,Modifier.size(16.dp));Spacer(Modifier.width(6.dp));HelpText("Beacon now")}
@@ -184,9 +185,7 @@ fun main(args: Array<String>) {
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().background(Color(0xFF203940)).padding(horizontal=8.dp),verticalAlignment=Alignment.CenterVertically) {
-            HelpTextButton("Expand or collapse the ribbon",onClick={expanded=!expanded}) { HelpText(if(expanded) "▴" else "▾") }
-            if(expanded) {
+        if(expanded) Row(Modifier.fillMaxWidth().background(Color(0xFF203940)).padding(horizontal=8.dp),verticalAlignment=Alignment.CenterVertically) {
                 Row(Modifier.weight(1f).horizontalScroll(rememberScrollState())) {
                     RibbonGroup("Enables") { close ->
                         RibbonItem("APRS-IS " + if(connection==AprsConnectionState.STOPPED) "connect…" else "disconnect",close) {
@@ -231,7 +230,6 @@ fun main(args: Array<String>) {
                     RibbonItem("About & license",close){about=true}
                     RibbonItem("APRSERJ64 manual",close){Desktop.getDesktop().browse(URI(model.settings.getProperty("services.manual_url")))}
                 }
-            }
         }
         if(error.isNotBlank()) HelpText(error,Modifier.fillMaxWidth().background(Color(0xFF6B332B)).padding(10.dp))
         if(setupIssue!=null) Row(Modifier.fillMaxWidth().background(Panel).padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically) {

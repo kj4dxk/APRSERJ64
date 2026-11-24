@@ -4,21 +4,25 @@ The main window has three operating areas: the station list on the left, the map
 
 ## Main toolbar
 
-The toolbar keeps **Connect / Connection**, **Beacon now**, **Settings** and **Menu** visible. Familiar map actions use icons with hover labels; actions that could be ambiguous retain words.
+Use **Hide ribbon** to give the map more room. **Connection**, **Find station**, **Beacon now**, **Settings** and **Search** stay visible. Choose **Show ribbon** to restore the command groups.
 
 | Control | Purpose |
 | --- | --- |
 | Connect / Connection | Callsign, passcode, APRS-IS server and receive area |
 | Beacon now | Request a current station beacon when an output is eligible |
+| Messages | Read and send messages, open groups and bulletins |
+| Screen | Map settings and station or message pane visibility |
+| View | Station filters, sorting and tracking |
+| Clear | Clear station filters or dismiss activity notices |
 | Settings | Searchable preferences, starting with My position |
-| Menu → Station details | Information about the selected station |
-| Menu → Weather reports / Download maps | Common operating tools |
-| Menu → All tools… | Grouped, searchable tools including track exports and specialist features |
-| Menu → Radio & GPS ports… | Graphical device setup and routing workspace |
-| Menu → Packet monitor… | Received/transmitted packet records and diagnostics |
-| Menu → Practice with local demo | Explore stations and messaging without sending to public APRS or RF |
-| Menu → Disconnect APRS-IS / Stop practice | Stop the current IS/demo connection |
-| Menu → About & license | Version, source and license information |
+| Search → Station details | Information about the selected station |
+| Search → Weather reports / Download maps | Common operating tools |
+| Search → All tools… | Grouped, searchable tools including track exports and specialist features |
+| Configure → Radio & GPS ports… | Graphical device setup and routing workspace |
+| Enables → Packet monitor… | Received/transmitted packet records and diagnostics |
+| Search → Practice with local demo | Explore stations and messaging without sending to public APRS or RF |
+| Search → Disconnect APRS-IS / Stop practice | Stop the current IS/demo connection |
+| Help → About & license | Version, source and license information |
 
 Settings and Tools group everyday tasks first. Use **Find a section** for terms such as GPS, map, messages, GPX or digital. Former section names also work in search. Select a result to open it; filtering the navigation does not discard your edits. Settings changes require **Save**.
 

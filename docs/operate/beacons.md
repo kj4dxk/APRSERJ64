@@ -15,7 +15,7 @@ The default fixed coordinate is a seeded example location, not a location servic
 
 The recommended device workflow is a named NMEA-capable port:
 
-1. In **Menu → Radio & GPS ports…**, add an NMEA port and select the COM device/baud rate or TCP endpoint.
+1. In **Configure → Radio & GPS ports…**, add an NMEA port and select the COM device/baud rate or TCP endpoint.
 2. Apply the port configuration and check that it is connected.
 3. In **Settings → My position**, select source `port` and select the named port.
 4. Save. Wait for a valid current fix, not just an open port.
@@ -43,4 +43,4 @@ Choose a symbol table/code, comments and timestamp. Compressed and Mic-E reports
 
 **Settings → Station status** controls periodic status text, interval, timestamp/grid representation. **Settings → Beaconing** also exposes odometer-related fields through the preference schema where applicable; consult the searchable [settings catalog](../reference/settings.md) for `odometer` keys. Exit odometer reporting is optional.
 
-Select **Beacon now** on the toolbar for a manual station beacon request. Review the timestamp, reason and **Menu → Packet monitor…** view. To stop or limit output, see [routing controls](../connect/routing.md#stop-or-limit-transmissions).
+Select **Beacon now** on the toolbar for a manual station beacon request. Review the timestamp, reason and **Enables → Packet monitor…** view. To stop or limit output, see [routing controls](../connect/routing.md#stop-or-limit-transmissions).

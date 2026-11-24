@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Start with the symptom, change one thing, and check the result in **Menu → Packet monitor…** and the relevant status area.
+Start with the symptom, change one thing, and check the result in **Enables → Packet monitor…** and the relevant status area.
 
 ## Map is blank
 
@@ -11,7 +11,7 @@ Start with the symptom, change one thing, and check the result in **Menu → Pac
 
 ## No stations appear
 
-Open **Menu → Packet monitor…**. If RX records arrive, clear **Find station**, the Show filter and age restrictions. Check that the map is centered on the received region. If no RX records arrive, inspect connection state, endpoint, filter center/radius, custom filters and network access. Demo data is not public reception.
+Open **Enables → Packet monitor…**. If RX records arrive, clear **Find station**, the Show filter and age restrictions. Check that the map is centered on the received region. If no RX records arrive, inspect connection state, endpoint, filter center/radius, custom filters and network access. Demo data is not public reception.
 
 ## Connected but not transmitting
 
@@ -56,6 +56,6 @@ Check PC clock/time zone, observing location, selected satellite names, TLE file
 
 ## Collect a useful diagnostic record
 
-Use **Menu → Packet monitor…** to narrow port, direction and text, pause the display if useful, and **Export TNC2**. Pausing that display does not stop radio reception. Include the app version, reproducible steps, relevant redacted settings, expected behavior and a short packet sample. Keep callsign/passcode secrets and private message/location information out of public reports as appropriate.
+Use **Enables → Packet monitor…** to narrow port, direction and text, pause the display if useful, and **Export TNC2**. Pausing that display does not stop radio reception. Include the app version, reproducible steps, relevant redacted settings, expected behavior and a short packet sample. Keep callsign/passcode secrets and private message/location information out of public reports as appropriate.
 
 See [compatibility limits](../reference/compatibility.md) before treating a known unsupported behavior as a device failure.

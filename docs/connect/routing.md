@@ -16,7 +16,7 @@ The diagram shows these relationships; enable the specific route you intend. A G
 
 1. Configure a working RF input port and a verified APRS-IS connection.
 2. Enable that port's RF-to-IS route and Apply.
-3. Confirm a received radio packet in **Menu → Packet monitor…**, then inspect the corresponding IS transmission.
+3. Confirm a received radio packet in **Enables → Packet monitor…**, then inspect the corresponding IS transmission.
 4. Check that the original station and path are retained and that your IGate is identified in the appended q path.
 
 Packets from Internet-origin third-party envelopes must not loop back into IS. PASSALL and non-APRS/non-UI frames are not suitable input for normal gating. A receive-only IGate uses `qAO`; a transmit-capable route uses `qAR`.
@@ -33,7 +33,7 @@ Calls, object lists and `gate_filter` can subscribe additional traffic, but they
 2. Review **Digipeater** and its transform rules. The seeded fill-in rule is `WIDE1-1=`; it is inactive until digipeating is enabled.
 3. Choose the output radio(s) through **Wire digipeater outputs**.
 4. Inspect the path and output compatibility, then Apply.
-5. Confirm a matching received request and the repeated packet in **Menu → Packet monitor…**.
+5. Confirm a matching received request and the repeated packet in **Enables → Packet monitor…**.
 
 A transform is `requested-alias=replacement`. The normal transformation inserts this station as a used hop; an empty replacement consumes that alias. This is not a global “repeat every packet” switch. APRSIS32's old global XML rules should not be pasted directly into this per-port configuration.
 
@@ -47,6 +47,6 @@ Seeded RF paths are `WIDE1-1,WIDE2-1` for beacons and `WIDE1-1` for messages. Ex
 - Disable a radio port's **Transmit enabled** to stop its physical output.
 - Disable the particular IGate/digipeater route to stop forwarding while retaining reception.
 - Disable the owning feature for scheduled bulletins, telemetry, weather or digital objects; do not treat the station beacon switch as a universal transmit switch.
-- **Menu → Disconnect APRS-IS** stops upstream Internet traffic. It is not an RF master switch.
+- **Search → Disconnect APRS-IS** stops upstream Internet traffic. It is not an RF master switch.
 
 Local accepted-write counters are not remote reception confirmations. Use an independent receiver or a message ACK for end-to-end evidence.

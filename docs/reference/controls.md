@@ -1,12 +1,12 @@
 # Control locator
 
-Use **Settings** for preferences and **Menu → All tools…** for operating tools. Both windows have grouped navigation and a **Find a section** search that also recognizes the former short section names. **Radio & GPS ports…** and **Packet monitor…** are in Menu. Settings changes require **Save**; port changes require **Apply**.
+Use **Settings** for preferences and **Search → All tools…** for operating tools. Both windows have grouped navigation and a **Find a section** search that also recognizes the former short section names. **Radio & GPS ports…** and **Packet monitor…** are in Menu. Settings changes require **Save**; port changes require **Apply**.
 
 Pause the pointer over buttons, fields, indicators, navigation entries or menu choices for hover help. Disabled controls also explain their requirements. Settings tips include the corresponding `settings.toml` key. APRS-IS verification, local packet output and remote message acknowledgment are different states; their indicators explain what has actually been confirmed.
 
 | Location | Tasks |
 | --- | --- |
-| Click your callsign at the top left, or Menu → My callsign & passcode | Edit callsign-SSID, passcode and APRS-IS server |
+| Click your callsign at the top left, or Search → My callsign & passcode | Edit callsign-SSID, passcode and APRS-IS server |
 | Settings → My position, Beaconing, Station status | [Position and beaconing](../operate/beacons.md) |
 | Settings → Objects & items | [Objects, items and companion stations](../operate/objects.md) |
 | Settings → Map appearance, Service addresses, Station display, Tracking windows | [Maps and tracking windows](../operate/maps.md) |

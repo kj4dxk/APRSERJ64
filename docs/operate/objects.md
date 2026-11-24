@@ -8,7 +8,7 @@ An object describes a place or feature owned by your station. It is different fr
 2. Enter a unique name, report kind, symbol, fixed coordinates and comment.
 3. Review **Enabled**, **Alive**, interval and position source. New objects may be enabled by default, so finish their location/output choices before saving.
 4. Select Internet and/or RF outputs. For RF, choose named ports or deliberately use all eligible ports.
-5. Save and inspect the next eligible transmission in **Menu → Packet monitor…**.
+5. Save and inspect the next eligible transmission in **Enables → Packet monitor…**.
 
 Objects use names up to nine characters; items and companion-station reports have their own format/identity constraints. QRU group objects require a space-free name. Use `fixed` for a location, or `follow` when the feature should use your current station position.
 

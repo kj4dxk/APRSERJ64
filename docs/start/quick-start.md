@@ -13,7 +13,7 @@ A map opening at a particular place does not set your transmitting position. The
 
 ## Connect to APRS-IS
 
-1. Click **your callsign at the top left**, or choose **Menu → My callsign & passcode**. On first launch, missing credentials open this editor automatically.
+1. Click **your callsign at the top left**, or choose **Search → My callsign & passcode**. On first launch, missing credentials open this editor automatically.
 2. Enter your **callsign with SSID**, such as your call followed by `-13`. Examples in this manual use `N0CALL`; replace them with your own identity.
 3. Enter your APRS-IS passcode. It is stored as readable text in `settings.toml`. An existing passcode for your callsign works across APRS clients. For a request, follow the [APRSIS32 passcode instructions](https://github.com/kj4dxk/APRSIS32/blob/main/docs/manual/doc-passcode.md), providing your licensed name, callsign and the application you actually use. The legacy service specifies APRSISCE/32 users.
 4. Choose a saved server or enter a custom host and port. The seeded endpoint is `rotate.aprs2.net:14580`.
@@ -26,18 +26,18 @@ A map opening at a particular place does not set your transmitting position. The
 
 Choose **Receive only** in **My callsign & passcode** for an unverified receive-only APRS-IS login. Also turn off **Settings → Beaconing → Beaconing enabled** if you do not want scheduled station/object beacons. Existing RF ports are separate from Internet verification: disable their transmit/routing switches if you want the entire installation to receive only.
 
-**Menu → Disconnect APRS-IS** stops the Internet connection; it does not close every RF port. See [output controls](../connect/routing.md#stop-or-limit-transmissions).
+**Search → Disconnect APRS-IS** stops the Internet connection; it does not close every RF port. See [output controls](../connect/routing.md#stop-or-limit-transmissions).
 
 ## First operating check
 
 1. Find a station in the left-hand list and select it. Its map marker and chat panel should correspond to that station.
-2. Open **Menu → Packet monitor…** and confirm recent RX records.
+2. Open **Enables → Packet monitor…** and confirm recent RX records.
 3. If transmitting is intended, confirm your current position and then select **Beacon now** once.
 4. Check the beacon status and TX record. These prove a local send attempt/accepted write, not reception by another station. A reply or independent receiving station provides stronger evidence.
 
 ## Local demo
 
-When APRS-IS is stopped, **Menu → Practice with local demo** supplies local test data. It is useful for exploring the display and is isolated from real RF operation. Demo stations are not evidence of a successful public-network connection.
+When APRS-IS is stopped, **Search → Practice with local demo** supplies local test data. It is useful for exploring the display and is isolated from real RF operation. Demo stations are not evidence of a successful public-network connection.
 
 Next: [Learn the main window](workspace.md).
 
