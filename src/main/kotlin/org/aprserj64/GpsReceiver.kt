@@ -4,8 +4,6 @@ package org.aprserj64
 import com.fazecast.jSerialComm.SerialPort
 import com.fazecast.jSerialComm.SerialPortTimeoutException
 import java.io.InputStream
-import java.net.Socket
-import java.net.InetSocketAddress
 import java.net.SocketTimeoutException
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,7 +11,7 @@ import org.aprsfoundation.core.*
 
 data class GpsReading(val position: BeaconPosition? = null, val valid: Boolean = false, val detail: String = "Waiting for GPS")
 
-class GpsReceiver(private val config: BeaconConfiguration, scope: CoroutineScope) : AutoCloseable {
+class GpsReceiver(private val config: BeaconConfiguration, scope: CoroutineScope, network: NetworkRoutes = NetworkRoutes()) : AutoCloseable {
     val reading=MutableStateFlow(GpsReading())
     val sky=MutableStateFlow(GpsSky())
     private val diagnostics=GpsDiagnostics()
@@ -33,10 +31,12 @@ class GpsReceiver(private val config: BeaconConfiguration, scope: CoroutineScope
                     port.inputStream.use { readLines(it,decoder) }
                 } else {
                     val endpoint=config.gpsEndpoint()
-                    val socket=Socket(); resource=socket
-                    socket.connect(InetSocketAddress(endpoint.host,endpoint.port),5000); socket.soTimeout=1000
+                    val socket=network.connect(endpoint); resource=socket
+                    socket.use {
+                    ensureActive(); socket.soTimeout=1000
                     if(config.text("position.source")=="gpsd") socket.getOutputStream().write("?WATCH={\"enable\":true,\"json\":false,\"nmea\":true};\n".toByteArray(Charsets.US_ASCII))
                     socket.getInputStream().use { readLines(it,decoder) }
+                    }
                 }
             } catch(cancelled: CancellationException) {throw cancelled}
             catch(_: Exception) {reading.value=reading.value.copy(valid=false,detail="GPS reconnecting")}

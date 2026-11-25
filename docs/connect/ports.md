@@ -13,6 +13,12 @@ A **protocol** describes the bytes (NMEA, KISS, AGW, text monitor). A **connecti
 
 Serial discovery lists devices without opening each one. A manually entered COM port is supported. Completed setups default enabled; saved unconfigured templates stay disabled.
 
+## Network adapters
+
+Open **Settings → Network adapters & recovery** to choose an adapter for APRS-IS, outbound TCP devices, map tiles, or web services. **Automatic** starts with the Windows default route, tries other available adapters after a connection failure, and remembers the working route for each server during this session. **System default** leaves the choice to Windows. Selecting a specific adapter keeps that category on the selected adapter. Loopback connections stay on loopback.
+
+**Test network adapters** checks the configured endpoints over the available adapters. TCP tests open and close a socket without logging in, sending TNC commands, or transmitting packets. Tile tests request an image. Serial and Bluetooth ports and local service listeners use their own device or listener settings.
+
 ## Choose a protocol
 
 | Protocol family | Use |

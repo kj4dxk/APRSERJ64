@@ -648,7 +648,7 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
                     testing=true;testResult="Testing APRS-IS login…"
                     val testCall=call;val testPass=if(receiveOnly) "-1" else pass;val testHost=host
                     testJob=connectionScope.launch {
-                        try {testResult=ConnectionProbe.test(testCall,testPass,testHost)}
+                        try {testResult=ConnectionProbe.test(testCall,testPass,testHost,network=model.network)}
                         catch(cancelled:kotlinx.coroutines.CancellationException) {throw cancelled}
                         catch(_:Exception) {testResult="Connection test failed. Check the server address and Internet connection."}
                         finally {testing=false}

@@ -9,7 +9,7 @@ import org.aprsfoundation.core.*
 
 /** Non-RF endpoints. Their input never populates RF heard tables or digipeats. */
 internal class ServicePort(private val config:PortConfig,private val scope:CoroutineScope,
- private val receive:suspend (RadioPacket)->Unit,private val connected:(String)->Unit):AutoCloseable {
+ private val receive:suspend (RadioPacket)->Unit,private val connected:(String)->Unit,private val network:NetworkRoutes=NetworkRoutes()):AutoCloseable {
  private var listener:AutoCloseable?=null
  private class Peer(val output:OutputStream) {val queue=Channel<ByteArray>(128);@Volatile var filter:PacketFilter?=null;@Volatile var call="";val gated=ConcurrentHashMap<String,Long>();val associated=ConcurrentHashMap<String,Long>()}
  private val clients=ConcurrentHashMap<Socket,Peer>()
@@ -35,7 +35,7 @@ internal class ServicePort(private val config:PortConfig,private val scope:Corou
     }
    }
    "CWOP"->{
-    val endpoint=AprsEndpoint.parse(config.text("endpoint"));val socket=Socket();listener=socket;socket.connect(InetSocketAddress(endpoint.host,endpoint.port),5000);socket.soTimeout=1000
+    val endpoint=AprsEndpoint.parse(config.text("endpoint"));val socket=network.connect(endpoint);listener=socket;ensureActive();socket.soTimeout=1000
     val out=socket.getOutputStream();out.write("user ${config.text("service_call")} pass -1 vers APRSERJ64 ${AppVersion.value}\r\n".toByteArray(Charsets.US_ASCII));out.flush();cwop=out;connected("CWOP connected")
     val buffer=ByteArray(512);while(currentCoroutineContext().isActive){try{if(socket.getInputStream().read(buffer)<0)break}catch(_:SocketTimeoutException){}}
    }

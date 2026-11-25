@@ -7,6 +7,10 @@ import org.aprsfoundation.core.*
 object FeaturePreferences {
  val fields=AdvancedPreferences.fields+AdditionalPreferences.fields+TacticalPreferences.fields+listOf(
   BeaconField("connectivity.failover","Try other saved APRS-IS presets on failure","false",SettingKind.BOOLEAN),
+  BeaconField("connectivity.aprs_is_adapter","APRS-IS adapter","auto"),
+  BeaconField("connectivity.tcp_device_adapter","TCP devices adapter","auto"),
+  BeaconField("connectivity.map_tile_adapter","Map tiles adapter","auto"),
+  BeaconField("connectivity.web_service_adapter","Web services adapter","auto"),
   BeaconField("display.search","Station search",""),
   BeaconField("display.units","Display units","imperial",choices=listOf("imperial","metric")),
   BeaconField("display.kind","Station type","all",choices=listOf("all","weather","moving","objects","rf","message-capable","frequency","frequency-issues","telemetry","status","altitude","direct-rf","igates","ambiguous","mic-e")),
@@ -44,6 +48,10 @@ object FeaturePreferences {
   BeaconField("alerts.minimum_seconds","Minimum sound interval","30",SettingKind.INTEGER)
  )
  fun validate(p: Properties) {
+  NetworkResource.entries.forEach { resource ->
+   val selection=p.getProperty(resource.key,AUTO_ADAPTER)
+   require(selection in listOf(AUTO_ADAPTER,SYSTEM_ADAPTER) || selection.startsWith("nic:") && selection.length in 5..128)
+  }
   AdvancedPreferences.validate(p)
   TacticalPreferences.validate(p)
   AdditionalPreferences.validate(p)

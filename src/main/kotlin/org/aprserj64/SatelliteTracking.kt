@@ -26,11 +26,9 @@ class SatelliteTracking(private val model:AppModel,private val scope:CoroutineSc
   val path=model.directory.resolve(model.settings.getProperty("satellites.file"));if(!Files.exists(path)){orbits=emptyList();positions.value=emptyList();status.value="Load or download a TLE file";return@launch}
   orbits=parse(Files.readString(path));status.value="${orbits.size} orbital element sets loaded";if(model.settings.getProperty("satellites.enabled").toBoolean())update()
  }.onFailure{orbits=emptyList();positions.value=emptyList();status.value=it.message?:"Unable to load TLE file"}}}
- suspend fun download()=withContext(Dispatchers.IO){
+ suspend fun download()=runInterruptible(Dispatchers.IO){
   val request=HttpRequest.newBuilder(URI(model.settings.getProperty("satellites.url"))).timeout(Duration.ofSeconds(30)).GET().build()
-  val response=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).followRedirects(HttpClient.Redirect.NORMAL).build().send(request,HttpResponse.BodyHandlers.ofInputStream())
-  require(response.statusCode()==200){"TLE download HTTP ${response.statusCode()}"}
-  val bytes=response.body().use {it.readNBytes(2_000_001)};require(bytes.size<=2_000_000){"TLE download too large"};val text=String(bytes,Charsets.US_ASCII);parse(text)
+  val bytes=model.network.getWeb(request,2_000_000);val text=String(bytes,Charsets.US_ASCII);parse(text)
   val target=model.directory.resolve(model.settings.getProperty("satellites.file"));Files.createDirectories(target.toAbsolutePath().parent);val temp=Files.createTempFile(target.toAbsolutePath().parent,"tle-",".tmp")
   try{Files.writeString(temp,text);Files.move(temp,target,StandardCopyOption.REPLACE_EXISTING)}finally{Files.deleteIfExists(temp)};reload()
  }

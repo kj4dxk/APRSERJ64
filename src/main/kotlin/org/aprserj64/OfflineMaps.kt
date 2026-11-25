@@ -27,29 +27,60 @@ object TilePlan {
   return result
  }
 }
-class OfflineMaps(private val home:Path,private val scope:CoroutineScope,private val setting:(String)->String):AutoCloseable {
+class OfflineMaps(private val home:Path,private val scope:CoroutineScope,private val network:NetworkRoutes=NetworkRoutes(),
+ private val setting:(String)->String):AutoCloseable {
  val status=MutableStateFlow("Choose an area to download")
  val running=MutableStateFlow(false)
  private var job:Job?=null
- private val pool=Executors.newFixedThreadPool(2) {r->Thread(r,"offline-map").apply {isDaemon=true}}
+ private val pool=Executors.newFixedThreadPool(6) {r->Thread(r,"map-tiles").apply {isDaemon=true}}
  private val server=HttpServer.create(InetSocketAddress("127.0.0.1",0),0)
- private val client=HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(5)).build()
+ private val onlineTemplates=java.util.concurrent.ConcurrentHashMap<String,String>()
+ private val onlinePrefix=java.util.UUID.randomUUID().toString()
  private fun key(url:String)=MessageDigest.getInstance("SHA-256").digest(url.toByteArray()).take(12).joinToString("") {"%02x".format(it)}
  private val rasterCache=object:LinkedHashMap<Pair<String,Tile>,ByteArray>(64,0.75f,true) {
   override fun removeEldestEntry(eldest:MutableMap.MutableEntry<Pair<String,Tile>,ByteArray>?)=size>64
  }
  private fun path(url:String,t:Tile)=home.resolve("cache/offline/${key(url)}/${t.z}/${t.x}/${t.y}.tile")
  fun template()="http://127.0.0.1:${server.address.port}/${key(setting("map.tile_url"))}/{z}/{x}/{y}"
+ internal fun onlineTemplate(source:String):String {
+  val id=key(source)
+  onlineTemplates[id]=source
+  return "http://127.0.0.1:${server.address.port}/$onlinePrefix/$id/{z}/{x}/{y}"
+ }
+ internal fun tileRequest(template:String,t:Tile):HttpRequest {
+  val url=template.replace("{z}",t.z.toString()).replace("{x}",t.x.toString()).replace("{y}",t.y.toString())
+  return HttpRequest.newBuilder(URI(url)).timeout(java.time.Duration.ofSeconds(5))
+   .header("User-Agent","APRSERJ64/${AppVersion.value} (+${setting("services.source_url")})").build()
+ }
  init {
   server.executor=pool
   server.createContext("/") {exchange->try {
    val parts=exchange.requestURI.path.trim('/').split('/')
+   if(parts.size==5 && parts[0]==onlinePrefix) {
+    require(exchange.requestMethod=="GET")
+    val source=onlineTemplates.getValue(parts[1])
+    val tile=Tile(parts[2].toInt(),parts[3].toInt(),parts[4].toInt())
+    require(tile.z in 0..22 && tile.x in 0 until (1 shl tile.z) && tile.y in 0 until (1 shl tile.z))
+    val builder=HttpRequest.newBuilder(tileRequest(source,tile),{_,_->true})
+    listOf("If-None-Match","If-Modified-Since").forEach {name->
+     exchange.requestHeaders.getFirst(name)?.let {builder.header(name,it)}
+    }
+    val response=network.getTile(builder.build())
+    response.headers.forEach { (name,value)->exchange.responseHeaders.set(name,value) }
+    if(response.valid) {
+     exchange.responseHeaders.set("Content-Type",response.type)
+     exchange.sendResponseHeaders(200,response.bytes.size.toLong())
+     exchange.responseBody.use {it.write(response.bytes)}
+    } else exchange.sendResponseHeaders(if(response.status==200) 502 else response.status,-1)
+    return@createContext
+   }
    require(parts.size==4 && parts[0]==key(setting("map.tile_url")))
    val t=Tile(parts[1].toInt(),parts[2].toInt(),parts[3].toInt());require(t.z in 0..18 && t.x in 0 until (1 shl t.z) && t.y in 0 until (1 shl t.z))
    val file=path(setting("map.tile_url"),t)
    if(!Files.exists(file)) exchange.sendResponseHeaders(404,-1)
    else {val bytes=Files.readAllBytes(file);exchange.responseHeaders.set("Content-Type","image/png");exchange.sendResponseHeaders(200,bytes.size.toLong());exchange.responseBody.use {it.write(bytes)}}
-  }catch(_:Exception){runCatching {exchange.sendResponseHeaders(404,-1)}}finally{exchange.close()}}
+  }catch(_:java.io.IOException){runCatching {exchange.sendResponseHeaders(502,-1)}}
+   catch(_:Exception){runCatching {exchange.sendResponseHeaders(404,-1)}}finally{exchange.close()}}
   server.start()
  }
  internal suspend fun visibleTile(template:String,t:Tile,offline:Boolean):ByteArray?=runInterruptible(Dispatchers.IO) {
@@ -58,13 +89,10 @@ class OfflineMaps(private val home:Path,private val scope:CoroutineScope,private
   val key=template to t
   synchronized(rasterCache) {rasterCache[key]}?.let {return@runInterruptible it}
   if(offline) return@runInterruptible null
-  val url=template.replace("{z}",t.z.toString()).replace("{x}",t.x.toString()).replace("{y}",t.y.toString())
-  val request=HttpRequest.newBuilder(URI(url)).timeout(java.time.Duration.ofSeconds(4))
-   .header("User-Agent","APRSERJ64/${AppVersion.value} (+${setting("services.source_url")})").build()
-  val response=client.send(request,HttpResponse.BodyHandlers.ofInputStream())
-  val bytes=response.body().use {it.readNBytes(2_000_001)}
-  check(response.statusCode()==200) {"Map server returned HTTP ${response.statusCode()}"}
-  check(bytes.size in 1..2_000_000 && response.headers().firstValue("content-type").orElse("").startsWith("image/")) {"Map server returned an invalid tile"}
+  val response=network.getTile(tileRequest(template,t))
+  check(response.status==200) {"Map server returned HTTP ${response.status}"}
+  check(response.valid) {"Map server returned an invalid tile"}
+  val bytes=response.bytes
   synchronized(rasterCache) {rasterCache[key]=bytes}
   bytes
  }
@@ -81,11 +109,9 @@ class OfflineMaps(private val home:Path,private val scope:CoroutineScope,private
     ensureActive();val target=path(url,t)
     if(!Files.exists(target)) {
      try {
-      val address=url.replace("{z}",t.z.toString()).replace("{x}",t.x.toString()).replace("{y}",t.y.toString())
-      val request=HttpRequest.newBuilder(URI(address)).timeout(java.time.Duration.ofSeconds(10)).header("User-Agent","APRSERJ64/0.5").build()
-      val response=client.send(request,HttpResponse.BodyHandlers.ofInputStream())
-      val bytes=response.body().use {it.readNBytes(2_000_001)}
-      require(response.statusCode()==200 && bytes.size in 1..2_000_000 && response.headers().firstValue("content-type").orElse("").startsWith("image/"))
+      val response=network.getTile(tileRequest(url,t))
+      require(response.valid)
+      val bytes=response.bytes
       check(bytesOnDisk+bytes.size<=budget) {"Storage budget reached"}
       Files.createDirectories(target.parent);val temp=Files.createTempFile(target.parent,"tile-",".tmp")
       try {Files.write(temp,bytes);Files.move(temp,target,StandardCopyOption.REPLACE_EXISTING)}finally{Files.deleteIfExists(temp)}
@@ -102,5 +128,5 @@ class OfflineMaps(private val home:Path,private val scope:CoroutineScope,private
   }
  }
  fun cancel(){job?.cancel()}
- override fun close(){cancel();server.stop(0);pool.shutdownNow();client.close()}
+ override fun close(){cancel();server.stop(0);pool.shutdownNow()}
 }

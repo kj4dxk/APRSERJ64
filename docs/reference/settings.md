@@ -196,6 +196,10 @@ Each `[[aprs.servers]]` entry is a separate record. The example contains 12 entr
 
 | Key | Example default | Meaning / UI label |
 | --- | --- | --- |
+| `connectivity.aprs_is_adapter` | `"auto"` | APRS-IS adapter |
+| `connectivity.tcp_device_adapter` | `"auto"` | TCP devices adapter |
+| `connectivity.map_tile_adapter` | `"auto"` | Map tiles adapter |
+| `connectivity.web_service_adapter` | `"auto"` | Web services adapter |
 | `connectivity.failover` | `false` | Try other saved APRS-IS presets on failure |
 
 ## digital

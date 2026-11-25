@@ -5,8 +5,6 @@ import com.fazecast.jSerialComm.SerialPort
 import com.fazecast.jSerialComm.SerialPortTimeoutException
 import java.io.InputStream
 import java.io.OutputStream
-import java.net.Socket
-import java.net.InetSocketAddress
 import java.net.SocketTimeoutException
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +21,8 @@ data class PortStatus(val name: String, val detail: String, val received: Long=0
 class DevicePort(val config: PortConfig, parent: CoroutineScope,
                  private val packet: suspend (RadioPacket)->Boolean,
                  private val nmea: (GpsReading)->Unit,
-                 private val transmitted: (RadioPacket)->Unit = {}, private val weather:(AprsWeather)->Unit = {}) : AutoCloseable {
+                 private val transmitted: (RadioPacket)->Unit = {}, private val weather:(AprsWeather)->Unit = {},
+                 private val network: NetworkRoutes = NetworkRoutes()) : AutoCloseable {
     private val scope=CoroutineScope(parent.coroutineContext+SupervisorJob(parent.coroutineContext[Job]))
     val status=MutableStateFlow(PortStatus(config.name,"Opening",connection=config.connection))
     private val writes=Mutex()
@@ -107,7 +106,7 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
     }
     private suspend fun session()=coroutineScope {
         if(config.protocol in PortPreferences.services) {
-            val endpoint=ServicePort(config,this,{value->status.update {it.copy(received=it.received+1)};if(!packet(value))status.update {it.copy(dropped=it.dropped+1)}},::connected)
+            val endpoint=ServicePort(config,this,{value->status.update {it.copy(received=it.received+1)};if(!packet(value))status.update {it.copy(dropped=it.dropped+1)}},::connected,network)
             service=endpoint;own(endpoint)
             try {endpoint.run()}finally{endpoint.close();service=null};return@coroutineScope
         }
@@ -130,8 +129,8 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
             input=bridge.input
             output=bridge.output
         } else {
-            val endpoint=AprsEndpoint.parse(config.text("endpoint"));val socket=Socket();own(socket)
-            socket.connect(InetSocketAddress(endpoint.host,endpoint.port),5000);socket.soTimeout=1000
+            val endpoint=AprsEndpoint.parse(config.text("endpoint"));val socket=network.connect(endpoint);own(socket)
+            socket.soTimeout=1000
             input=socket.getInputStream();output=socket.getOutputStream()
         }
         codec=when {

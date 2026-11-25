@@ -9,11 +9,11 @@ import org.aprsfoundation.core.*
 
 /** A separate login-only session: never saves settings, resumes a connection or sends beacons. */
 internal object ConnectionProbe {
- suspend fun test(call:String,passcode:String,endpoint:String,timeoutMillis:Long=15000):String {
+ suspend fun test(call:String,passcode:String,endpoint:String,timeoutMillis:Long=15000,network:NetworkRoutes=NetworkRoutes()):String {
   ConnectionSetup.problem(call,passcode)?.let {return it}
   val address=runCatching {AprsEndpoint.parse(endpoint)}.getOrNull() ?: return "Invalid server address. Choose a server or enter host:port."
   val identity=ConnectionSetup.normalizedCall(call)
-  val client=AprsIsClient()
+  val client=network.aprsClient()
   try {
    client.start(AprsIsConfig(identity,passcode.trim(),address.host,address.port,0.0,0.0,radiusKm=1,
     application="APRSERJ64",applicationVersion=AppVersion.value))

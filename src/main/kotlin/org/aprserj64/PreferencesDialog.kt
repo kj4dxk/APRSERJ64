@@ -73,6 +73,7 @@ import kotlinx.serialization.json.*
                         HelpText("Range uses the connection coordinates; moving follows your last APRS-IS position. Custom uses only your filter terms plus delivery to your callsign. Example: b/N1CALL d/RS0ISS*")
                     }
                     val section=selected.lowercase()
+                    if(selected=="Connectivity") NetworkPreferences(model,values)
                     val schema=when(selected) {"Display","History","Offline","Weather","Groups","Kiosk","Alerts","Connectivity","Tactical","Messaging","Bulletins","Telemetry","Logging","Legacyweather","Qru","Queries","Satellites","Imports","Platforms","Weatherstation","Multitrack","Digital"->FeaturePreferences.fields;"Operating"->OperatingPreferences.fields;"Map","Services"->ServicePreferences.fields;"Radio"->PortPreferences.global;else->BeaconPreferences.fields}
                     if(selected=="Beacon") {
                         val mode=when {
@@ -89,6 +90,7 @@ import kotlinx.serialization.json.*
                     }
                     schema.filter {it.key.startsWith("$section.") || selected=="Beacon" && it.key.startsWith("odometer.")}
                         .filter {it.key !in setOf("beacon.smart","beacon.time_only")}
+                        .filter {field->NetworkResource.entries.none {it.key==field.key}}
                         .filter {selected!="Position" || positionFieldVisible(it.key,values["position.source"].orEmpty())}
                         .forEach {field -> SettingField(field,values)}
                     if(selected=="Beacon") {

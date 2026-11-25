@@ -20,9 +20,15 @@ internal fun mapSettings(model:AppModel,values:Properties=model.settings)=Proper
  } else if(getProperty("weather.radar_enabled").toBoolean()) {
   setProperty("map.overlay_enabled","true");setProperty("map.overlay_url",getProperty("weather.radar_url"));setProperty("map.overlay_opacity",getProperty("weather.radar_opacity"))
  }
+ if(!getProperty("offline.enabled").toBoolean() && getProperty(NetworkResource.MAP_TILES.key)!=SYSTEM_ADAPTER) {
+  listOf("tile_url","overlay_url","underlay_url").forEach { suffix ->
+   val key="map.$suffix"
+   getProperty(key)?.takeIf {it.isNotBlank()}?.let {setProperty(key,model.offline.onlineTemplate(it))}
+  }
+ }
 }
 internal fun mapConfigurationKey(model:AppModel)=mapSettings(model).let {p->
- p.stringPropertyNames().filter {it.startsWith("map.") || it in setOf("latitude","longitude")}.associateWith {p.getProperty(it)}
+ p.stringPropertyNames().filter {it.startsWith("map.") || it in setOf("latitude","longitude",NetworkResource.MAP_TILES.key)}.associateWith {p.getProperty(it)}
 }
 internal fun trailJson(points:List<AprsFix>):String {
  val segments=mutableListOf<MutableList<AprsFix>>()

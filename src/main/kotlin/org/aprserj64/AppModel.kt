@@ -33,14 +33,15 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
     @Volatile private var stress = false
     private val store = SettingsStore(directory)
     val settings = store.values
+    internal val network=NetworkRoutes(settings::getProperty)
     val servers get() = store.servers
     val entities get() = store.entities
     val ports get() = store.ports
     val portPresets get() = store.portPresets
     val settingsRevision=MutableStateFlow(0L)
     val beaconState=MutableStateFlow(BeaconState(settings.getProperty("beacon.enabled").toBoolean()))
-    val offline=OfflineMaps(directory,scope) {settings.getProperty(it)}
-    val weatherAlerts=WeatherAlerts({settings.getProperty(it)},scope)
+    val offline=OfflineMaps(directory,scope,network) {settings.getProperty(it)}
+    val weatherAlerts=WeatherAlerts({settings.getProperty(it)},scope,network)
     val activity=ActivityAlerts(directory) {settings.getProperty(it)}
     val groups=GroupMembership(directory) {settings.getProperty(it)}
     private val kioskReplies=java.util.concurrent.ConcurrentHashMap<String,Long>()
@@ -62,7 +63,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         monitor.configure(settings,demo.value)
         weatherAlerts.configure(demo.value)
         activity.configure()
-        val current=RadioPorts(account.value,Properties().apply {putAll(settings)},if(demo.value) emptyList() else store.ports,scope,::recordTraffic)
+        val current=RadioPorts(account.value,Properties().apply {putAll(settings)},if(demo.value) emptyList() else store.ports,scope,::recordTraffic,network)
         radio=current;current.attach(client)
         if(AprsProtocol.validCallsign(account.value)) chat=ChatSession(account.value,current,database,scope) {error.value=it}
         radioObserver=scope.launch {
@@ -107,7 +108,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
     private fun start(config: AprsIsConfig) {
         connectionSetupIssue.value=null
         account.value = config.callsign;groups.activate(account.value); error.value = ""
-        val connection = AprsIsClient(); client = connection
+        val connection = network.aprsClient(); client = connection
         if(radio?.call==config.callsign && !demo.value) radio?.attach(connection) else startPorts()
         observing = scope.launch {
             launch {connection.serverMessages.collect {messages->
@@ -146,7 +147,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
             val temp=Files.createTempFile(directory.resolve("data"),"odometer-",".tmp")
             try {Files.writeString(temp,meters.toString());Files.move(temp,odometer,StandardCopyOption.REPLACE_EXISTING)}
             finally {Files.deleteIfExists(temp)}
-        },BeaconJournal(directory.resolve("data/kills-$call"))) {beaconCenter.value=it.fix}
+        },BeaconJournal(directory.resolve("data/kills-$call")),network) {beaconCenter.value=it.fix}
         broadcaster=controller
         controller.extraStatus={if(settings.getProperty("tactical.dx_status").toBoolean()) tactical.summary() else null}
         beaconObserver=scope.launch {
@@ -171,11 +172,11 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
             settings.clear(); settings.putAll(values); store.entities=entities;store.ports=ports
             store.save(); settingsRevision.value++;imports.reload();satellites.reload()
             val changed=(previous.stringPropertyNames()+values.stringPropertyNames()).filter {previous.getProperty(it)!=values.getProperty(it)}
-            val radioChanged=changed.any {it.startsWith("radio.")}
+            val radioChanged=changed.any {it.startsWith("radio.") || it==NetworkResource.TCP_DEVICES.key}
             val beaconChanged=previousEntities!=entities || changed.any {key->
                 listOf("position.","beacon.","status.","odometer.").any(key::startsWith)
             }
-            val internetChanged=changed.any {it in setOf("endpoint","passcode","latitude","longitude","radiusKm","connectivity.failover") || it.startsWith("operating.filter")}
+            val internetChanged=changed.any {it in setOf("endpoint","passcode","latitude","longitude","radiusKm","connectivity.failover",NetworkResource.APRS_IS.key) || it.startsWith("operating.filter")}
             if(radioChanged) startPorts()
             else radio?.let {current->
                 if(previousPorts!=ports && !demo.value) current.updatePorts(ports)
@@ -274,7 +275,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         disconnect()
         broadcaster?.close();radioObserver?.cancel()
         runBlocking {try {withTimeoutOrNull(3000) {radio?.shutdown()}} finally {radio?.close()}}
-        automation.close();legacyWeather.close();monitor.close();offline.close();weatherAlerts.close();activity.close()
+        automation.close();legacyWeather.close();monitor.close();offline.close();weatherAlerts.close();network.close();activity.close()
         runBlocking {archive.finish();tactical.finish()}
         runBlocking { scope.coroutineContext[Job]?.cancelAndJoin() }
         database.close()

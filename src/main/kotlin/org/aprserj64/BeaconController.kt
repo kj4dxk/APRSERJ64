@@ -15,9 +15,10 @@ data class BeaconState(val enabled: Boolean = true, val source: String = "Fixed"
 /** Session-owned broadcaster. Never queues old positions for a later connection. */
 class BeaconController(private val account: String, private val ports: RadioPorts,
     private val config: BeaconConfiguration, parent: CoroutineScope, initialDistanceMeters: Double,
-    private val saveDistance: (Double)->Unit, private val journal:BeaconJournal?=null, private val recenter: (BeaconPosition)->Unit) : AutoCloseable {
+    private val saveDistance: (Double)->Unit, private val journal:BeaconJournal?=null,
+    network: NetworkRoutes = NetworkRoutes(), private val recenter: (BeaconPosition)->Unit) : AutoCloseable {
     private val scope=CoroutineScope(parent.coroutineContext+SupervisorJob(parent.coroutineContext[Job]))
-    private val gps=if(config.text("position.source") !in listOf("fixed","port")) GpsReceiver(config,scope) else null
+    private val gps=if(config.text("position.source") !in listOf("fixed","port")) GpsReceiver(config,scope,network) else null
     val state=MutableStateFlow(BeaconState(config.bool("beacon.enabled"),if(config.text("position.source")=="fixed") "Fixed" else "GPS"))
     private val policy=AdaptiveBeaconPolicy(config.timing,initialDistanceMeters)
     private var traveled=initialDistanceMeters

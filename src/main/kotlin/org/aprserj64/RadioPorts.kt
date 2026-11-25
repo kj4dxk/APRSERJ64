@@ -10,7 +10,8 @@ import kotlinx.coroutines.sync.withLock
 import org.aprsfoundation.core.*
 
 /** Routing decisions are serialized; socket/serial readers never wait for their own transmit lock. */
-class RadioPorts(val call: String, values: Properties, configs: List<Properties>, parent: CoroutineScope, private val traffic: (String,String,String)->Unit = {_,_,_->}) : AutoCloseable, AprsMessageTransport {
+class RadioPorts(val call: String, values: Properties, configs: List<Properties>, parent: CoroutineScope,
+    private val traffic: (String,String,String)->Unit = {_,_,_->}, private val network: NetworkRoutes = NetworkRoutes()) : AutoCloseable, AprsMessageTransport {
     private val scope=CoroutineScope(parent.coroutineContext+SupervisorJob(parent.coroutineContext[Job]))
     private val router=RadioRouter(call,PortPreferences.rules(values))
     private val routing=Mutex()
@@ -106,7 +107,7 @@ class RadioPorts(val call: String, values: Properties, configs: List<Properties>
             val name=config.name
             name to (previous[name]?.takeIf {name in unchanged} ?: DevicePort(config,scope,{events.trySend(name to it).isSuccess},{reading->
                 fixes[name]=if(!reading.valid && reading.position==null) fixes[name]?.copy(valid=false,detail=reading.detail) ?: reading else reading
-            },{packet->traffic(name,"TX",packet.line())},{sample->weatherReadings[name]=sample}))
+            },{packet->traffic(name,"TX",packet.line())},{sample->weatherReadings[name]=sample},network))
         }
         statusObserver?.cancel()
         val current=devices

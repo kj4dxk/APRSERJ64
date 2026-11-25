@@ -199,6 +199,10 @@ enabled = false
 entries = []
 
 [connectivity]
+aprs_is_adapter = "auto"
+tcp_device_adapter = "auto"
+map_tile_adapter = "auto"
+web_service_adapter = "auto"
 failover = false
 
 [digital]
