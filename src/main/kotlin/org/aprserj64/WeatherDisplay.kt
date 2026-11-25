@@ -2,6 +2,7 @@
 package org.aprserj64
 
 import java.util.Locale
+import java.util.Properties
 import org.aprsfoundation.core.AprsWeather
 
 internal enum class WeatherDisplay(val temperatureUnit: String, val windUnit: String, val pressureUnit: String, val rainUnit: String) {
@@ -22,6 +23,16 @@ internal enum class WeatherDisplay(val temperatureUnit: String, val windUnit: St
         "rain 1h ${rain(w.rainHourMm)} $rainUnit / 24h ${rain(w.rainDayMm)} $rainUnit"
 
     companion object {
-        fun from(value: String?)=if(value=="us") US else METRIC
+        fun from(settings: Properties) = when (settings.getProperty("weather.units")) {
+            "metric" -> METRIC
+            "us" -> US
+            else -> if (DisplayUnits.from(settings) == DisplayUnits.IMPERIAL) US else METRIC
+        }
     }
+}
+
+internal fun weatherUnitLabel(value: String) = when (value) {
+    "metric" -> "Metric"
+    "us" -> "Imperial"
+    else -> "Follow display units"
 }

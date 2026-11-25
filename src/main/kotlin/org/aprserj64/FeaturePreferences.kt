@@ -8,6 +8,7 @@ object FeaturePreferences {
  val fields=AdvancedPreferences.fields+AdditionalPreferences.fields+TacticalPreferences.fields+listOf(
   BeaconField("connectivity.failover","Try other saved APRS-IS presets on failure","false",SettingKind.BOOLEAN),
   BeaconField("display.search","Station search",""),
+  BeaconField("display.units","Display units","imperial",choices=listOf("imperial","metric")),
   BeaconField("display.kind","Station type","all",choices=listOf("all","weather","moving","objects","rf","message-capable","frequency","frequency-issues","telemetry","status","altitude","direct-rf","igates","ambiguous","mic-e")),
   BeaconField("display.sort","Station sorting","callsign",choices=listOf("callsign","recent","distance")),
   BeaconField("display.maximum_age_minutes","Station age limit (minutes)","30",SettingKind.INTEGER),
@@ -21,7 +22,7 @@ object FeaturePreferences {
   BeaconField("offline.enabled","Use downloaded base map only","false",SettingKind.BOOLEAN),
   BeaconField("offline.maximum_tiles","Maximum tiles per download","1000",SettingKind.INTEGER),
   BeaconField("offline.maximum_megabytes","Offline tile storage budget (MB)","1024",SettingKind.INTEGER),
-  BeaconField("weather.units","Weather units","metric",choices=listOf("metric","us")),
+  BeaconField("weather.units","Weather units","display",choices=listOf("display","metric","us")),
   BeaconField("weather.enabled","Fetch weather alerts","false",SettingKind.BOOLEAN),
   BeaconField("weather.alerts_url","GeoJSON alert service URL","https://api.weather.gov/alerts/active?point={lat},{lon}"),
   BeaconField("weather.refresh_seconds","Alert refresh interval (seconds)","300",SettingKind.INTEGER),

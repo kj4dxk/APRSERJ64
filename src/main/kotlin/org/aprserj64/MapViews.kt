@@ -36,7 +36,8 @@ internal fun navigationSummary(model:AppModel,station:AprsStation):String {
  val destination=AprsFix(station.latitude,station.longitude,0)
  val lat1=own.latitude*PI/180;val lat2=destination.latitude*PI/180;val lon=(destination.longitude-own.longitude)*PI/180
  val bearing=(atan2(sin(lon)*cos(lat2),cos(lat1)*sin(lat2)-sin(lat1)*cos(lat2)*cos(lon))*180/PI+360)%360
- return "%s · %.1f km · %.0f° from your position".format(station.callsign,AdaptiveBeaconPolicy.distance(own,destination)/1000,bearing)
+ val distance=DisplayUnits.from(model.settings).distance(AdaptiveBeaconPolicy.distance(own,destination))
+ return "%s · %s · %.0f° from your position".format(station.callsign,distance,bearing)
 }
 @Composable fun TrackingWindow(model:AppModel,call:String,dismiss:()->Unit) {
  val stations by model.stations.collectAsState();val revision by model.settingsRevision.collectAsState()

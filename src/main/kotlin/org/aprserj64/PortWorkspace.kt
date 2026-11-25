@@ -493,6 +493,7 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
 private fun profileDescription(protocol: String)=when(protocol) {
     "NMEA"->"A GPS receiver providing NMEA position sentences."
     "Simply(KISS)"->"A hardware or software TNC already operating in KISS mode."
+    PortPreferences.PK88->"AEA PK-88 firmware that enters KISS directly with KISS ON."
     "KISS"->"A command-mode TNC that needs KISS initialization."
     "AGW"->"An AGWPE-compatible packet engine over TCP."
     "KWD700(KISS)"->"Kenwood D700 using KISS framing."

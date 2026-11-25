@@ -43,13 +43,14 @@ import kotlin.math.*
    content.waypoints.take(100).forEach {w->HelpText("${w.name}: ${w.fix.latitude}, ${w.fix.longitude}")}
   }
   "Satellites"->{
+   val units=remember(revision) {DisplayUnits.from(model.settings)}
    val status by model.satellites.status.collectAsState();val positions by model.satellites.positions.collectAsState();val passes by model.satellites.passes.collectAsState()
    HelpText(status)
    Row {HelpCheckbox(UiHelp.action("Show tracked satellites"),model.settings.getProperty("satellites.enabled").toBoolean(),{model.updateFeature("satellites.enabled",it.toString())});HelpText("Show tracked satellites")}
    HelpField(UiHelp.field("TLE file path"),path,{path=it},label={HelpText("TLE file path")},modifier=Modifier.fillMaxWidth(),fill=true)
    Row {HelpButton(UiHelp.action("Load file"),onClick={result=if(model.updateFeature("satellites.file",path))"Loading TLE file" else "Check path"},enabled=path.isNotBlank()){HelpText("Load file")};HelpTextButton(UiHelp.action("Download TLEs"),onClick={work{model.satellites.download();"TLE file downloaded"}},enabled=!busy){HelpText("Download TLEs")};HelpTextButton(UiHelp.action("Predict passes"),onClick={work{model.satellites.predict();"Pass predictions ready"}},enabled=!busy){HelpText("Predict passes")}}
    HelpText("Names, source URL, age limit and prediction window: Settings → Satellites")
-   positions.forEach {s->HelpText(s.name,color=MaterialTheme.colors.primary);HelpText("Az %.1f° · El %.1f° · range %.0f km · altitude %.0f km".format(s.azimuth,s.elevation,s.rangeKm,s.altitudeKm));HelpText("TLE epoch ${Instant.ofEpochMilli(s.epoch)}");Divider()}
+   positions.forEach {s->HelpText(s.name,color=MaterialTheme.colors.primary);HelpText("Az %.1f° · El %.1f° · range %s · altitude %s".format(s.azimuth,s.elevation,units.distance(s.rangeKm*1000,0),units.distance(s.altitudeKm*1000,0)));HelpText("TLE epoch ${Instant.ofEpochMilli(s.epoch)}");Divider()}
    if(passes.isNotEmpty())HelpText("Passes (UTC, 30-second sampling)")
    passes.take(100).forEach {p->HelpText("${p.name}: ${Instant.ofEpochMilli(p.rise)} — ${Instant.ofEpochMilli(p.set)} · max %.1f°".format(p.maximumElevation))}
   }

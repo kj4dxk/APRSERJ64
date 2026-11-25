@@ -7,6 +7,24 @@ import kotlinx.coroutines.*
 import org.aprsfoundation.core.AprsConnectionState
 
 class PortableSettingsTest {
+    @Test fun displayUnitsDefaultToImperialAndPersistMetricSelection() {
+        val folder=Files.createTempDirectory("APRSERJ64 display units ")
+        val store=SettingsStore(folder)
+        val imperial=DisplayUnits.from(store.values)
+        assertEquals("1.0 mi",imperial.distance(1609.344))
+        assertEquals("100 ft",imperial.altitude(30.48))
+        assertEquals("12 mph",imperial.speed(10.0))
+        assertEquals(WeatherDisplay.US,WeatherDisplay.from(store.values))
+
+        store.values.setProperty("display.units","metric")
+        store.save()
+        val restored=SettingsStore(folder).values
+        val metric=DisplayUnits.from(restored)
+        assertEquals("1.0 km",metric.distance(1000.0))
+        assertEquals("100 m",metric.altitude(100.0))
+        assertEquals("19 km/h",metric.speed(10.0))
+        assertEquals(WeatherDisplay.METRIC,WeatherDisplay.from(restored))
+    }
     @Test fun namedPortsAndStaticObjectRoutesRoundTrip() {
         val folder=Files.createTempDirectory("APRSERJ64 ports ")
         val store=SettingsStore(folder)

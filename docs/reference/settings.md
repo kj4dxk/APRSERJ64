@@ -218,6 +218,7 @@ Each `[[aprs.servers]]` entry is a separate record. The example contains 12 entr
 | Key | Example default | Meaning / UI label |
 | --- | --- | --- |
 | `display.search` | `""` | Station search |
+| `display.units` | `"imperial"` | Display units |
 | `display.kind` | `"all"` | Station type |
 | `display.sort` | `"callsign"` | Station sorting |
 | `display.maximum_age_minutes` | `30` | Station age limit (minutes) |
@@ -392,7 +393,7 @@ Each `[[aprs.servers]]` entry is a separate record. The example contains 12 entr
 
 | Key | Example default | Meaning / UI label |
 | --- | --- | --- |
-| `weather.units` | `"metric"` | Weather units |
+| `weather.units` | `"display"` | Follow display units or choose an explicit weather override |
 | `weather.enabled` | `false` | Fetch weather alerts |
 | `weather.alerts_url` | `"https://api.weather.gov/alerts/active?point={lat},{lon}"` | GeoJSON alert service URL |
 | `weather.refresh_seconds` | `300` | Alert refresh interval (seconds) |

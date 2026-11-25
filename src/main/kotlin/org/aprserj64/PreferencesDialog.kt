@@ -143,7 +143,12 @@ import kotlinx.serialization.json.*
             HelpCheckbox(UiHelp.setting(field),value.toBoolean(),{values[field.key]=it.toString()}); HelpText(field.label,help=UiHelp.setting(field))
         }
         field.choices.isNotEmpty() -> {
-            ChoiceMenu(field.label,value,field.choices.map {it to if(field.key=="position.source") positionSourceLabel(it) else it.ifBlank {"None"}},help=UiHelp.setting(field)) {values[field.key]=it}
+            ChoiceMenu(field.label,value,field.choices.map {it to when(field.key) {
+                "position.source"->positionSourceLabel(it)
+                "display.units"->it.replaceFirstChar(Char::uppercaseChar)
+                "weather.units"->weatherUnitLabel(it)
+                else->it.ifBlank {"None"}
+            }},help=UiHelp.setting(field)) {values[field.key]=it}
             if(field.key=="beacon.status_tag") HelpField(UiHelp.field("Custom status tag"),value,{values[field.key]=it},label={HelpText("Custom status tag")},modifier=Modifier.fillMaxWidth(),fill=true)
         }
         field.kind==SettingKind.STRINGS -> {

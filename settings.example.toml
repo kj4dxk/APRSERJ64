@@ -214,6 +214,7 @@ route = "is"
 ports = []
 
 [display]
+units = "imperial"
 search = ""
 kind = "all"
 sort = "callsign"
@@ -341,7 +342,7 @@ bit_names = ["Bit1","Bit2","Bit3","Bit4","Bit5","Bit6","Bit7","Bit8"]
 title = "Station telemetry"
 
 [weather]
-units = "metric"
+units = "display"
 enabled = false
 alerts_url = "https://api.weather.gov/alerts/active?point={lat},{lon}"
 refresh_seconds = 300

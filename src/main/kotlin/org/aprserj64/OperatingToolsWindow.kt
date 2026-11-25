@@ -67,12 +67,12 @@ import java.time.Instant
     "Frequency","Platforms","Email"->{AdditionalTools(model,tab);if(tab=="Frequency")FrequencyEditor(model)}
     "Station","Radio DX","Direction finding"->TacticalTools(model,selected,tab)
     "Weather"->{
-     val weatherUnits=preferences.getProperty("weather.units","metric")
-     ChoiceMenu("Weather units",weatherUnits,listOf("metric" to "Metric","us" to "US customary")) {model.updateFeature("weather.units",it)}
+     val weatherUnits=preferences.getProperty("weather.units","display")
+     ChoiceMenu("Weather units",weatherUnits,listOf("display","metric","us").map {it to weatherUnitLabel(it)}) {model.updateFeature("weather.units",it)}
      HelpText("Received APRS weather",fontSize=20.sp)
      weather.values.sortedBy {it.call}.forEach {w->
       HelpText("${w.call} · ${Instant.ofEpochMilli(w.time)}",color=MaterialTheme.colors.primary)
-      HelpText(WeatherDisplay.from(weatherUnits).report(w))
+      HelpText(WeatherDisplay.from(preferences).report(w))
       Divider()
      }
      if(weather.isEmpty())HelpText("No weather packets received yet.")

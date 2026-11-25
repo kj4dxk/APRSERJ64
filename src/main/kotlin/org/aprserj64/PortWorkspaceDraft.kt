@@ -10,7 +10,7 @@ internal fun Properties.entriesMap()=stringPropertyNames().associateWith {getPro
 internal fun Map<String,String>.properties()=Properties().also {p->forEach {(k,v)->p.setProperty(k,v)}}
 internal fun names(value: String?)=runCatching {Json.parseToJsonElement(value ?: "[]").jsonArray.map {it.jsonPrimitive.content}}.getOrDefault(emptyList())
 internal fun encodedNames(value: List<String>)=JsonArray(value.map {JsonPrimitive(it)}).toString()
-internal val rawRadioProtocols=setOf("Simply(KISS)","KISS","KWD700(KISS)","AGW","TEXT")
+internal val rawRadioProtocols=PortPreferences.rawRadioProtocols
 
 internal class PortDraft(val id: String, initial: Map<String,String>) {
     val values=mutableStateMapOf<String,String>().apply {putAll(initial)}

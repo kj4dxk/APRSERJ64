@@ -18,6 +18,31 @@ class RuntimeIntegrationTest {
         setProperty("transport","tcp"); setProperty("endpoint","127.0.0.1:${server.localPort}")
         setProperty("minimum_transmit_ms","100")
     })
+    @Test fun pk88EntersKissWithoutWaitingForAnotherPrompt(): Unit = runBlocking {
+        val received=Channel<RadioPacket>(1)
+        listener().use { server ->
+            DevicePort(config(PortPreferences.PK88,server),this,{received.send(it);true},{}).use { port ->
+                withContext(Dispatchers.IO) {
+                    server.accept().use { socket ->
+                        socket.soTimeout=5000
+                        val input=socket.getInputStream()
+                        val output=socket.getOutputStream()
+                        assertContentEquals(byteArrayOf(3,3,3,13),input.readNBytes(4))
+                        output.write("cmd:".toByteArray())
+                        assertEquals("KISS ON\r",input.readNBytes(8).decodeToString())
+
+                        val packet=RadioPacket.parse("N1CALL>APRS:>PK-88 test")!!
+                        output.write(Kiss.encode(packet,0))
+                        ready(port)
+                        assertEquals(packet,withTimeout(5000) {received.receive()})
+                        assertTrue(port.transmit(packet))
+                        val encoded=Kiss.encode(packet,0)
+                        assertContentEquals(encoded,input.readNBytes(encoded.size))
+                    }
+                }
+            }
+        }
+    }
     @Test fun kissAgwAndTnc2UseRealTcpStreams(): Unit = runBlocking {
         for(protocol in listOf("Simply(KISS)","AGW","TEXT")) {
             val parent=CoroutineScope(SupervisorJob()+Dispatchers.IO)

@@ -37,7 +37,9 @@ Use the field units: seconds, meters, degrees and knots. Minimum intervals and p
 
 **Beacon to APRS-IS** requires a verified IS connection. **Beacon to RF ports** requires eligible enabled transmitting ports with beacon output allowed. These switches do not enable digipeating.
 
-Choose a symbol table/code, comments and timestamp. Compressed and Mic-E reports are available; DAO precision and ambiguity settings change coordinate representation. Use normal uncompressed reports while diagnosing format interoperability. Precision adds coordinate detail; it cannot improve the GPS measurement itself.
+To change your station icon, open **Settings → Beaconing**. In **Symbol table or overlay**, enter `/` for the primary table, `\` for the alternate table, or an APRS overlay letter or digit for an alternate symbol that supports it. Select **Choose symbol**, click an icon, then **Save**. Your next position beacon uses that choice.
+
+Choose comments and timestamp in the same settings. Compressed and Mic-E reports are available; DAO precision and ambiguity settings change coordinate representation. Use normal uncompressed reports while diagnosing format interoperability. Precision adds coordinate detail; it cannot improve the GPS measurement itself.
 
 ## Status and odometer
 

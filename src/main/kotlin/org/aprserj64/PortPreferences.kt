@@ -7,8 +7,10 @@ import org.aprsfoundation.core.*
 import org.tomlj.TomlTable
 
 object PortPreferences {
-    val protocols=listOf("Weather","NMEA","Simply(KISS)","KISS","AGW","KWD700(KISS)","KWD700(RO+GPS)","KWD710(APRS)","KWD710(Pkt)","CONVerse","TEXT","FTM350v1.3(RO)","CWOP","Dummy","IS-Server","Local-Server","UDP-Listen","Syslog-UDP")
-    val kissProtocols=setOf("Simply(KISS)","KISS","KWD700(KISS)")
+    const val PK88 = "AEA PK-88 (KISS)"
+    val protocols=listOf("Weather","NMEA","Simply(KISS)","KISS",PK88,"AGW","KWD700(KISS)","KWD700(RO+GPS)","KWD710(APRS)","KWD710(Pkt)","CONVerse","TEXT","FTM350v1.3(RO)","CWOP","Dummy","IS-Server","Local-Server","UDP-Listen","Syslog-UDP")
+    val kissProtocols=setOf("Simply(KISS)","KISS",PK88,"KWD700(KISS)")
+    val rawRadioProtocols=kissProtocols+setOf("AGW","TEXT")
     val comTransports=setOf("serial","spp")
     val transports=listOf("serial","spp","ble","tcp")
     val services=setOf("CWOP","Dummy","IS-Server","Local-Server","UDP-Listen","Syslog-UDP")
@@ -74,7 +76,7 @@ object PortPreferences {
     fun defaults(protocol: String="Simply(KISS)")=Properties().apply {
         fields.forEach {setProperty(it.key,it.default)};setProperty("protocol",protocol)
         if(protocol in readOnly) {setProperty("transmit","false");setProperty("is_to_rf","false")}
-        if(protocol !in listOf("Simply(KISS)","KISS","KWD700(KISS)","AGW","TEXT")) setProperty("digipeater","false")
+        if(protocol !in rawRadioProtocols) setProperty("digipeater","false")
         if(protocol=="AGW" || protocol in services) setProperty("transport","tcp")
         if(protocol in services) {
             setProperty("rf_to_is","false");setProperty("is_to_rf","false");setProperty("digipeater","false")
@@ -90,6 +92,7 @@ object PortPreferences {
         if(protocol in listOf("KWD700(RO+GPS)","KWD710(APRS)")) setProperty("provides_nmea","true")
         val commands=when(protocol) {
             "KISS"->listOf("\r|cmd:","XFLOW OFF\r|cmd:","KISS ON\r|cmd:","RESTART\r")
+            PK88->listOf("\u0003\u0003\u0003","\r|cmd:","KISS ON\r")
             "KWD700(KISS)"->listOf("TNC 2\r","\r|cmd:","KISS ON\r|cmd:","RESTART\r")
             "KWD710(APRS)"->listOf("TC 1\r")
             "KWD710(Pkt)","CONVerse"->listOf("\u0003|cmd:","MON ON\r|cmd:","MCOM OFF\r|cmd:","MCON OFF\r|cmd:")
@@ -167,7 +170,7 @@ class PortConfig(val values: Properties) {
         if(protocol=="CWOP" && flag("enabled"))require(text("service_call").matches(Regex("[A-Z0-9]{3,9}")))
         require(list("service_peers").all {it.matches(Regex("[0-9a-fA-F:.]{2,45}"))})
         require(!flag("provides_nmea") || protocol in PortPreferences.nmeaProtocols) {"This protocol cannot carry standalone NMEA sentences"}
-        require(!flag("digipeater") || protocol in listOf("Simply(KISS)","KISS","KWD700(KISS)","AGW","TEXT")) {"Digipeating requires a raw-frame TNC"}
+        require(!flag("digipeater") || protocol in PortPreferences.rawRadioProtocols) {"Digipeating requires a raw-frame TNC"}
         require(number("baud") in 1200..921600 && number("channel") in 0..(if(protocol=="AGW") 255 else 15))
         require(number("command_timeout_ms") in 100..30000 && number("command_delay_ms") in 0..5000)
         require(number("reconnect_seconds") in 1..300 && number("transmit_per_minute") in 1..600 && number("minimum_transmit_ms") in 100..60000)

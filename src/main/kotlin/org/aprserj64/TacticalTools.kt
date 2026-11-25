@@ -18,6 +18,7 @@ import java.util.Locale
  val status by model.tactical.status.collectAsState()
  val revision by model.settingsRevision.collectAsState()
  val preferences=remember(revision) {Properties().apply {putAll(model.settings)}}
+ val units=DisplayUnits.from(preferences)
  val weather by model.archive.weather.collectAsState()
  val scope=rememberCoroutineScope()
  var call by remember {mutableStateOf(selected.orEmpty())}
@@ -42,9 +43,9 @@ import java.util.Locale
     HelpText("${MapLocation(station.latitude,station.longitude).display()} · received ${displayTime(station.heardAtMillis)}")
     HelpText(station.comment)
     details.course?.let {HelpText("Course: %.0f°".format(Locale.US,it))}
-    details.coverage?.let {HelpText("Estimated ${if(it.strength==null) "radio coverage" else "DF contour"}: %.1f km".format(Locale.US,it.radiusMeters/1000))}
-    details.direction?.let {HelpText("DF bearing %.0f° · range %.1f km · accuracy < %.0f°".format(Locale.US,it.bearing,it.rangeMeters/1000,it.accuracyDegrees))}
-    details.altitudeMeters?.let {alt->HelpText("Radio horizon estimate: %.1f km".format(Locale.US,AprsSpatial.horizonMeters(alt,preferences.getProperty("tactical.ground_meters").toDouble(),preferences.getProperty("tactical.receiver_height_meters").toDouble())/1000))}
+    details.coverage?.let {HelpText("Estimated ${if(it.strength==null) "radio coverage" else "DF contour"}: ${units.distance(it.radiusMeters)}")}
+    details.direction?.let {HelpText("DF bearing %.0f° · range %s · accuracy < %.0f°".format(Locale.US,it.bearing,units.distance(it.rangeMeters),it.accuracyDegrees))}
+    details.altitudeMeters?.let {alt->HelpText("Radio horizon estimate: ${units.distance(AprsSpatial.horizonMeters(alt,preferences.getProperty("tactical.ground_meters").toDouble(),preferences.getProperty("tactical.receiver_height_meters").toDouble()))}")}
    }
    paths[call]?.let {path->
     Divider();HelpText("Last received path · ${path.port} · ${displayTime(path.time)}")
@@ -66,7 +67,7 @@ import java.util.Locale
    FlowRow { (listOf("All ports")+dx.map {it.port}.distinct()).forEach {name->HelpTextButton(UiHelp.action(if(port==name) "[$name]" else name),onClick={port=name}){HelpText(if(port==name) "[$name]" else name)}} }
    HelpButton(UiHelp.action("Transmit DX status"),onClick={scope.launch {val text=model.tactical.summary();feedback=if(text==null) "No DX to report" else if(runCatching {model.reportDx()}.getOrDefault(false)) "DX status transmitted" else "No available output"}},enabled=dx.isNotEmpty()){HelpText("Transmit DX status")}
    dx.filter {(port=="All ports" || it.port==port) && System.currentTimeMillis()-it.time<=preferences.getProperty("tactical.dx_retention_days").toLong()*86400000}.take(200).forEach {record->
-    HelpText("${record.call} · %.1f km · ${record.port}".format(Locale.US,record.kilometers),fontSize=16.sp)
+    HelpText("${record.call} · ${units.distance(record.kilometers*1000)} · ${record.port}",fontSize=16.sp)
     HelpText("${displayTime(record.time)} · ${MapLocation(record.latitude,record.longitude).display()}");Divider()
    }
   }

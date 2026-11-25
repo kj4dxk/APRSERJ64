@@ -1,5 +1,7 @@
 # Maps, stations and offline use
 
+Open **Settings → Station display → Display units** to choose **Imperial** (the default) or **Metric**, then select **Save**. Weather follows this choice when **Weather units** is set to **Follow display units** in Settings → Weather alerts or in the Weather reports tool. Existing saved weather preferences are kept. Configuration fields and APRS filter expressions use the units shown in their labels and syntax.
+
 ## Navigate without changing your beacon position
 
 Pan and zoom the map. Use **+**, **−**, **Home**, or open the magnifying-glass **Go to coordinates** control. Paste a location in the single **Location** field, check the interpreted latitude/longitude shown below it, then select **Go**. The field stays collapsed until needed. **Follow station** is available when the selected station has a map position. North is always up; rotation has no preference. Moving the map does not move your station's configured fixed position.
