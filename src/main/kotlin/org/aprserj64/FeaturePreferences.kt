@@ -11,6 +11,14 @@ object FeaturePreferences {
   BeaconField("connectivity.tcp_device_adapter","TCP devices adapter","auto"),
   BeaconField("connectivity.map_tile_adapter","Map tiles adapter","auto"),
   BeaconField("connectivity.web_service_adapter","Web services adapter","auto"),
+  BeaconField("display.ribbon_expanded","Show ribbon commands","true",SettingKind.BOOLEAN),
+  BeaconField("display.stations_visible","Show stations list","true",SettingKind.BOOLEAN),
+  BeaconField("display.chat_visible","Show messages pane","true",SettingKind.BOOLEAN),
+  BeaconField("display.theme","Window color theme","system",choices=listOf("system","dark","light")),
+  BeaconField("display.stations_width","Stations pane width (dp)","225",SettingKind.INTEGER),
+  BeaconField("display.chat_width","Messages pane width (dp)","350",SettingKind.INTEGER),
+  BeaconField("display.messaged_calls","Receive positions for messaged callsigns and SSIDs","[]",SettingKind.STRINGS),
+  BeaconField("messaging.sms_contacts","Saved SMS numbers","[]",SettingKind.STRINGS),
   BeaconField("display.search","Station search",""),
   BeaconField("display.units","Display units","imperial",choices=listOf("imperial","metric")),
   BeaconField("display.kind","Station type","all",choices=listOf("all","weather","moving","objects","rf","message-capable","frequency","frequency-issues","telemetry","status","altitude","direct-rf","igates","ambiguous","mic-e")),
@@ -19,6 +27,7 @@ object FeaturePreferences {
   BeaconField("display.symbols","Show APRS symbols","true",SettingKind.BOOLEAN),
   BeaconField("display.trails","Show selected station trail","true",SettingKind.BOOLEAN),
   BeaconField("display.tracking_calls","Saved tracking windows (up to 8)","[]",SettingKind.STRINGS),
+  BeaconField("display.follow_call","Followed station callsign",""),
   BeaconField("display.follow","Follow selected station","false",SettingKind.BOOLEAN),
   BeaconField("history.enabled","Record position history","true",SettingKind.BOOLEAN),
   BeaconField("history.maximum_points","Total stored track points","100000",SettingKind.INTEGER),
@@ -34,6 +43,11 @@ object FeaturePreferences {
   BeaconField("weather.radar_url","Radar XYZ tile URL",""),
   BeaconField("weather.radar_opacity","Radar opacity","0.6",SettingKind.DECIMAL),
   BeaconField("groups.server","Announcement server","ANSRVR"),
+  BeaconField("groups.peer_enabled","Enable independently hosted IP group","false",SettingKind.BOOLEAN),
+  BeaconField("groups.peer_name","Independent group name","LOCAL"),
+  BeaconField("groups.peer_addresses","Group seats (CALL=host:UDP-port, including this station)","[]",SettingKind.STRINGS),
+  BeaconField("groups.peer_key","Shared independent-group encryption key (32 bytes, Base64)",""),
+  BeaconField("groups.relay_eligible","Volunteer as an independent group relay","true",SettingKind.BOOLEAN),
   BeaconField("groups.names","Saved announcement groups","[]",SettingKind.STRINGS),
   BeaconField("groups.keepalive","Keep joined groups active","false",SettingKind.BOOLEAN),
   BeaconField("groups.keepalive_minutes","Group keepalive interval (minutes)","120",SettingKind.INTEGER),
@@ -62,6 +76,7 @@ object FeaturePreferences {
   require(n("groups.keepalive_minutes") in 10..720 && n("kiosk.minimum_seconds") in 10..86400 && n("alerts.minimum_seconds") in 1..3600)
   require(AprsProtocol.validCallsign(p.getProperty("groups.server")) && AprsProtocol.validCallsign(p.getProperty("kiosk.server")))
   require(names(p.getProperty("groups.names")).all {it.matches(Regex("[A-Za-z0-9_-]{1,20}"))})
+  if(p.getProperty("groups.peer_enabled").toBoolean()) PeerGroupConfig.parse(p,p.getProperty("callsign"))
   require(names(p.getProperty("display.tracking_calls")).size<=8 && names(p.getProperty("display.tracking_calls")).all {it.length in 1..9 && it.all {c->c.code in 32..126}})
   require(names(p.getProperty("alerts.watch_calls")).all {AprsProtocol.validCallsign(it)})
   require(names(p.getProperty("kiosk.entries")).size<=50)

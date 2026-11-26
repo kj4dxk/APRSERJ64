@@ -10,7 +10,7 @@ import kotlinx.serialization.json.*
 
 data class BeaconState(val enabled: Boolean = true, val source: String = "Fixed", val detail: String = "Waiting for connection",
     val sentAt: Long? = null, val reason: String = "", val position: BeaconPosition? = null, val odometerMeters: Double = 0.0,
-    val entities: List<AprsStation> = emptyList())
+    val entities: List<AprsStation> = emptyList(), val manualBlocks:List<String> = listOf("Waiting for beacon status."))
 
 /** Session-owned broadcaster. Never queues old positions for a later connection. */
 class BeaconController(private val account: String, private val ports: RadioPorts,
@@ -28,6 +28,7 @@ class BeaconController(private val account: String, private val ports: RadioPort
     private val statusNow=AtomicBoolean(false)
     private val odometerNow=AtomicBoolean(false)
     private val resetOdometer=AtomicBoolean(false)
+    private var lastStationWrite:Long?=null
     private var lastStatus: Long? = null
     private var lastComment: Long? = null
     private var commentIndex=if(config.comments.isEmpty()) 0 else config.integer("beacon.selected_comment")%config.comments.size
@@ -88,9 +89,23 @@ class BeaconController(private val account: String, private val ports: RadioPort
             pos?.let {AprsStation(e.getProperty("name"),it.fix.latitude,it.fix.longitude,config.entityFormat(e).table,
                 config.entityFormat(e).symbol,ObjectGeometry.comment(e),it.fix.timeMillis,it.course,it.speedKnots,it.altitudeMeters)}
         }
-        state.value=state.value.copy(position=p,odometerMeters=traveled,entities=localEntities)
+        val internet=config.bool("beacon.internet")
+        val rf=config.bool("beacon.radio")
+        val verified=ports.beaconAvailable(internet,rf)
+        val blocks=buildList {
+            if(!config.bool("beacon.enabled")) add("Turn on beaconing under Enables.")
+            if(account.isBlank()) add("Set your station callsign under Connection.")
+            if(p?.current!=true) add(if(config.text("position.source")=="fixed") "Confirm your fixed position under Settings → My position." else "Check the GPS connection, fix age and accuracy.")
+            if(!verified) {
+                if(!internet && !rf) add("Enable an output under Settings → Beaconing.")
+                if(internet) add("Connect to APRS-IS with a verified login.")
+                if(rf) add("Connect an RF port with transmit and beacon permissions.")
+            }
+            if(lastStationWrite?.let {now-it<2000}==true) add("Wait two seconds after the previous station beacon.")
+        }
+        state.value=state.value.copy(position=p,odometerMeters=traveled,entities=localEntities,manualBlocks=blocks)
         if(!config.bool("beacon.enabled")) {manual.set(false); statusNow.set(false); odometerNow.set(false);state.value=state.value.copy(detail="Off");return}
-        val verified=ports.beaconAvailable(config.bool("beacon.internet"),config.bool("beacon.radio"))
+
         if(verified && !connected) reconnect=config.bool("beacon.on_reconnect")
         connected=verified
         if(!verified) {manual.set(false);state.value=state.value.copy(detail="Waiting for a station beacon output")}
@@ -111,7 +126,7 @@ class BeaconController(private val account: String, private val ports: RadioPort
                 val includeComment=config.bool("beacon.comment_enabled") && (force || lastComment==null || now-lastComment!!>=config.integer("beacon.comment_interval_seconds")*1000L)
                 val comment=if(includeComment && config.comments.isNotEmpty()) config.comments[commentIndex%config.comments.size] else ""
                 if(send(BeaconPackets.position(account,p,config.format,comment,decision.reason),now,p,decision.reason)) {
-                    policy.sent(p,now);manual.set(false);reconnect=false;gpsEvent=null
+                    policy.sent(p,now);lastStationWrite=now;manual.set(false);reconnect=false;gpsEvent=null
                     runCatching {saveDistance(traveled)}
                     if(comment.isNotEmpty()) {lastComment=now;if(config.bool("beacon.rotate_comments")) commentIndex=(commentIndex+1)%config.comments.size}
                     if(config.bool("beacon.recenter_after_transmit")) recenter(p)

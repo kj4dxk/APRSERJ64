@@ -19,7 +19,18 @@ class ParityFeaturesTest {
   val value=LocalSensors.wxnow("N0CALL","Nov 21 2026 12:00\n180/010g020t068r010p020P030h50b10132",now,600)!!
   assertEquals(20.0,value.temperatureC!!,1e-6);assertEquals(16.09344,value.windKph!!,1e-6)
   assertEquals(7.62,value.rainMidnightMm!!,1e-6)
-  assertFailsWith<IllegalArgumentException>{LocalSensors.wxnow("N0CALL","Nov 20 2026 12:00\n180/010t068",now,600)}
+  val embedded=assertFailsWith<IllegalArgumentException>{LocalSensors.wxnow("N0CALL","Nov 20 2026 12:00\n180/010t068",now,600)}
+  assertContains(embedded.message!!,"embedded timestamp")
+  assertContains(embedded.message!!,"2026-11-20T12:00:00Z")
+  assertContains(embedded.message!!,"600s")
+  val folder=Files.createTempDirectory("wxnow-check")
+  val file=folder.resolve("wxnow.txt")
+  assertContains(assertFailsWith<IllegalArgumentException>{LocalSensors.read(folder,"wxnow.txt",600,now)}.message!!,"File missing: "+file)
+  Files.writeString(file,"Nov 21 2026 12:00\n180/010t068")
+  Files.setLastModifiedTime(file,java.nio.file.attribute.FileTime.from(Instant.parse("2026-11-21T11:00:00Z")))
+  val modified=assertFailsWith<IllegalArgumentException>{LocalSensors.read(folder,"wxnow.txt",600,now)}
+  assertContains(modified.message!!,"File modification timestamp")
+  assertContains(modified.message!!,"2026-11-21T11:00:00Z")
  }
  @Test fun pendingQueryPreservesIdsAndDoesNotResendAcknowledgedOrRejected():Unit=runBlocking {
   ChatDatabase(Files.createTempDirectory("pending-query").resolve("chat.db")).use {db->

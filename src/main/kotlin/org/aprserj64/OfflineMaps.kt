@@ -44,9 +44,6 @@ class OfflineMaps(private val home:Path,private val scope:CoroutineScope,private
  private val adaptiveTiles=AdaptiveRasterTiles(home.resolve("cache"),
   { (setting("map.cache_megabytes").toLongOrNull() ?: 512) * 1024 * 1024 },::tileRequest,network::getTile,
   { source,tile -> path(source,tile).takeIf(Files::isRegularFile)?.let(Files::readAllBytes) })
- private val rasterCache=object:LinkedHashMap<Pair<String,Tile>,ByteArray>(64,0.75f,true) {
-  override fun removeEldestEntry(eldest:MutableMap.MutableEntry<Pair<String,Tile>,ByteArray>?)=size>64
- }
  private fun path(url:String,t:Tile)=home.resolve("cache/offline/${tileSourceKey(url)}/${t.z}/${t.x}/${t.y}.tile")
  fun template()="http://127.0.0.1:${server.address.port}/${tileSourceKey(setting("map.tile_url"))}/{z}/{x}/{y}"
  internal fun onlineTemplate(source:String):String {
@@ -118,19 +115,6 @@ class OfflineMaps(private val home:Path,private val scope:CoroutineScope,private
   }catch(_:IOException){runCatching {exchange.sendResponseHeaders(502,-1)}}
    catch(_:Exception){runCatching {exchange.sendResponseHeaders(404,-1)}}finally{exchange.close()}}
   server.start()
- }
- internal suspend fun visibleTile(template:String,t:Tile,offline:Boolean):ByteArray?=runInterruptible(Dispatchers.IO) {
-  val disk=path(template,t)
-  if(Files.isRegularFile(disk)) return@runInterruptible Files.readAllBytes(disk)
-  val key=template to t
-  synchronized(rasterCache) {rasterCache[key]}?.let {return@runInterruptible it}
-  if(offline) return@runInterruptible null
-  val response=network.getTile(tileRequest(template,t))
-  check(response.status==200) {"Map server returned HTTP ${response.status}"}
-  check(response.valid) {"Map server returned an invalid tile"}
-  val bytes=response.bytes
-  synchronized(rasterCache) {rasterCache[key]=bytes}
-  bytes
  }
  fun download(tiles:List<Tile>) {
   if(running.value)return

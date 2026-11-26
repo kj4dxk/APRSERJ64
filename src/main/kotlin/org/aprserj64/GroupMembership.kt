@@ -25,9 +25,12 @@ class GroupMembership(private val home:Path,private val setting:(String)->String
   }
   if(direction!="RX" || m.sender!=server || m.recipient!=account || m.acknowledgement!=null)return
   replies.value=(replies.value+m.text).takeLast(30)
+  Regex("(?i)^Now Monitoring ([A-Z0-9_-]{1,20})$").matchEntire(m.text)?.let {put(it.groupValues[1],"Confirmed member",now,m.text)}
+  Regex("(?i)^Message has been sent to ([A-Z0-9_-]{1,20})$").matchEntire(m.text)?.let {put(it.groupValues[1],"Confirmed member",now,m.text)}
+  Regex("(?i)^Removed from ([A-Z0-9_-]{1,20})$").matchEntire(m.text)?.let {put(it.groupValues[1],"Not a member",now,m.text)}
   Regex("(?i)^([A-Z0-9_-]{1,20}) Removed From Group$").matchEntire(m.text)?.let {put(it.groupValues[1],"Not a member",now,m.text)}
   if(now<listUntil)Regex("(?:^|[ ,:])([A-Za-z0-9_-]{1,20})\\(([0-9]+)\\)").findAll(m.text).forEach {put(it.groupValues[1],"Confirmed member",now,m.text)}
-  Regex("(?i)\\b(?:joined|joining|keeping alive|listening to)\\s+(?:group\\s+)?([A-Z0-9_-]{1,20})").find(m.text)?.let {put(it.groupValues[1],"Confirmed member",now,m.text)}
+  Regex("(?i)^(?:joined|joining|keeping alive|listening to)\\s+(?:group\\s+)?([A-Z0-9_-]{1,20})").find(m.text)?.let {put(it.groupValues[1],"Confirmed member",now,m.text)}
   Regex("(?i)^(?:unjoined|left|removed from|not a member of)\\s+(?:group\\s+)?([A-Z0-9_-]{1,20})").find(m.text)?.let {put(it.groupValues[1],"Not a member",now,m.text)}
  }
  private fun file()=home.resolve("data/groups-${key.replace(Regex("[^A-Z0-9-]"),"_")}.json")

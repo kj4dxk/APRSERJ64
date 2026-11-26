@@ -37,7 +37,7 @@ import androidx.compose.ui.unit.sp
 internal data class NavigationSection(val id:String,val title:String,val group:String,val keywords:String="")
 internal val settingsSections=listOf(
  NavigationSection("Position","My position","Everyday","GPS location coordinates"),NavigationSection("Beacon","Beaconing","Everyday","transmit symbol timing speed"),
- NavigationSection("Map","Map appearance","Everyday","tiles provider overlay"),NavigationSection("Display","Station display","Everyday","list filters trails"),NavigationSection("Messaging","Messages","Everyday","chats acknowledgment"),
+ NavigationSection("Map","Map appearance","Everyday","tiles provider overlay"),NavigationSection("Display","Station display","Everyday","list filters trails light dark color theme follow operating system"),NavigationSection("Messaging","Messages","Everyday","chats acknowledgment"),
  NavigationSection("Operating","Receive area & filters","Everyday","radius range APRS-IS"),NavigationSection("Offline","Offline maps","Everyday","download cache"),
  NavigationSection("Status","Station status","Station & objects"),NavigationSection("Objects","Objects & items","Station & objects"),NavigationSection("Multitrack","Tracking windows","Station & objects"),
  NavigationSection("Weather","Weather alerts","Weather & data"),NavigationSection("Weatherstation","My weather station","Weather & data"),NavigationSection("Telemetry","Telemetry","Weather & data"),NavigationSection("Legacyweather","APRS weather","Weather & data"),NavigationSection("Digital","Digital-mode imports","Weather & data","FT8 JS8 JT65"),

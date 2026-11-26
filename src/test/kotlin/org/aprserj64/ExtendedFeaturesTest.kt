@@ -49,6 +49,10 @@ class ExtendedFeaturesTest {
   val alerts=ActivityAlerts {values.getProperty(it)}
   val packet=AprsMessages.packet("N1CALL","N0CALL","Hello","123").trimEnd()
   alerts.incoming(packet,"N0CALL");alerts.incoming(packet,"N0CALL")
+  assertTrue(alerts.notices.value.isEmpty(), "Direct messages belong in the chat unread area")
+  values.setProperty("alerts.watch_calls","""["N2TEST"]""")
+  values.setProperty("alerts.proximity_km","0")
+  repeat(2){ alerts.incoming("N2TEST>APRS:!4903.50N/07201.75W-Test","N0CALL") }
   assertEquals(1,alerts.notices.value.size)
   val data="""{"features":[{"properties":{"id":"test","event":"Flood Warning","severity":"Severe","headline":"Test only","description":"Example","expires":"2030-01-01T00:00:00Z"}}]}"""
   assertEquals("Flood Warning",WeatherAlerts.parse(data).single().event)
@@ -91,6 +95,47 @@ class ExtendedFeaturesTest {
   assertEquals(32, tray.width)
   assertEquals(0xFFFF0000.toInt(), tray.getRGB(0, 0))
   assertTrue(0xFF66BFFF.toInt() in tray.getRGB(0, 0, 32, 32, null, 0, 32))
+ }
+
+ @Test fun windowThemeFollowsWindowsByDefaultAndPreservesExplicitChoices() {
+  val home=Files.createTempDirectory("APRS theme defaults")
+  val store=SettingsStore(home)
+  assertEquals("system",store.values.getProperty("display.theme"))
+  for(systemDark in listOf(false,true)) {
+   assertEquals(!systemDark,useLightTheme(null,systemDark))
+   assertFalse(useLightTheme("dark",systemDark))
+   assertTrue(useLightTheme("light",systemDark))
+   assertEquals(!systemDark,useLightTheme("system",systemDark))
+  }
+  for(choice in listOf("dark","light","system")) {
+   store.values.setProperty("display.theme",choice)
+   store.save()
+   assertEquals(choice,SettingsStore(home).values.getProperty("display.theme"))
+  }
+ }
+
+ @Test fun compatibilityMapMigrationPreservesThemeMapAndFollowTarget() {
+  val home=Files.createTempDirectory("APRS map migration")
+  val file=home.resolve("settings.toml")
+  val source="https://example.org/maps/{z}/{x}/{y}.png"
+  Files.writeString(file,"""[map]
+compatibility_mode = true
+tile_url = "$source"
+[display]
+theme = "light"
+follow = true
+follow_call = "N1CALL-7"
+""")
+  val store=SettingsStore(home)
+  assertEquals("light",store.values.getProperty("display.theme"))
+  store.values.setProperty("display.theme","system")
+  store.save()
+  val restored=SettingsStore(home).values
+  assertEquals("system",restored.getProperty("display.theme"))
+  assertEquals("N1CALL-7",restored.getProperty("display.follow_call"))
+  assertTrue(restored.getProperty("display.follow").toBoolean())
+  assertEquals(source,restored.getProperty("map.tile_url"))
+  assertFalse(Files.readString(file).contains("compatibility_mode"))
  }
 
  @Test fun newPreferencesSurviveReloadAndSymbolsCoverTables() {

@@ -1,6 +1,5 @@
 # First-run defaults copied from APRSERJa. Runtime values live in settings.toml.
 [map]
-compatibility_mode = false
 tile_resolution = "windows"
 source_name = "pdeffenb"
 project_preset_url = "http://pdeffenb.homeip.net:82/raster/light/{z}/{x}/{y}.png"
@@ -24,6 +23,7 @@ underlay_enabled = false
 underlay_url = ""
 
 [services]
+release_api_url = "https://api.github.com/repos/kj4dxk/APRSERJ64/releases/latest"
 satellite_status_url = "https://www.ariss.org/current-status-of-iss-stations.html"
 base_url = "http://pdeffenb.homeip.net:82"
 routing_url = "http://pdeffenb.homeip.net:82/osmand/route/v1/"

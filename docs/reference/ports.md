@@ -15,6 +15,9 @@ Each `[[ports]]` table defines one entry. The default column shows schema values
 | `device` | (empty) | Serial device (e.g. COM3) |
 | `endpoint` | (empty) | TCP host:port |
 | `baud` | `9600` | Serial baud |
+| `serial_data_bits` | `8` | Data bits |
+| `serial_parity` | `none` | Parity |
+| `serial_stop_bits` | `1` | Stop bits |
 | `channel` | `0` | KISS channel / AGW radio (zero based) |
 | `provides_nmea` | `false` | Also provides NMEA |
 | `transmit` | `true` | Transmit enabled |

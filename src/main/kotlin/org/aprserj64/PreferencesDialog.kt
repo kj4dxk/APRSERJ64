@@ -140,6 +140,11 @@ import kotlinx.serialization.json.*
         }
     }
     when {
+        field.key=="groups.peer_key" -> {
+            HelpField("Use the same group key at every configured seat.",value,{values[field.key]=it},modifier=Modifier.fillMaxWidth(),label={HelpText(field.label)},visualTransformation=androidx.compose.ui.text.input.PasswordVisualTransformation(),singleLine=true,fill=true)
+            if(value.isBlank()) HelpTextButton("Create a random key for this new group",onClick={values[field.key]=java.util.Base64.getEncoder().encodeToString(ByteArray(32).also(java.security.SecureRandom()::nextBytes))}) {HelpText("Generate group key")}
+            else HelpTextButton("Copy the group key for a configured peer",onClick={java.awt.Toolkit.getDefaultToolkit().systemClipboard.setContents(java.awt.datatransfer.StringSelection(value),null)}){HelpText("Copy group key")}
+        }
         field.key in listOf("open_commands","close_commands") -> HelpField(UiHelp.setting(field),value,{values[field.key]=it},label={HelpText(field.label)},modifier=Modifier.fillMaxWidth(),maxLines=6,fill=true)
         field.kind==SettingKind.BOOLEAN -> Row(verticalAlignment=Alignment.CenterVertically) {
             HelpCheckbox(UiHelp.setting(field),value.toBoolean(),{values[field.key]=it.toString()}); HelpText(field.label,help=UiHelp.setting(field))
@@ -147,6 +152,7 @@ import kotlinx.serialization.json.*
         field.choices.isNotEmpty() -> {
             ChoiceMenu(field.label,value,field.choices.map {it to when(field.key) {
                 "position.source"->positionSourceLabel(it)
+                "display.theme"->if(it=="system") "Follow operating system" else it.replaceFirstChar(Char::uppercaseChar)
                 "display.units"->it.replaceFirstChar(Char::uppercaseChar)
                 "weather.units"->weatherUnitLabel(it)
                 ServicePreferences.TILE_RESOLUTION_KEY->ServicePreferences.tileResolutionOptions.getValue(it)

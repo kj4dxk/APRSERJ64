@@ -27,6 +27,9 @@ object PortPreferences {
         BeaconField("device","Serial device (e.g. COM3)",""),
         BeaconField("endpoint","TCP host:port",""),
         BeaconField("baud","Serial baud","9600",i),
+        BeaconField("serial_data_bits","Data bits","8",i),
+        BeaconField("serial_parity","Parity","none",choices=listOf("none","odd","even","mark","space")),
+        BeaconField("serial_stop_bits","Stop bits","1",choices=listOf("1","1.5","2")),
         BeaconField("channel","KISS channel / AGW radio (zero based)","0",i),
         BeaconField("provides_nmea","Also provides NMEA","false",b),
         BeaconField("transmit","Transmit enabled","true",b),
@@ -132,7 +135,12 @@ object PortPreferences {
 }
 
 class PortConfig(val values: Properties) {
-    fun text(key: String)=values.getProperty(key)
+    fun text(key: String): String = values.getProperty(key) ?: when(key) {
+        "serial_data_bits" -> "8"
+        "serial_parity" -> "none"
+        "serial_stop_bits" -> "1"
+        else -> error("Missing port setting: "+key)
+    }
     fun flag(key: String)=text(key).toBooleanStrict()
     fun number(key: String)=text(key).toInt()
     fun list(key: String)=Json.parseToJsonElement(text(key)).jsonArray.map {it.jsonPrimitive.content}
@@ -149,7 +157,9 @@ class PortConfig(val values: Properties) {
             val endpoint=text(if(transport=="tcp") "endpoint" else "device")
             val channel=if(protocol in PortPreferences.kissProtocols) " · KISS channel ${number("channel")}"
                 else if(protocol=="AGW") " · AGW radio ${number("channel")}" else ""
-            return "$label · $endpoint · $protocol$channel"
+            val framing=if(transport in PortPreferences.comTransports)
+                " · "+number("baud")+" baud · "+number("serial_data_bits")+text("serial_parity").first().uppercase()+text("serial_stop_bits") else ""
+            return "$label · $endpoint · $protocol$channel$framing"
         }
     val gateFilter=PacketFilter(text("gate_filter"))
     val isRf=protocol !in PortPreferences.services && protocol !in listOf("NMEA","Weather")
@@ -172,6 +182,12 @@ class PortConfig(val values: Properties) {
         require(!flag("provides_nmea") || protocol in PortPreferences.nmeaProtocols) {"This protocol cannot carry standalone NMEA sentences"}
         require(!flag("digipeater") || protocol in PortPreferences.rawRadioProtocols) {"Digipeating requires a raw-frame TNC"}
         require(number("baud") in 1200..921600 && number("channel") in 0..(if(protocol=="AGW") 255 else 15))
+        require(number("serial_data_bits") in 5..8 && text("serial_parity") in listOf("none","odd","even","mark","space"))
+        require(text("serial_stop_bits") in listOf("1","1.5","2"))
+        if(text("transport") in PortPreferences.comTransports) {
+            require(text("serial_stop_bits")!="1.5" || number("serial_data_bits")==5) {"1.5 stop bits requires 5 data bits"}
+            require(text("serial_stop_bits")!="2" || number("serial_data_bits")!=5) {"With 5 data bits, use 1 or 1.5 stop bits"}
+        }
         require(number("command_timeout_ms") in 100..30000 && number("command_delay_ms") in 0..5000)
         require(number("reconnect_seconds") in 1..300 && number("transmit_per_minute") in 1..600 && number("minimum_transmit_ms") in 100..60000)
         listOf("beacon_path","message_path").forEach {key->require(path(key).size<=8 && path(key).all {RadioPacket.address(it)})}

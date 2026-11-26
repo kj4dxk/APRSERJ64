@@ -36,7 +36,6 @@ Each `[[aprs.servers]]` entry is a separate record. The example contains 12 entr
 
 | Key | Example default | Meaning / UI label |
 | --- | --- | --- |
-| `map.compatibility_mode` | `false` | compatibility mode |
 | `map.tile_resolution` | `"windows"` | tile resolution |
 | `map.latitude` | `28.536725` | latitude |
 | `map.longitude` | `-81.242932` | longitude |
@@ -223,6 +222,7 @@ Each `[[aprs.servers]]` entry is a separate record. The example contains 12 entr
 
 | Key | Example default | Meaning / UI label |
 | --- | --- | --- |
+| `display.theme` | `"system"` | Window color theme |
 | `display.units` | `"imperial"` | Display units |
 | `display.search` | `""` | Station search |
 | `display.kind` | `"all"` | Station type |
@@ -232,6 +232,7 @@ Each `[[aprs.servers]]` entry is a separate record. The example contains 12 entr
 | `display.trails` | `true` | Show selected station trail |
 | `display.tracking_calls` | `[]` | Saved tracking windows (up to 8) |
 | `display.follow` | `false` | Follow selected station |
+| `display.follow_call` | `""` | Followed station callsign |
 
 ## groups
 
@@ -351,7 +352,7 @@ Each `[[aprs.servers]]` entry is a separate record. The example contains 12 entr
 | `tactical.paths` | `true` | Show selected station's received packet path |
 | `tactical.path_age_seconds` | `1800` | Maximum path age (seconds) |
 | `tactical.nicknames` | `[]` | Nicknames: CALLSIGN=Name, one per line |
-| `tactical.labels` | `"selected"` | Map labels |
+| `tactical.labels` | `"all"` | Map labels |
 | `tactical.maximum_labels` | `100` | Maximum map labels |
 | `tactical.label_speed` | `true` | Include reported speed |
 | `tactical.label_altitude` | `true` | Include reported altitude |

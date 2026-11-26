@@ -39,7 +39,7 @@ data class PacketStream(val port: String, val direction: String) {
     val bounds=remember {windowBounds(if(stream==null) 1100 else 760,if(stream==null) 760 else 520,offset)}
     Window(icon=AppIcon.window,onCloseRequest=dismiss,title="${stream?.title ?: "Packet monitor"} — APRSERJ64",
         state=rememberWindowState(position=bounds.composePosition,width=bounds.width.dp,height=bounds.height.dp)) {
-        MaterialTheme(colors=darkColors()) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
+        MaterialTheme(colors=applicationColors(model)) {Surface {Column(Modifier.fillMaxSize().padding(18.dp)) {
             Row {
                 HelpField(UiHelp.field("Callsign, path or port"),query,{query=it},label={HelpText("Callsign, path or port")},modifier=Modifier.weight(1f),singleLine=true,fill=true)
                 HelpTextButton(UiHelp.action(if(paused==null) "Pause display" else "Resume"),onClick={paused=if(paused==null) entries else null}) {HelpText(if(paused==null) "Pause display" else "Resume")}

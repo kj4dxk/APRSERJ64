@@ -6,11 +6,17 @@ Open **Settings → Map appearance → Tile resolution** to choose **Follow Wind
 
 The main renderer keeps cached pdeffenb tiles visible while it fetches the selected resolution. When replacement tiles arrive, they appear automatically. The app reuses matching tiles from older map caches and keeps both resolutions available for later sessions. With no internet, it can continue showing either cached resolution wherever you have coverage. **Use downloaded base map only** also allows matching cached pdeffenb tiles without contacting the server.
 
+New profiles use the Windows app color setting. Open **Settings → Station display → Window color theme** to choose **Follow operating system** (the default), **Dark**, or **Light**. Select **Save** to apply the choice to open windows and future sessions. The map tile style is selected separately.
+
 ## Navigate without changing your beacon position
 
 Pan and zoom the map. Use **+**, **−**, **Home**, or open the magnifying-glass **Go to coordinates** control. Paste a location in the single **Location** field, check the interpreted latitude/longitude shown below it, then select **Go**. The field stays collapsed until needed. **Follow station** is available when the selected station has a map position. North is always up; rotation has no preference. Moving the map does not move your station's configured fixed position.
 
 ### Accepted location formats
+
+For a place name, street address or postal code, press **Enter** or select **Search places**, then select a result and check its coordinates. The configured Photon service supplies place names. Coordinate strings and Plus Codes are decoded locally.
+
+The map requests the visible area after panning stops. Previously viewed areas remain subscribed for one hour. Overlapping areas share a filter, and date-line views use separate eastern and western areas. The configured APRS-IS filter and saved station subscriptions take priority over additional areas when server limits are reached. World-scale views omit the geographic subscription. To track a station before its position arrives, enter its callsign in **Find station** and select **Track**. Open Settings and search for **messaged callsigns** to remove a permanent receive subscription.
 
 These formats work throughout location entry: map navigation, fixed station position, receive-area center, object and repeater locations, direction-finding origins, offline-map corners, and each line of polygon vertices. Editors show the decoded coordinates; invalid input cannot retain an earlier valid location for saving. Short Plus Codes use the editor's original location as a nearby reference (map navigation uses the map center, and polygon vertices use the object's location).
 

@@ -6,7 +6,7 @@
 2. To address a station not shown on the map, use **Chats**, enter **Callsign-SSID**, and select **Chat**.
 3. Check the identity shown after **As**.
 4. Leave **Delivery: Automatic** for normal use. Open it to choose Radio only / Internet only or change acknowledgment requests.
-5. Enter your message and select **Send**, or press **Ctrl+Enter**.
+5. Enter your message and select **Send**, or press **Enter** or **Ctrl+Enter**.
 
 Chats and their outgoing queue are stored in `data/chats.sqlite` and survive restarts. Conversations are scoped to the local account; switching your callsign does not merge histories from different identities.
 
@@ -45,6 +45,18 @@ Version 0.8.0 allows up to five attempts, with a 30-second eligibility interval 
 An APRS message body is limited to 67 characters. APRSERJ64 accepts up to 300 characters and splits long text into numbered messages. Each part is delivered independently. Use printable ASCII; `{`, `|` and `~` are reserved by the composer/packet format. A multipart exchange can arrive incompletely or out of order.
 
 ## Chats and history
+
+Long messages from APRSERJ64 appear as one card. Expand **Show packets** to inspect the IDs, timestamps and acknowledgments. The client associates inbound parts when the numbered body and the multipart packet IDs agree. Other clients' ambiguous fragments remain individually visible. The **New messages** list shows unread conversations and takes you directly to the sender.
+
+### Group chat and SMS
+
+Open **Chats → Group chat** for the configured announcement server. The HOTG preset selects the APRS Thursday group. Membership confirmation comes from the gateway. Group announcements and keepalives use the Internet route. **New SMS conversation** opens the phone or alias editor. Register a contact's gateway alias there or save the number locally. Each SMS packet repeats its destination prefix and can arrive as a separate text. Phone numbers and messages travel in public APRS packets. Recipients can subscribe at the [SMS gateway](https://aprs.wiki/).
+
+### Independently hosted groups
+
+In Settings, search for **Independent group**. Configure the same group name, shared key and seat list on participating stations. Use **Generate group key** on the first station and transfer it privately to the others. Each seat is one callsign-SSID and a reachable UDP endpoint, for example `N0CALL-1=10.0.0.10:40820`. Use addresses on a common private LAN or VPN. Each station binds its own listed endpoint. Enable the service and select the independent group under **Chats → Group chat**. Join before sending. The independent service supports two through eight configured stations.
+
+Eligible stations advertise every 60 seconds. Each connected partition chooses its lowest eligible callsign. A graceful exit announces departure immediately. Three missed heartbeat intervals expire a station's lease. During a partition each side can record messages locally. On reconnection, stations reconcile the journal by sender and sequence and converge on one relay. History and membership survive restarts in the portable data folder. Group members share a key and trust one another. A working backup of the portable data folder preserves the station's sequence numbers.
 
 Use **Chats** to return to the conversation list, then reopen a callsign. Read status and retry state persist with the database. Close the program before copying its folder for a consistent backup.
 

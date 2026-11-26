@@ -9,7 +9,6 @@ radius_km = 100
 
 
 [map]
-compatibility_mode = false
 tile_resolution = "windows"
 latitude = 28.536725
 longitude = -81.242932
@@ -220,6 +219,7 @@ route = "is"
 ports = []
 
 [display]
+theme = "system"
 units = "imperial"
 search = ""
 kind = "all"
@@ -229,6 +229,7 @@ symbols = true
 trails = true
 tracking_calls = []
 follow = false
+follow_call = ""
 
 [groups]
 server = "ANSRVR"
@@ -306,7 +307,7 @@ prediction_hours = 24
 paths = true
 path_age_seconds = 1800
 nicknames = []
-labels = "selected"
+labels = "all"
 maximum_labels = 100
 label_speed = true
 label_altitude = true

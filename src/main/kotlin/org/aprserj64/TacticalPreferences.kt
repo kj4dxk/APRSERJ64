@@ -8,7 +8,7 @@ object TacticalPreferences {
   BeaconField("tactical.paths","Show selected station's received packet path","true",SettingKind.BOOLEAN),
   BeaconField("tactical.path_age_seconds","Maximum path age (seconds)","1800",SettingKind.INTEGER),
   BeaconField("tactical.nicknames","Nicknames: CALLSIGN=Name, one per line","[]",SettingKind.STRINGS),
-  BeaconField("tactical.labels","Map labels","selected",choices=listOf("none","selected","all")),
+  BeaconField("tactical.labels","Map labels","all",choices=listOf("none","selected","all")),
   BeaconField("tactical.maximum_labels","Maximum map labels","100",SettingKind.INTEGER),
   BeaconField("tactical.label_speed","Include reported speed","true",SettingKind.BOOLEAN),
   BeaconField("tactical.label_altitude","Include reported altitude","true",SettingKind.BOOLEAN),

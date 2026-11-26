@@ -34,11 +34,27 @@ class RuntimeIntegrationTest {
                         val packet=RadioPacket.parse("N1CALL>APRS:>PK-88 test")!!
                         output.write(Kiss.encode(packet,0))
                         ready(port)
+                        assertTrue(port.status.value.startupTrace.any {"Startup command 2 · response matched" in it})
+                        assertTrue(port.status.value.startupTrace.any {"Startup command 3 · host write completed" in it})
                         assertEquals(packet,withTimeout(5000) {received.receive()})
                         assertTrue(port.transmit(packet))
                         val encoded=Kiss.encode(packet,0)
                         assertContentEquals(encoded,input.readNBytes(encoded.size))
                     }
+                }
+            }
+        }
+    }
+    @Test fun pk88StartupTimeoutIdentifiesTheFailedStep(): Unit = runBlocking {
+        listener().use { server ->
+            val config=config(PortPreferences.PK88,server).apply {values.setProperty("command_timeout_ms","150")}
+            DevicePort(config,this,{true},{}).use { port ->
+                withContext(Dispatchers.IO) {server.accept()}.use {
+                    withTimeout(5000) {
+                        while(port.status.value.startupTrace.none {"Startup command 2 timed out" in it}) delay(10)
+                    }
+                    assertFalse(port.ready)
+                    assertTrue(port.status.value.startupTrace.any {"retry in 1s" in it})
                 }
             }
         }

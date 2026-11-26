@@ -7,6 +7,59 @@ import kotlinx.coroutines.*
 import org.aprsfoundation.core.*
 
 class ChatDatabaseTest {
+    @Test fun inboundMultipartOrderingAndConflicts():Unit=runBlocking {
+        ChatDatabase(Files.createTempDirectory("multipart-rx").resolve("chats.sqlite")).use {db->
+            suspend fun part(index:Int,body:String){db.receive("N0CALL",AprsMessage("N1CALL","N0CALL","("+index+"/3) "+body,"J2XY"+index))}
+            part(3,"C");part(1,"A");part(3,"C");part(2,"B")
+            val rows=db.rows("N0CALL")
+            assertEquals(3,rows.size)
+            assertTrue(rows.first().multipartId>0 && rows.all {it.multipartId==rows.first().multipartId})
+            assertEquals("ABC",rows.sortedBy {it.wireId}.joinToString(""){it.body.substringAfter(") ")})
+            part(2,"other")
+            assertTrue(db.rows("N0CALL").all {it.multipartId==0L})
+        }
+    }
+    @Test fun gatewayAnnouncementsOpenTheNamedGroup() {
+        val row=ChatRow(1,"N1CALL-7","N:HOTG Orlando check-in",false,0,"RECEIVED",true,0)
+        assertEquals("HOTG",groupIn(row,"ANSRVR"))
+        assertEquals("HOTG",groupIn(row.copy(body="CQ HOTG Check-in"),"CQSRVR"))
+        assertNull(groupIn(row.copy(body="N: bad group"),"ANSRVR"))
+        assertNull(groupIn(row.copy(outgoing=true),"ANSRVR"))
+        assertNull(groupIn(row.copy(body="CQ HOTG Check-in",outgoing=true),"ANSRVR"))
+        assertEquals("HOTG",groupIn(row.copy(body="CQ HOTG Check-in",peer="ANSRVR",outgoing=true),"ANSRVR"))
+    }
+    @Test fun smsRepeatsDestinationAndGroupQueuePreservesRfPreferences():Unit=runBlocking {
+        val number="2025550100"
+        val body="X".repeat(300)
+        val packets=smsPackets(number,body)
+        assertEquals(6,packets.size)
+        assertTrue(packets.all {it.startsWith("@"+number+" ") && it.length<=67})
+        assertEquals(body,packets.joinToString(""){it.substringAfter(' ')})
+        ChatDatabase(Files.createTempDirectory("group-route").resolve("chat.sqlite")).use {db->
+            db.saveOptions("N0CALL","ANSRVR",ChatOptions("rf",true))
+            db.enqueueParts("N0CALL","ANSRVR",listOf("CQ HOTG TEST"),internetOnly=true)
+            assertEquals("is",db.pending("N0CALL").single().route)
+            assertEquals("rf",db.options("N0CALL","ANSRVR").route)
+        }
+    }
+    @Test fun multipartGroupsSurviveRestartWithoutJoiningSimultaneousMessages():Unit=runBlocking {
+        val path=Files.createTempDirectory("multipart").resolve("chat.sqlite")
+        val text="1234567890".repeat(18)
+        ChatDatabase(path,{1234L}).use { db ->
+            repeat(2){db.enqueue("N0CALL","N1CALL",text)}
+            db.receive("N0CALL",AprsMessage("N1CALL","N0CALL","(1/3) ambiguous","A1"))
+        }
+        ChatDatabase(path).use { db ->
+            val rows=db.rows("N0CALL")
+            assertEquals(0L,rows.single {!it.outgoing}.multipartId)
+            val groups=rows.filter {it.outgoing}.groupBy {it.multipartId}
+            assertEquals(2,groups.size)
+            groups.values.forEach {parts ->
+                assertEquals(text,parts.joinToString(""){it.body.substringAfter(") ")})
+                assertEquals(3,parts.map {it.wireId}.distinct().size)
+            }
+        }
+    }
     @Test fun persistenceDedupAndAccounts(): Unit = runBlocking {
         val path=Files.createTempDirectory("aprserj64-test").resolve("chats.sqlite")
         ChatDatabase(path).use { db ->

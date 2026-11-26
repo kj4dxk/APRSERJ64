@@ -9,6 +9,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.pointer.*
+import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalDensity
@@ -31,6 +34,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.serialization.json.*
 import org.aprsfoundation.core.*
+import androidx.compose.ui.layout.onSizeChanged
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.CameraUpdate
 import org.maplibre.compose.desktop.ProvideMapPresentationHost
@@ -51,9 +55,17 @@ import org.maplibre.compose.style.BaseStyle
 import org.maplibre.compose.util.MaplibreComposable
 import org.maplibre.spatialk.geojson.Position
 
-private val Accent = Color(0xFF72E4C3)
-private val Panel = Color(0xFF15252D)
-private val Muted = Color(0xFFA2B4BE)
+private val Accent:Color @Composable get()=MaterialTheme.colors.primary
+private val Panel:Color @Composable get()=MaterialTheme.colors.surface
+private val Muted:Color @Composable get()=if(MaterialTheme.colors.isLight)Color(0xFF47565C) else Color(0xFFA2B4BE)
+@Composable internal fun conversationColor(unread:Boolean,outgoing:Boolean):Color {
+    val light=MaterialTheme.colors.isLight
+    return when {
+        unread->if(light)Color(0xFF824B00) else Color(0xFFFFCF70)
+        outgoing->if(light)Color(0xFF006547) else Color(0xFF72E4C3)
+        else->if(light)Color(0xFF185985) else Color(0xFF96C9FF)
+    }
+}
 
 @OptIn(org.maplibre.compose.util.ExperimentalMaplibreComposeApi::class)
 fun main(args: Array<String>) {
@@ -77,14 +89,25 @@ fun main(args: Array<String>) {
     application {
         Window(icon=AppIcon.window,onCloseRequest={ qaMetrics?.cancel(); model.close(); exitApplication() }, title="APRSERJ64",
             state=rememberWindowState(width=1480.dp,height=900.dp)) {
-            MaterialTheme(colors=darkColors(primary=Accent,background=Color(0xFF0E1B22),surface=Panel)) {
-                Surface(Modifier.fillMaxSize()) { ProvideMapPresentationHost(host=rememberAwtComposeMapPresentationHost(window)) { App(model) } }
+            MaterialTheme(colors=applicationColors(model)) {
+                CompositionLocalProvider(LocalLocationModel provides model) {
+                    Surface(Modifier.fillMaxSize()) { ProvideMapPresentationHost(host=rememberAwtComposeMapPresentationHost(window)) { App(model) { qaMetrics?.cancel();model.close();exitApplication() } } }
+                }
             }
         }
     }
 }
 
-@Composable private fun App(model: AppModel) {
+@Composable private fun App(model: AppModel, closeForUpdate:()->Unit) {
+    LaunchedEffect(Unit) {
+        System.getenv("APRSERJ64_UPDATE_READY")?.let {value->
+            val marker=java.nio.file.Path.of(value).toAbsolutePath().normalize()
+            if(marker.fileName.toString()=="ready" && marker.parent.parent==model.directory.resolve("cache") && marker.parent.fileName.toString().startsWith("update-"))
+                java.nio.file.Files.writeString(marker,AppVersion.value)
+        }
+    }
+    var checking by remember {mutableStateOf(false)}
+    var updateStatus by remember {mutableStateOf("")}
     val scope = rememberCoroutineScope()
     val account by model.account.collectAsState()
     val connection by model.state.collectAsState()
@@ -97,17 +120,37 @@ fun main(args: Array<String>) {
     val beacon by model.beaconState.collectAsState()
     val portStatuses by model.portStatuses.collectAsState()
     val beaconCenter by model.beaconCenter.collectAsState()
-    var selected by remember { mutableStateOf<String?>(null) }
+    val mainFollow = remember(settingsRevision) { model.settings.getProperty("display.follow").toBoolean() }
+    val savedTarget = remember(settingsRevision) { model.settings.getProperty("display.follow_call").orEmpty() }
+    var selected by remember(account, demo) { mutableStateOf(savedTarget.takeIf { !demo && mainFollow && it.isNotBlank() }) }
+    LaunchedEffect(mainFollow, savedTarget, account, demo) {
+        if (mainFollow && savedTarget.isNotBlank() && !demo) selected=savedTarget
+    }
+    LaunchedEffect(mainFollow, selected) { model.followCall(selected.takeIf {mainFollow}) }
+    fun selectStation(call: String?) {
+        selected=call
+        if (!demo && mainFollow && call.orEmpty()!=savedTarget) model.updateFeature("display.follow_call",call.orEmpty())
+    }
     var tools by remember {mutableStateOf(false)}
     var toolPage by remember {mutableStateOf("Station")}
     var toolRequest by remember {mutableStateOf(0)}
     var appMenu by remember {mutableStateOf(false)}
-    var expanded by remember { mutableStateOf(true) }
-    var showStations by remember { mutableStateOf(true) }
-    var showChat by remember { mutableStateOf(true) }
+    val expanded=remember(settingsRevision){model.settings.getProperty("display.ribbon_expanded","true").toBoolean()}
+    fun saveFlag(key:String,value:Boolean) {
+        val edited=java.util.Properties().apply {putAll(model.settings);setProperty(key,value.toString())}
+        model.savePreferences(edited,model.entities)
+    }
+    val showStations=remember(settingsRevision){model.settings.getProperty("display.stations_visible","true").toBoolean()}
+    var focusChat by remember {mutableStateOf(0)}
+    val showChat=remember(settingsRevision){model.settings.getProperty("display.chat_visible","true").toBoolean()}
     var listMenu by remember {mutableStateOf(false)}
     fun openTool(page:String) {toolPage=page;toolRequest++;tools=true}
     val tracking=remember {mutableStateListOf<String>().apply {addAll(names(model.settings.getProperty("display.tracking_calls")))}}
+    LaunchedEffect(tracking.toList()) {
+        model.trackCalls(tracking.toSet())
+        val saved=encodedNames(tracking.toList())
+        if(!demo && saved!=model.settings.getProperty("display.tracking_calls")) model.updateFeature("display.tracking_calls",saved)
+    }
     var search by remember {mutableStateOf(model.settings.getProperty("display.search"))}
     var kind by remember {mutableStateOf(model.settings.getProperty("display.kind"))}
     var sort by remember {mutableStateOf(model.settings.getProperty("display.sort"))}
@@ -142,12 +185,34 @@ fun main(args: Array<String>) {
             destination=="action:disconnect"->model.disconnect(remember=!demo)
         }
     }
-    var rows by remember { mutableStateOf<List<ChatRow>>(emptyList()) }
-    LaunchedEffect(account,revision,selected) {
-        rows=model.database.rows(account)
-        selected?.let { model.database.markRead(account,it) }
+    var mapRequest by remember {mutableStateOf<StationMapRequest?>(null)}
+    var historyCall by remember {mutableStateOf<String?>(null)}
+    fun stationMenu(call:String):List<ContextMenuItem> {
+        fun mapAction(action:String) {
+            selectStation(call)
+            mapRequest=StationMapRequest(call,action,(mapRequest?.id ?: 0)+1)
+        }
+        val following=selected==call && model.settings.getProperty("display.follow").toBoolean()
+        return buildList {
+            add(ContextMenuItem(if(following)"Unfollow "+call else "Follow "+call){mapAction(if(following)"unfollow" else "follow")})
+            if(call !in tracking && tracking.size<8)add(ContextMenuItem("Open tracking window"){tracking.add(call)})
+            add(ContextMenuItem("Message "+call){selectStation(call);if(!showChat)saveFlag("display.chat_visible",true);focusChat++})
+            add(ContextMenuItem("Station details"){selectStation(call);openTool("Station")})
+            add(ContextMenuItem("Locate on map"){mapAction("locate")})
+            add(ContextMenuItem("Track history"){historyCall=call})
+            add(ContextMenuItem("Copy callsign"){java.awt.Toolkit.getDefaultToolkit().systemClipboard.setContents(java.awt.datatransfer.StringSelection(call),null)})
+        }
     }
-    LaunchedEffect(account) { selected=null }
+    historyCall?.let {call->
+        val points by produceState(emptyList<AprsFix>(),call){value=model.archive.track(call)}
+        AlertDialog(onDismissRequest={historyCall=null},title={HelpText(call+" track history")},text={
+            LazyColumn(Modifier.heightIn(max=400.dp)){if(points.isEmpty())item {HelpText("No recorded positions")};items(points){fix->HelpText(Instant.ofEpochMilli(fix.timeMillis).toString()+" · "+fix.latitude+", "+fix.longitude)}}
+        },confirmButton={Command("Close"){historyCall=null}})
+    }
+    var rows by remember { mutableStateOf<List<ChatRow>>(emptyList()) }
+    LaunchedEffect(account,revision,selected,showChat) {
+        rows=model.database.rows(account)
+    }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colors.background)) {
         Row(Modifier.fillMaxWidth().background(Panel).padding(12.dp,2.dp),verticalAlignment=Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -157,10 +222,9 @@ fun main(args: Array<String>) {
                 }
                 HelpText(connectionLabel(connection,demo),color=Muted,fontSize=12.sp)
             }
-            HelpTextButton(if(expanded) "Collapse ribbon" else "Expand ribbon",onClick={expanded=!expanded}) { HelpText(if(expanded) "Hide ribbon" else "Show ribbon") }
             HelpTextButton("Open connection settings",onClick={settings=true}) { HelpText("Connection") }
-            HelpField(UiHelp.field("Find station"),search,{search=it;showStations=true},label={HelpText("Find station")},singleLine=true,modifier=Modifier.width(150.dp),fill=true)
-            HelpButton(UiHelp.action("Beacon now"),onClick={model.transmitBeacon()},enabled=beacon.enabled && account.isNotBlank() && beacon.position?.current==true) {Icon(AppIcons.Send,null,Modifier.size(16.dp));Spacer(Modifier.width(6.dp));HelpText("Beacon now")}
+            HelpField(UiHelp.field("Find station"),search,{search=it;if(!showStations) saveFlag("display.stations_visible",true)},label={HelpText("Find station")},singleLine=true,modifier=Modifier.width(150.dp),fill=true)
+            HelpButton(beacon.manualBlocks.joinToString("\n").ifEmpty {UiHelp.action("Beacon now")},onClick={model.transmitBeacon()},enabled=beacon.manualBlocks.isEmpty()) {Icon(AppIcons.Send,null,Modifier.size(16.dp));Spacer(Modifier.width(6.dp));HelpText("Beacon now")}
             Spacer(Modifier.width(10.dp))
             HelpOutlinedButton(UiHelp.action("Settings"),onClick={preferences=true}) {Icon(AppIcons.Settings,null,Modifier.size(18.dp));Spacer(Modifier.width(6.dp));HelpText("Settings")}
             Box {
@@ -194,15 +258,17 @@ fun main(args: Array<String>) {
         var tab by remember {mutableStateOf("Enables")}
         Row(Modifier.fillMaxWidth().background(Panel),verticalAlignment=Alignment.CenterVertically) {
             Row(Modifier.weight(1f).horizontalScroll(rememberScrollState())) {
-                tabs.dropLast(1).forEach { label -> RibbonTab(label,tab==label && expanded){tab=label;expanded=true} }
+                tabs.dropLast(1).forEach { label -> RibbonTab(label,tab==label && expanded){tab=label;if(!expanded) saveFlag("display.ribbon_expanded",true)} }
             }
-            RibbonTab("Help",tab=="Help" && expanded){tab="Help";expanded=true}
+            RibbonTab("Help",tab=="Help" && expanded){tab="Help";if(!expanded) saveFlag("display.ribbon_expanded",true)}
+            HelpTextButton("Toggle ribbon commands",onClick={saveFlag("display.ribbon_expanded",!expanded)}){HelpText(if(expanded) "Hide ribbon" else "Show ribbon")}
         }
         if(expanded) key(tab) {
-            Row(Modifier.fillMaxWidth().background(Color(0xFF203940)).horizontalScroll(rememberScrollState()).padding(horizontal=8.dp,vertical=4.dp)) {
+            Row(Modifier.fillMaxWidth().background(if(MaterialTheme.colors.isLight)Color(0xFFDEECE9) else Color(0xFF203940)).horizontalScroll(rememberScrollState()).padding(horizontal=8.dp,vertical=4.dp)) {
                 when(tab) {
                     "Enables" -> {
                         CommandGroup("APRS-IS") { Command(if(connection==AprsConnectionState.STOPPED) "Connect…" else "Disconnect"){if(connection==AprsConnectionState.STOPPED) settings=true else model.disconnect(remember=!demo)} }
+                        CommandGroup("Beaconing"){HelpSwitch("Enable or disable station beaconing",beacon.enabled,{saveFlag("beacon.enabled",it)});HelpText(if(beacon.enabled) "On" else "Off")}
                         CommandGroup("Radio ports") {
                             model.ports.forEachIndexed {index,port ->
                                 val enabled=port.getProperty("enabled").toBoolean()
@@ -216,12 +282,18 @@ fun main(args: Array<String>) {
                         CommandGroup("Diagnostics"){Command("Packet monitor…",icon=AppIcons.Search){packetMonitor=true}}
                     }
                     "Messages" -> {
-                        CommandGroup("Conversation"){Command("Read / send",icon=AppIcons.Send){showChat=true};Command("Send email",icon=AppIcons.Send){openTool("Email")}}
+                        CommandGroup("Conversation"){Command("Read / send",icon=AppIcons.Send){focusChat++;if(!showChat) saveFlag("display.chat_visible",true)};Command("Send email",icon=AppIcons.Send){openTool("Email")}}
                         CommandGroup("Broadcast"){Command("Groups"){openTool("Groups")};Command("Bulletins"){openTool("Bulletins")}}
                     }
                     "Screen" -> {
-                        CommandGroup("Map"){Command("Appearance…",icon=AppIcons.Settings){navigate("settings:Map")}}
-                        CommandGroup("Panes"){Command(if(showStations) "Hide stations" else "Show stations"){showStations=!showStations};Command(if(showChat) "Hide messages" else "Show messages"){showChat=!showChat}}
+                        CommandGroup("Map"){
+                            Command("Appearance…",icon=AppIcons.Settings){navigate("settings:Map")}
+                            val showCallsigns=remember(settingsRevision){model.settings.getProperty("tactical.labels")=="all"}
+                            Command(if(showCallsigns) "Hide callsigns" else "Show callsigns"){
+                                model.updateFeature("tactical.labels",if(showCallsigns) "none" else "all")
+                            }
+                        }
+                        CommandGroup("Panes"){Command(if(showStations) "Hide stations" else "Show stations"){saveFlag("display.stations_visible",!showStations)};Command(if(showChat) "Hide messages" else "Show messages"){saveFlag("display.chat_visible",!showChat)}}
                     }
                     "View" -> {
                         CommandGroup("Station filter"){ChoiceMenu("Show",kind,stationKinds,Modifier.width(185.dp)){kind=it;if(it=="all") search=""}}
@@ -232,21 +304,39 @@ fun main(args: Array<String>) {
                         CommandGroup("Station"){Command("General settings…",icon=AppIcons.Settings){preferences=true};Command("Beaconing…",icon=AppIcons.Send){navigate("settings:Beacon")}}
                         CommandGroup("Connections"){Command("Radio & GPS ports…",icon=AppIcons.Settings){portWorkspace=true};Command("Station login…"){settings=true}}
                     }
-                    "Clear" -> CommandGroup("Current session"){
+                    "Clear" -> CommandGroup("Filters and notices"){
                         var open by remember {mutableStateOf(false)}
-                        Box { Command("Clear…"){open=true};DropdownMenu(open,{open=false}){
-                            DropdownMenuItem({open=false;search="";kind="all"}){Text("Clear station filters")}
-                            DropdownMenuItem({open=false;model.activity.dismiss()}){Text("Dismiss activity notices")}
+                        Box { Command("Choose what to clear…"){open=true};DropdownMenu(open,{open=false}){
+                            HelpMenuItem("Reset the visible station search and category for this window. Saved starting filters, subscriptions, stations and chats are preserved.",onClick={open=false;search="";kind="all"}){Text("Reset station search and category")}
+                            HelpMenuItem("Dismiss the activity banner and its in-memory list until another event arrives. Station records and messages are preserved.",onClick={open=false;model.activity.dismiss()}){Text("Dismiss displayed activity notices")}
                         } }
                     }
                     "Help" -> {
                         CommandGroup("APRSERJ64"){Command("Version "+AppVersion.value){about=true};Command("License"){about=true}}
+                        CommandGroup("Updates"){
+                            Command("GitHub"){Desktop.getDesktop().browse(URI(model.settings.getProperty("services.source_url")))}
+                            Command(if(checking) updateStatus else "Update APRSERJ64",!checking){
+                                checking=true;updateStatus="Checking GitHub"
+                                scope.launch {
+                                    try {
+                                        val worker=UpdateWorker.start(model.directory,model.settings.getProperty("services.release_api_url"))
+                                        while(worker.process.isAlive){
+                                            if(java.nio.file.Files.exists(worker.restart)){closeForUpdate();break}
+                                            val status=worker.restart.resolveSibling("status")
+                                            if(java.nio.file.Files.isRegularFile(status))runCatching {java.nio.file.Files.readString(status).trim()}.getOrNull()?.takeIf {it.isNotBlank()}?.let {updateStatus=it}
+                                            delay(250)
+                                        }
+                                    } catch(e:Exception){model.error.value=e.message ?: "Unable to start updater."}
+                                    finally {checking=false}
+                                }
+                            }
+                        }
                         CommandGroup("Documentation"){Command("User manual",icon=AppIcons.Menu){Desktop.getDesktop().browse(URI(model.settings.getProperty("services.manual_url")))}}
                     }
                 }
             }
         }
-        if(error.isNotBlank()) HelpText(error,Modifier.fillMaxWidth().background(Color(0xFF6B332B)).padding(10.dp))
+        if(error.isNotBlank()) HelpText(error,Modifier.fillMaxWidth().background(MaterialTheme.colors.error.copy(alpha=0.18f)).padding(10.dp))
         if(setupIssue!=null) Row(Modifier.fillMaxWidth().background(Panel).padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically) {
             HelpText(setupIssue!!,Modifier.weight(1f),fontSize=12.sp)
             HelpTextButton("Open your callsign and passcode settings.",onClick={settings=true}) {HelpText("Fix sign-in")}
@@ -256,9 +346,10 @@ fun main(args: Array<String>) {
             HelpTextButton(UiHelp.action("View alerts"),onClick={openTool("Alerts")}) {HelpText("View alerts")};HelpTextButton(UiHelp.action("Dismiss"),onClick={model.activity.dismiss()}){HelpText("Dismiss")}
         }
         Row(Modifier.weight(1f)) {
-            if(showStations) Column(Modifier.width(225.dp).fillMaxHeight().background(Panel).padding(14.dp)) {
+            if(showStations) Column(Modifier.width((model.settings.getProperty("display.stations_width").toIntOrNull() ?: 225).coerceIn(160,600).dp).fillMaxHeight().background(Panel).padding(14.dp)) {
                 Row(verticalAlignment=Alignment.CenterVertically) {
                     HelpText("STATIONS",Modifier.weight(1f),color=Muted,fontSize=12.sp)
+                    Command("Hide"){saveFlag("display.stations_visible",false)}
                     Box {
                         ActionIcon(AppIcons.MoreVert,"Station list options") {listMenu=true}
                         DropdownMenu(expanded=listMenu,onDismissRequest={listMenu=false}) {
@@ -277,13 +368,15 @@ fun main(args: Array<String>) {
                     HelpOutlinedButton(UiHelp.action("Try practice mode"),onClick={model.localDemo()},modifier=Modifier.fillMaxWidth(),fill=true) {HelpText("Try practice mode")}
                 }
                 if(stations.isNotEmpty() && filtered.isEmpty()) HelpText("No matching stations. Clear filters to see everyone.",fontSize=12.sp,color=Muted)
-                if(selected!=null) HelpTextButton(UiHelp.action("Track selected station"),onClick={if(selected !in tracking && tracking.size<8)tracking.add(selected!!)}){HelpText("Track selected station")}
+                val trackTarget=search.trim().uppercase().takeIf {AprsProtocol.validCallsign(it)} ?: selected
+                if(trackTarget!=null) HelpTextButton("Open a map that waits for the station's next position.",enabled=trackTarget !in tracking && tracking.size<8,onClick={tracking.add(trackTarget)}){HelpText("Track "+trackTarget)}
 
                 LazyColumn(Modifier.weight(1f)) { items(filtered,key={it.callsign}) { station ->
-                    Column(Modifier.fillMaxWidth().clickable { selected=station.callsign }.padding(vertical=10.dp)) {
-                        HelpText(TacticalPreferences.aliases(model.settings)[station.callsign]?.let {"$it (${station.callsign})"} ?: station.callsign,color=if(selected==station.callsign) Accent else Color.White,fontWeight=FontWeight.Bold)
+                    ContextMenuArea(items={stationMenu(station.callsign)}) {
+                    Column(Modifier.fillMaxWidth().clickable { selectStation(station.callsign) }.padding(vertical=10.dp)) {
+                        HelpText(TacticalPreferences.aliases(model.settings)[station.callsign]?.let {"$it (${station.callsign})"} ?: station.callsign,color=if(selected==station.callsign) Accent else MaterialTheme.colors.onSurface,fontWeight=FontWeight.Bold)
                         HelpText("%.3f, %.3f".format(station.latitude,station.longitude),fontSize=11.sp,color=Muted)
-                    }; Divider(color=Color(0xFF2B3D46))
+                    } }; Divider(color=Color(0xFF2B3D46))
                 } }
                 HelpText(if(beacon.enabled) "Beacon position: ${beacon.source.lowercase()}" else "Beaconing off",fontSize=12.sp,color=Accent)
                 HelpText(beaconDetail(beacon.detail),fontSize=11.sp,color=Muted)
@@ -293,11 +386,19 @@ fun main(args: Array<String>) {
             val own=beacon.position?.takeIf {account.isNotBlank()}?.let {p -> AprsStation(account,p.fix.latitude,p.fix.longitude,
                 model.settings.getProperty("beacon.symbol_table").single(),model.settings.getProperty("beacon.symbol").single(),"",p.fix.timeMillis,p.course,p.speedKnots,p.altitudeMeters)}
             val localStations=listOfNotNull(own)+beacon.entities
-            key(mapConfigurationKey(model)) {MapPanel(localStations+filtered.filter {remote->localStations.none {it.callsign==remote.callsign}},selected,model,beaconCenter,Modifier.weight(1f).fillMaxHeight()) { selected=it }}
-            if(showChat) ChatPanel(account,selected,{selected=it},rows,model,Modifier.width(350.dp).fillMaxHeight())
+            Column(Modifier.weight(1f).fillMaxHeight()) {
+                if(!showChat || !showStations) Row {
+                    if(!showStations) Command("Show stations list"){saveFlag("display.stations_visible",true)}
+                    if(!showChat) Command("Show chat bar ("+rows.count {it.unread}+")"){saveFlag("display.chat_visible",true)}
+                }
+                val mapStations = (localStations + filtered + listOfNotNull(stations.firstOrNull { mainFollow && it.callsign==selected })).distinctBy { it.callsign }
+                if(mainFollow && selected!=null && mapStations.none {it.callsign==selected}) HelpText("Waiting for a position from "+selected)
+                key(mapConfigurationKey(model)) {MapPanel(mapStations,selected,model,beaconCenter,Modifier.weight(1f).fillMaxHeight(),stationMenu=::stationMenu,request=mapRequest) { selectStation(it) }}
+            }
+            if(showChat) ChatPanel(account,selected,::selectStation,rows,model,Modifier.width((model.settings.getProperty("display.chat_width").toIntOrNull() ?: 350).coerceIn(260,700).dp).fillMaxHeight(),focusChat,::stationMenu,{saveFlag("display.chat_visible",false)})
         }
     }
-    tracking.toList().forEach {call->key(call) {TrackingWindow(model,call) {tracking.remove(call)}}}
+    tracking.toList().forEach {call->key(call) {TrackingWindow(model,call,::stationMenu) {tracking.remove(call)}}}
     if(tools) OperatingToolsWindow(model,selected,toolPage,toolRequest,onNavigate=::navigate) {tools=false}
     if(settings) ConnectionDialog(model) {settings=false}
     if(preferences) PreferencesDialog(model,preferencesPage,preferencesRequest,onNavigate=::navigate) {preferences=false}
@@ -308,9 +409,17 @@ fun main(args: Array<String>) {
     if(portWorkspace) PortWorkspaceWindow(model) {portWorkspace=false}
     if(about) AlertDialog(onDismissRequest={about=false},title={HelpText("APRSERJ64 ${AppVersion.value}")},text={
         Column(Modifier.heightIn(max=500.dp).verticalScroll(rememberScrollState())) {
+         HelpText("Version "+AppVersion.value+"\nPortable folder: "+model.directory+"\nSettings: "+model.directory.resolve("settings.toml"))
          HelpText("Copyright 2026 APRSERJ64 contributors.\nAGPL-3.0. No warranty.\n\nInspired by Lynn Deffenbaugh KJ4ERJ's APRSISCE/32. APRS by Bob Bruninga WB4APR. Map data © OpenStreetMap contributors.\n\nContains GPLv3 shared components. Third-party license notices are included in the app folder.")
          listOf("APRSERJ64 manual" to "manual_url", "APRSIS32 manual" to "legacy_manual_url", "Original APRSISCE/32 wiki" to "legacy_wiki_url", "Attributions and licenses" to "credits_url", "APRS Foundation" to "foundation_url", "APRS Foundation GitHub" to "foundation_github_url", "Foundation APRSISCE/32 source" to "foundation_legacy_url", "APRSIS32 GitHub" to "legacy_source_url", "Passcode instructions" to "passcode_help_url").forEach {(label,key)->
-          HelpTextButton("Open $label in your browser",onClick={Desktop.getDesktop().browse(URI(model.settings.getProperty("services.$key")))}) {HelpText(label)}
+          val address=model.settings.getProperty("services.$key")
+          androidx.compose.foundation.ContextMenuArea(items={listOf(
+           androidx.compose.foundation.ContextMenuItem("Copy link address") {
+            java.awt.Toolkit.getDefaultToolkit().systemClipboard.setContents(java.awt.datatransfer.StringSelection(address),null)
+           },
+           androidx.compose.foundation.ContextMenuItem("Open link") {Desktop.getDesktop().browse(URI(address))}
+          )}) {HelpTextButton("Open "+address,onClick={Desktop.getDesktop().browse(URI(address))}) {HelpText(label)}}
+          HelpText(address,fontSize=12.sp)
          }
         }
     },confirmButton={HelpTextButton(UiHelp.action("Source & license"),onClick={Desktop.getDesktop().browse(URI(model.settings.getProperty("services.source_url")))}) {HelpText("Source & license")}},dismissButton={HelpTextButton(UiHelp.action("Close"),onClick={about=false}) {HelpText("Close")}})
@@ -334,13 +443,8 @@ private fun MapRasterLayer(id:String,url:String,settings:java.util.Properties,ki
     RasterLayer(id=id,source=source,opacity=const(settings.getProperty("map.${kind}_opacity").toFloat()))
 }
 
-@Composable internal fun MapPanel(stations: List<AprsStation>, selected: String?, model: AppModel, beaconCenter: AprsFix?, modifier: Modifier, forceFollow:Boolean=false, viewSettings:java.util.Properties=model.settings, select: (String)->Unit) {
-    val compatibilityPreference=viewSettings.getProperty("map.compatibility_mode").toBoolean()
-    var compatibility by remember(compatibilityPreference) {mutableStateOf(compatibilityPreference)}
-    if(compatibility) {
-        RasterMapView(stations,selected,model,beaconCenter,modifier,viewSettings,{compatibility=false},select)
-        return
-    }
+internal data class StationMapRequest(val call:String,val action:String,val id:Int)
+@Composable internal fun MapPanel(stations: List<AprsStation>, selected: String?, model: AppModel, beaconCenter: AprsFix?, modifier: Modifier, forceFollow:Boolean=false, viewSettings:java.util.Properties=model.settings, stationMenu:(String)->List<ContextMenuItem> = {emptyList()},request:StationMapRequest?=null,select: (String)->Unit) {
     val importedPoints by model.imports.content.collectAsState()
     val orbitPoints by model.satellites.positions.collectAsState()
     val extraPoints=importedPoints.waypoints.map {AprsStation(it.name.take(9),it.fix.latitude,it.fix.longitude,'/','/',it.name,System.currentTimeMillis())}+orbitPoints.map {AprsStation(it.name.take(9),it.latitude,it.longitude,'/','S',it.name,System.currentTimeMillis())}
@@ -388,7 +492,20 @@ private fun MapRasterLayer(id:String,url:String,settings:java.util.Properties,ki
     val orbits by model.satellites.positions.collectAsState()
     val geometry=remember(stations,selected,selectedPath,warnings,clock,preferencesRevision,imported,orbits) {tacticalGeometry(stations,selected,selectedPath?.let {mapOf(it.call to it)}.orEmpty(),warnings,viewSettings,System.currentTimeMillis())+imported.shapes+model.satellites.geometry(System.currentTimeMillis())}
     var trail by remember(selected) {mutableStateOf<List<AprsFix>>(emptyList())}
-    var follow by remember {mutableStateOf(forceFollow || viewSettings.getProperty("display.follow").toBoolean())}
+    var trackingFollow by remember { mutableStateOf(true) }
+    val follow = if(forceFollow) trackingFollow else remember(preferencesRevision) { model.settings.getProperty("display.follow").toBoolean() }
+    fun setMapFollow(enabled: Boolean) {
+        if(forceFollow) {
+            trackingFollow=enabled
+        } else {
+            val edited=java.util.Properties().apply {
+                putAll(model.settings)
+                setProperty("display.follow",enabled.toString())
+                setProperty("display.follow_call",selected.takeIf {enabled}.orEmpty())
+            }
+            model.savePreferences(edited,model.entities)
+        }
+    }
     var locationInput by remember {mutableStateOf("")}
     var coordinateReference by remember {mutableStateOf<MapLocation?>(null)}
     val locationResult=remember(locationInput,coordinateReference) {CoordinateInput.parse(locationInput,coordinateReference)}
@@ -434,6 +551,29 @@ private fun MapRasterLayer(id:String,url:String,settings:java.util.Properties,ki
         }}
     }
     val mapReady=state.style.loadState == StyleLoadState.Ready
+    LaunchedEffect(request,mapReady){
+        if(request!=null && mapReady){
+            if(request.action!="locate"){
+                setMapFollow(request.action=="follow")
+            }
+            if(request.action!="unfollow")(stations+model.stations.value).firstOrNull {it.callsign==request.call}?.let {
+                state.animateCamera(CameraUpdate(center=Position(it.longitude,it.latitude)))
+            }
+        }
+    }
+    var menuTarget by remember {mutableStateOf<Pair<String,DpOffset>?>(null)}
+    var dimensions by remember {mutableStateOf(androidx.compose.ui.unit.IntSize.Zero)}
+    val camera=state.cameraPosition
+    val viewport=remember {Any()}
+    DisposableEffect(viewport){onDispose {model.viewAreas(viewport,emptyList())}}
+    LaunchedEffect(mapReady,camera.center,camera.zoom,dimensions,density) {
+        if(mapReady) {
+            delay(750)
+            val areas=visibleAreas(camera.center.latitude,camera.center.longitude,camera.zoom,
+                dimensions.width.toDouble()/density,dimensions.height.toDouble()/density)
+            model.viewAreas(viewport,areas)
+        }
+    }
     var mapError by remember {mutableStateOf("")}
     LaunchedEffect(state) {
         if(System.getProperty("aprserj64.probe") == "true") {
@@ -451,10 +591,9 @@ private fun MapRasterLayer(id:String,url:String,settings:java.util.Properties,ki
             if(adaptiveBase!=null && state.style.layers["base-raster-$requestedRaster"]!=null) renderedRaster=requestedRaster
             println("MAP idle")
         }
-        is MapEvent.StyleLoadFailed -> {compatibility=true; System.err.println("MAP style failed: ${event.reason}")}
+        is MapEvent.StyleLoadFailed -> {mapError="Unable to load the map style: ${event.reason}"; System.err.println("MAP style failed: ${event.reason}")}
         is MapEvent.SourceDataFailed -> {
-            if(event.sourceId=="base" && adaptiveBase==null && !offline) compatibility=true
-            else mapError="Unable to load map data"
+            mapError="Unable to load map data for ${event.sourceId}"
             System.err.println("MAP source failed: ${event.sourceId}")
         }
         is MapEvent.FrameRendered -> if(event.stats?.frameCount == 1L) println("MAP_FIRST_FRAME ${event.stats}")
@@ -472,30 +611,52 @@ private fun MapRasterLayer(id:String,url:String,settings:java.util.Properties,ki
         confirmButton={HelpTextButton(UiHelp.action("Close"),onClick={chosenAlert=null}) {HelpText("Close")}})}
     LaunchedEffect(mapReady,follow,followed?.latitude,followed?.longitude) {if(mapReady && follow && followed!=null) state.animateCamera(CameraUpdate(center=Position(followed.longitude,followed.latitude),bearing=0.0,pitch=0.0))}
     LaunchedEffect(beaconCenter,mapReady) {if(mapReady) beaconCenter?.let {state.animateCamera(CameraUpdate(center=Position(it.longitude,it.latitude),zoom=if(it==localMap?.center) 16.0 else null,bearing=0.0,pitch=0.0))}}
-    Box(modifier) {
+    Box(modifier.onSizeChanged {dimensions=it}.pointerInput(state) {
+        awaitPointerEventScope {
+            while(true){
+                val event=awaitPointerEvent(PointerEventPass.Initial)
+                if(event.type==PointerEventType.Press && event.buttons.isSecondaryPressed){
+                    val point=event.changes.first().position
+                    val anchor=DpOffset(point.x.toDp(),point.y.toDp())
+                    scope.launch {
+                        val hits=state.queryRenderedFeatures(anchor,layerIds=setOf("aprs-stations"))
+                        hits.firstOrNull()?.properties?.get("callsign")?.jsonPrimitive?.content?.let {menuTarget=it to anchor}
+                    }
+                }
+            }
+        }
+    }) {
         MaplibreMap(state=state,interactions=MapInteractions {camera {rotate {enabled=false}; pitch {enabled=false}}},
             cameraConstraints=CameraConstraints {maxPitch=0.0; minZoom=viewSettings.getProperty("map.minimum_zoom").toDouble(); maxZoom=viewSettings.getProperty("map.maximum_zoom").toDouble()},renderOptions=RenderOptions {maximumFps=viewSettings.getProperty("map.maximum_fps").toInt()}, overlay={})
         Column(Modifier.align(Alignment.TopStart).padding(6.dp).background(Panel.copy(alpha=0.94f)).padding(6.dp)) {
             Row {
                 ActionIcon(AppIcons.Add,"Zoom in") {scope.launch {state.animateCamera(CameraUpdate(zoom=(state.cameraPosition.zoom+1).coerceAtMost(viewSettings.getProperty("map.maximum_zoom").toDouble())))}}
                 ActionIcon(AppIcons.Remove,"Zoom out") {scope.launch {state.animateCamera(CameraUpdate(zoom=(state.cameraPosition.zoom-1).coerceAtLeast(viewSettings.getProperty("map.minimum_zoom").toDouble())))}}
-                HelpTextButton("Show raster tiles without the native map renderer",onClick={compatibility=true}){HelpText("Compatibility map")}
                 HelpTextButton(UiHelp.action("Home"),onClick={scope.launch {state.animateCamera(CameraUpdate(center=initial,bearing=0.0,pitch=0.0))}}){HelpText("Home")}
-                HelpTextButton(UiHelp.action(if(follow) "Following" else "Follow station"),onClick={follow=!follow},enabled=followed!=null || follow){HelpText(if(follow) "Following" else "Follow station")}
+                HelpTextButton(UiHelp.action(if(follow) "Following" else "Follow station"),onClick={setMapFollow(!follow)},enabled=selected!=null || follow){HelpText(if(follow) "Following" else "Follow station")}
                 ActionIcon(AppIcons.Search,"Go to coordinates") {showCoordinates=!showCoordinates}
             }
             if(showCoordinates) Column(Modifier.width(400.dp)) {
+                val requests=remember {kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity=1)}
                 Row(verticalAlignment=Alignment.CenterVertically) {
-                    HelpField(UiHelp.field("Location"),locationInput,{locationInput=it;coordinateReference=MapLocation(state.cameraPosition.center.latitude,state.cameraPosition.center.longitude)},Modifier.weight(1f),label={HelpText("Location")},placeholder={HelpText("Coordinates, map link or Plus Code")},singleLine=true,isError=locationInput.isNotBlank() && locationResult.location==null,fill=true)
-                    HelpTextButton(UiHelp.action("Go"),onClick={locationResult.location?.let {p->follow=false;scope.launch {state.animateCamera(CameraUpdate(center=Position(p.longitude,p.latitude),bearing=0.0,pitch=0.0))}}},enabled=locationResult.location!=null){HelpText("Go")}
+                    HelpField(UiHelp.field("Location"),locationInput,{locationInput=it;coordinateReference=MapLocation(state.cameraPosition.center.latitude,state.cameraPosition.center.longitude)},Modifier.weight(1f).submitPlaceOnEnter(requests,locationResult.location==null && locationInput.isNotBlank()),label={HelpText("Location")},placeholder={HelpText("Place, coordinates, map link or Plus Code")},singleLine=true,isError=locationInput.isNotBlank() && locationResult.location==null,fill=true)
+                    HelpTextButton(UiHelp.action("Go"),onClick={locationResult.location?.let {p->if(follow)setMapFollow(false);scope.launch {state.animateCamera(CameraUpdate(center=Position(p.longitude,p.latitude),bearing=0.0,pitch=0.0))}}},enabled=locationResult.location!=null){HelpText("Go")}
                 }
                 if(locationInput.isNotBlank()) {
+                    if(locationResult.location==null) PlaceSearch(locationInput,requests) { point -> locationInput=point.latitude.toString()+", "+point.longitude }
                     locationResult.location?.let {HelpText("Go to ${it.display()}",fontSize=12.sp,color=Accent)}
                     if(locationResult.explanation.isNotBlank()) HelpText(locationResult.explanation,fontSize=11.sp,color=Muted)
                     if(locationResult.error.isNotBlank()) HelpText(locationResult.error,fontSize=11.sp,color=MaterialTheme.colors.error)
                 }
             }
             if(followed!=null) HelpText(navigationSummary(model,followed),fontSize=11.sp)
+        }
+        menuTarget?.let {(call,anchor)->
+            Box(Modifier.offset(anchor.x,anchor.y)){
+                DropdownMenu(expanded=true,onDismissRequest={menuTarget=null}){
+                    stationMenu(call).forEach {action->DropdownMenuItem(onClick={menuTarget=null;action.onClick()}){HelpText(action.label)}}
+                }
+            }
         }
         val attribution=if(localMap!=null) (listOf(viewSettings.getProperty("map.attribution"),"© OpenStreetMap contributors").distinct().joinToString(" · "))
             else viewSettings.getProperty("map.attribution")
@@ -505,7 +666,19 @@ private fun MapRasterLayer(id:String,url:String,settings:java.util.Properties,ki
     }
 }
 
-@Composable private fun ChatPanel(account: String, peer: String?, select: (String?)->Unit, all: List<ChatRow>,model: AppModel,modifier: Modifier) {
+@Composable private fun ChatPanel(account: String, peer: String?, select: (String?)->Unit, all: List<ChatRow>,model: AppModel,modifier: Modifier,focusRequest:Int,stationMenu:(String)->List<ContextMenuItem>,hide:()->Unit) {
+    var sms by remember(peer) {mutableStateOf<String?>(null)}
+    var groupChat by remember(peer) {mutableStateOf<String?>(null)}
+    groupChat?.let {group->Column(modifier.padding(12.dp)){GroupChatPanel(model,account,all,group,stationMenu){groupChat=null}};return}
+    sms?.let {initial->Column(modifier.padding(12.dp)){SmsPanel(account,model,all,initial){sms=null}};return}
+    val groupServer=model.settings.getProperty("groups.server")
+    fun openRow(row:ChatRow){
+        val number=smsPeer(row);val group=groupIn(row,groupServer)
+        when {number!=null->sms=number;group!=null->groupChat=group;else->select(row.peer)}
+    }
+    fun label(row:ChatRow)=smsPeer(row)?.let {"SMS @"+it} ?: groupIn(row,groupServer)?.let {"Group "+it} ?: row.peer
+    val fieldFocus=remember { androidx.compose.ui.focus.FocusRequester() }
+    LaunchedEffect(focusRequest){if(focusRequest>0) fieldFocus.requestFocus()}
     val scope=rememberCoroutineScope()
     var recipient by remember {mutableStateOf("")}
     val drafts=remember {mutableStateMapOf<Pair<String,String?>,String>()}
@@ -517,28 +690,44 @@ private fun MapRasterLayer(id:String,url:String,settings:java.util.Properties,ki
     LaunchedEffect(account,peer) {if(peer!=null)chatOptions=model.database.options(account,peer)}
     val canSubmit=peer!=null && !sending && AprsMessages.validLongText(draft) && AprsProtocol.validCallsign(account) && AprsProtocol.validCallsign(peer) && account!=peer
     fun submitDraft() {
-        if(!canSubmit)return
+        if(!canSubmit || sending || drafts[draftKey]!=draft)return
         val submitted=draft;val key=draftKey;sending=true
-        scope.launch {try {model.database.enqueue(account,peer,submitted);if(drafts[key]==submitted) drafts.remove(key)} catch(_:Exception){model.error.value="Unable to save this message."} finally {sending=false}}
+        scope.launch {try {model.send(peer,submitted);if(drafts[key]==submitted) drafts.remove(key)} catch(_:Exception){model.error.value="Unable to save this message."} finally {sending=false}}
     }
     val focusManager=LocalFocusManager.current
     val history=all.filter {it.peer==peer}
+    LaunchedEffect(account,peer,history){if(peer!=null)model.database.markDisplayed(account,peer,history.filter {it.unread}.map {it.id})}
+    val cards=history.groupBy {if(it.multipartId==0L) -it.id else it.multipartId}.values.toList()
     val list=rememberLazyListState()
-    LaunchedEffect(history.size) {if(history.isNotEmpty()) list.animateScrollToItem(history.lastIndex)}
+    LaunchedEffect(cards.size) {if(cards.isNotEmpty()) list.animateScrollToItem(cards.lastIndex)}
     Column(modifier.background(Panel).padding(16.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {
-            HelpText(if(peer==null) "MESSAGES" else peer,fontSize=18.sp,fontWeight=FontWeight.Bold,color=Accent)
-            Spacer(Modifier.weight(1f)); if(peer!=null) HelpTextButton(UiHelp.action("Chats"),onClick={select(null)}) {HelpText("Chats")}
+            val headingColor=if(peer==null)Accent else history.lastOrNull()?.let {conversationColor(history.any {r->r.unread},it.outgoing)} ?: Muted
+            HelpText(if(peer==null) "MESSAGES" else peer,if(peer==null)Modifier else Modifier.border(1.dp,headingColor).padding(3.dp),fontSize=18.sp,fontWeight=FontWeight.Bold,color=headingColor)
+            Spacer(Modifier.weight(1f)); Command("Hide",action=hide); if(peer!=null) HelpTextButton(UiHelp.action("Chats"),onClick={select(null)}) {HelpText("Chats")}
+        }
+        val unread=all.filter {it.unread && !it.outgoing}.groupBy(::label)
+        if(unread.isNotEmpty()) {
+            HelpText("New messages",fontWeight=FontWeight.Bold)
+            Column(Modifier.heightIn(max=140.dp).verticalScroll(rememberScrollState())){
+                unread.values.sortedByDescending {it.last().time}.forEach {messages->
+                    val last=messages.last()
+                    HelpTextButton("Read this conversation",onClick={openRow(last)}){HelpText(label(last)+" ("+messages.size+") · "+Instant.ofEpochMilli(last.time).atZone(ZoneId.systemDefault()).toLocalTime().withNano(0)+" · "+last.body.take(32),color=conversationColor(true,false),fontWeight=FontWeight.Bold)}
+                }
+            }
         }
         if(peer==null) {
+            Command("New SMS conversation"){sms=""}
+            Command("Group chat"){groupChat="HOTG"}
             Row(Modifier.padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically) {
-                HelpField(UiHelp.field("Callsign-SSID"),recipient,{recipient=it.trim().uppercase()},Modifier.weight(1f),label={HelpText("Callsign-SSID")},singleLine=true,fill=true)
+                HelpField(UiHelp.field("Callsign-SSID"),recipient,{recipient=it.trim().uppercase()},Modifier.weight(1f).focusRequester(fieldFocus),label={HelpText("Callsign-SSID")},singleLine=true,fill=true)
                 HelpTextButton(UiHelp.action("Chat"),onClick={select(recipient)},enabled=AprsProtocol.validCallsign(recipient)&&recipient!=account&&account.isNotBlank()) {HelpText("Chat")}
             }
-            val threads=all.groupBy {it.peer}.values.sortedByDescending {it.last().time}
-            LazyColumn {items(threads,key={it.last().peer}) {thread ->
-                Column(Modifier.fillMaxWidth().clickable {select(thread.last().peer)}.padding(vertical=12.dp)) {
-                    HelpText(thread.last().peer+(if(thread.any {it.unread}) "  ●" else ""),fontWeight=FontWeight.Bold)
+            val threads=all.groupBy(::label).values.sortedByDescending {it.last().time}
+            LazyColumn {items(threads,key={label(it.last())}) {thread ->
+                Column(Modifier.fillMaxWidth().clickable {openRow(thread.last())}.padding(vertical=12.dp)) {
+                    val last=thread.last();val n=thread.count {it.unread}
+                    HelpText(label(last)+" · "+(if(n>0) "$n unread" else if(last.outgoing) "Sent" else "Received"),color=conversationColor(n>0,last.outgoing),fontWeight=FontWeight.Bold)
                     HelpText(thread.last().body,maxLines=2,color=Muted,fontSize=12.sp)
                 }; Divider()
             } }
@@ -550,7 +739,20 @@ private fun MapRasterLayer(id:String,url:String,settings:java.util.Properties,ki
                 Row(verticalAlignment=Alignment.CenterVertically) {HelpCheckbox(UiHelp.action("Request acknowledgment"),chatOptions.requestAck,{checked->scope.launch {val next=chatOptions.copy(requestAck=checked);model.database.saveOptions(account,peer,next);chatOptions=next}});HelpText("Request acknowledgment",fontSize=12.sp)}
             }
             LazyColumn(Modifier.weight(1f).padding(vertical=12.dp),state=list,verticalArrangement=Arrangement.spacedBy(10.dp)) {
-                items(history,key={it.id}) {row -> Column(Modifier.fillMaxWidth().background(if(row.outgoing) Color(0xFF24473F) else Color(0xFF263740)).padding(10.dp)) {
+                items(cards,key={it.first().id}) {segments ->
+                    val parts=if(segments.first().multipartId!=0L)segments.sortedBy {it.body.substringAfter('(').substringBefore('/').toIntOrNull()} else segments
+                    val first=parts.first()
+                    var details by remember {mutableStateOf(false)}
+                    val cardColor=if(MaterialTheme.colors.isLight){if(first.outgoing)Color(0xFFD9F0E6) else Color(0xFFDEEAF4)} else if(first.outgoing) Color(0xFF24473F) else Color(0xFF263740)
+                    Column(Modifier.fillMaxWidth().background(cardColor).padding(10.dp)) {
+                    if(first.multipartId!=0L) {
+                        HelpText(parts.joinToString(""){it.body.substringAfter(") ")})
+                        val total=first.body.substringAfter('/').substringBefore(')')
+                        HelpText(if(first.outgoing)parts.count {it.status=="ACKNOWLEDGED"}.toString()+"/"+total+" acknowledged" else parts.size.toString()+"/"+total+" received")
+                        Command(if(details) "Hide packets" else "Show packets"){details=!details}
+                    }
+                    if(first.multipartId==0L || details) parts.forEach { row ->
+                    if(first.multipartId!=0L) HelpText("Packet ID "+row.wireId)
                     HelpText(if(row.outgoing) "You" else row.peer,color=Accent,fontSize=11.sp)
                     HelpText(row.body,Modifier.padding(vertical=5.dp),fontSize=14.sp)
                     if(row.outgoing && row.status in listOf("NO_ACK","REJECTED")) HelpTextButton(UiHelp.action("Retry as new message"),onClick={scope.launch {model.database.retry(account,row.id)}}) {HelpText("Retry as new message")}
@@ -569,12 +771,21 @@ private fun MapRasterLayer(id:String,url:String,settings:java.util.Properties,ki
                     HelpText(DateTimeFormatter.ofPattern("MMM d HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(row.time))+
                         if(row.outgoing && row.attempts>0) " · ${row.attempts} delivery attempt${if(row.attempts==1) "" else "s"}" else "",
                         fontSize=10.sp,color=Muted)
-                } }
+                } } }
             }
-            HelpField(UiHelp.field("Message"),draft,{drafts[draftKey]=it},Modifier.fillMaxWidth().onPreviewKeyEvent {event->if(event.type==KeyEventType.KeyDown && event.key==Key.Enter && event.isCtrlPressed) {submitDraft();true} else if(event.type==KeyEventType.KeyDown && event.key==Key.Tab) {focusManager.moveFocus(if(event.isShiftPressed) FocusDirection.Previous else FocusDirection.Next);true} else false}.padding(top=8.dp),label={HelpText("Message")},maxLines=3,fill=true)
+            OutlinedTextField(draft,{drafts[draftKey]=it},Modifier.fillMaxWidth().focusRequester(fieldFocus).onPreviewKeyEvent {event->
+                when {
+                    event.key==Key.Enter || event.key==Key.NumPadEnter -> {if(event.type==KeyEventType.KeyUp) submitDraft();true}
+                    event.type==KeyEventType.KeyDown && event.key==Key.Tab -> {focusManager.moveFocus(if(event.isShiftPressed) FocusDirection.Previous else FocusDirection.Next);true}
+                    else -> false
+                }
+            }.padding(top=8.dp),label={Text("Message")},maxLines=3)
             if(draft.isNotEmpty() && !AprsMessages.validLongText(draft)) HelpText("Use 1–300 printable English characters; no line breaks, {, | or ~.",fontSize=12.sp,color=MaterialTheme.colors.error)
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                HelpText("${draft.length}/300 · Ctrl+Enter to send",color=Muted,fontSize=10.sp)
+                val parts=if(AprsMessages.validLongText(draft)) AprsMessages.split(draft) else emptyList()
+                val used=parts.lastOrNull()?.let {if(parts.size>1) it.substringAfter(") ").length else it.length} ?: 0
+                val capacity=if(parts.size>1) 61 else 67
+                HelpText(draft.length.toString()+"/300 · $used/$capacity · "+parts.size.coerceAtLeast(1)+" packet(s)",color=Muted,fontSize=10.sp)
                 Spacer(Modifier.weight(1f))
                 HelpButton(UiHelp.action("Send"),onClick={submitDraft()},enabled=canSubmit) {Icon(AppIcons.Send,null,Modifier.size(16.dp));Spacer(Modifier.width(6.dp));HelpText("Send")}
             }
@@ -727,7 +938,7 @@ private val stationSort=listOf("callsign" to "Callsign","recent" to "Most recent
 
 @Composable private fun RibbonTab(label:String,selected:Boolean,onClick:()->Unit) {
     Column(Modifier.width(96.dp),horizontalAlignment=Alignment.CenterHorizontally) {
-        Tab(selected=selected,onClick=onClick,modifier=Modifier.height(36.dp)) { Text(label,maxLines=1,color=if(selected) Accent else Color.White) }
+        Tab(selected=selected,onClick=onClick,modifier=Modifier.height(36.dp)) { Text(label,maxLines=1,color=if(selected) Accent else MaterialTheme.colors.onSurface) }
         Spacer(Modifier.width(40.dp).height(3.dp).background(if(selected) Accent else Color.Transparent))
     }
 }

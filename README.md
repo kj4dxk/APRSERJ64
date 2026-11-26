@@ -21,7 +21,7 @@ Your callsign and passcode are stored only in your local `settings.toml`. Keep t
 
 The default OSM-derived tiles come from `http://pdeffenb.homeip.net:82/raster/light/{z}/{x}/{y}.png`, independently hosted by the maintainer. This reduces requests to the OpenStreetMap community tile server. If the project server has problems, open **Settings → Map → OpenStreetMap**, then **Save**. Select **pdeffenb** there to switch back. These preset addresses are editable in your local `settings.toml`.
 
-If the full map is blank, select **Compatibility map** on the map toolbar. It loads raster tiles through a separate renderer and shows station markers. You can also enable compatibility mode in Map settings. Use the community preset for normal interactive viewing, not bulk offline downloads. Map data © OpenStreetMap contributors. This is actively developed software: test the workflows and hardware you depend on before replacing an established installation, and [report problems](https://github.com/kj4dxk/APRSERJ64/issues) with the version and reproduction steps.
+The main map and independent tracking windows use the same renderer. If streets are missing offline, check that the selected source has cached or downloaded tiles for the area and zoom level. Use the community preset for normal interactive viewing, not bulk offline downloads. Map data © OpenStreetMap contributors. This is actively developed software: test the workflows and hardware you depend on before replacing an established installation, and [report problems](https://github.com/kj4dxk/APRSERJ64/issues) with the version and reproduction steps.
 
 ## User manual
 

@@ -15,7 +15,7 @@ import org.aprsfoundation.core.*
 
 data class PortStatus(val name: String, val detail: String, val received: Long=0, val transmitted: Long=0, val dropped: Long=0,
     val connection: String="", val modemSettings: List<String> = emptyList(), val connected: Boolean=false,
-    val canQueryModem: Boolean=false)
+    val canQueryModem: Boolean=false, val startupTrace: List<String> = emptyList())
 
 /** One serial/TCP owner. No disconnected transmit queue; reconnect creates fresh decoders. */
 class DevicePort(val config: PortConfig, parent: CoroutineScope,
@@ -43,6 +43,7 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
         while(isActive && !stopped) {
             opened=false
             status.update {it.copy(detail="Opening",connected=false,canQueryModem=false,modemSettings=emptyList())}
+            trace("Opening "+config.connection)
             var failure=""
             try {session()} catch(timeout: TimeoutCancellationException) {failure="Initialization timed out"}
             catch(cancelled: CancellationException) {throw cancelled}
@@ -60,9 +61,14 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
             attempt=(attempt+1).coerceAtMost(6)
             val reason=failure.ifBlank {"Disconnected"}
             status.update {it.copy(detail="$reason · retry in ${wait}s",connected=false,canQueryModem=false)}
+            trace(reason+" · retry in "+wait+"s")
             delay(wait*1000L)
         }
     }}
+    private fun trace(message: String) {
+        val entry=java.time.Instant.now().toString()+" · "+message
+        status.update {it.copy(startupTrace=(it.startupTrace+entry).takeLast(60))}
+    }
     private fun own(value: AutoCloseable) = synchronized(lifecycle) {
         if(stopped) {
             value.close()
@@ -113,7 +119,21 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
         val input: InputStream
         if(config.text("transport") in PortPreferences.comTransports) {
             val port=SerialPort.getCommPort(config.text("device"))
-            port.setComPortParameters(config.number("baud"),8,SerialPort.ONE_STOP_BIT,SerialPort.NO_PARITY)
+            val parity=when(config.text("serial_parity")) {
+                "odd" -> SerialPort.ODD_PARITY
+                "even" -> SerialPort.EVEN_PARITY
+                "mark" -> SerialPort.MARK_PARITY
+                "space" -> SerialPort.SPACE_PARITY
+                else -> SerialPort.NO_PARITY
+            }
+            val stopBits=when(config.text("serial_stop_bits")) {
+                "1.5" -> SerialPort.ONE_POINT_FIVE_STOP_BITS
+                "2" -> SerialPort.TWO_STOP_BITS
+                else -> SerialPort.ONE_STOP_BIT
+            }
+            check(port.setComPortParameters(config.number("baud"),config.number("serial_data_bits"),stopBits,parity)) {
+                "Unable to set serial framing"
+            }
             port.setFlowControl(SerialPort.FLOW_CONTROL_DISABLED)
             port.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING,1000,1000)
             val handle=AutoCloseable {port.closePort()}
@@ -146,7 +166,7 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
         val reader=async(Dispatchers.IO) {read(input)}
         try {
             writes.withLock {
-                config.list("open_commands").forEach {command(it)}
+                config.list("open_commands").forEachIndexed {index, entry -> command(entry,index+1) }
                 if(config.protocol=="AGW" && config.text("agw_user").isNotEmpty()) {
                     val credentials=ByteArray(510)
                     config.text("agw_user").toByteArray(Charsets.US_ASCII).copyInto(credentials,0)
@@ -158,19 +178,28 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
                     if(config.number(key)>=0) raw(Kiss.command(config.number("channel"),index+1,byteArrayOf(config.number(key).toByte())))
                 }
             }
+            trace("Host initialization complete")
             connected("Connected")
             reader.await()
-        } finally {ready=false;release();reader.cancelAndJoin()}
+        } finally {ready=false;reader.cancel();release();reader.join()}
     }
     private fun isKiss()=config.protocol in PortPreferences.kissProtocols
     private fun raw(bytes: ByteArray) {checkNotNull(output).apply {write(bytes);flush()}}
-    private suspend fun command(command: String) {
+    private suspend fun command(command: String, startupStep: Int? = null) {
         val parts=command.split('|',limit=2);val response=parts.getOrNull(1)
         val waiting=response?.takeIf {it.isNotEmpty()}?.let {CompletableDeferred<Unit>()}
         expected=if(waiting!=null) response to waiting else null
         try {
+            // Custom commands and prompts may contain credentials. Report their position and outcome.
+            if(startupStep!=null) trace("Startup command $startupStep · "+if(waiting==null) "write only" else "wait for configured response")
             raw(parts[0].toByteArray(Charsets.US_ASCII))
-            if(waiting!=null) withTimeout(config.number("command_timeout_ms").toLong()) {waiting.await()}
+            if(waiting!=null) {
+                val timeoutMs=config.number("command_timeout_ms").toLong()
+                val matched=withTimeoutOrNull(timeoutMs) {waiting.await(); true} ?: false
+                val step=startupStep?.let {"Startup command "+it} ?: "Close command"
+                check(matched) {"$step timed out waiting for response ("+timeoutMs+"ms)"}
+                if(startupStep!=null) trace("$step · response matched")
+            } else if(startupStep!=null) trace("Startup command $startupStep · host write completed")
             delay(config.number("command_delay_ms").toLong())
         } finally {expected=null}
     }
@@ -220,6 +249,10 @@ class DevicePort(val config: PortConfig, parent: CoroutineScope,
             if(!packet(p)) status.update {it.copy(dropped=it.dropped+1)}}
         while(currentCoroutineContext().isActive) {
             val size=try {input.read(buffer)} catch(_: SocketTimeoutException) {continue} catch(_: SerialPortTimeoutException) {continue}
+            catch(error: java.io.IOException) {
+                currentCoroutineContext().ensureActive()
+                throw error
+            }
             if(size<0) return
             val bytes=buffer.copyOf(size)
             if(config.protocol=="AGW" || isKiss() && (ready || expected==null))

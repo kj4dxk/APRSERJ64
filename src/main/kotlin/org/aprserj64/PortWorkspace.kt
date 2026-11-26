@@ -24,13 +24,13 @@ import java.util.Properties
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 
-private val WorkspaceBackground=Color(0xFF0E1B22)
-private val WorkspacePanel=Color(0xFF182B34)
-private val WorkspaceMuted=Color(0xFFA8BCC7)
-private val ReceiveColor=Color(0xFF6DDAC5)
-private val SendColor=Color(0xFFF1BC72)
-private val GpsColor=Color(0xFF83BEFF)
-private val DigiColor=Color(0xFFD3A7FF)
+private data class WireColors(val receive: Color, val send: Color, val gps: Color, val digipeat: Color)
+private val darkWires = WireColors(Color(0xFF6DDAC5), Color(0xFFF1BC72), Color(0xFF83BEFF), Color(0xFFD3A7FF))
+private val lightWires = WireColors(Color(0xFF006453), Color(0xFF824700), Color(0xFF155E9A), Color(0xFF794098))
+private val wireColors: WireColors @Composable get() = if (MaterialTheme.colors.isLight) lightWires else darkWires
+private val WorkspaceBackground: Color @Composable get() = MaterialTheme.colors.background
+private val WorkspacePanel: Color @Composable get() = MaterialTheme.colors.surface
+private val WorkspaceMuted: Color @Composable get() = MaterialTheme.colors.onSurface.copy(alpha = 0.72f)
 
 @Composable fun PortWorkspaceWindow(model: AppModel, dismiss: ()->Unit) {
     var draft by remember {mutableStateOf(PortWorkspaceDraft(model.settings,model.ports,model.entities))}
@@ -50,7 +50,7 @@ private val DigiColor=Color(0xFFD3A7FF)
     fun close() {if(draft.dirty) confirm="close" else dismiss()}
     Window(icon=AppIcon.window,onCloseRequest={close()},title="Ports & connections — APRSERJ64",
         state=rememberWindowState(placement=WindowPlacement.Maximized,width=1500.dp,height=940.dp)) {
-        MaterialTheme(colors=darkColors(primary=ReceiveColor,background=WorkspaceBackground,surface=WorkspacePanel)) {
+        MaterialTheme(colors=applicationColors(model)) {
             Surface(Modifier.fillMaxSize()) {Column(Modifier.fillMaxSize()) {
                 Row(Modifier.fillMaxWidth().padding(24.dp,16.dp),verticalAlignment=Alignment.CenterVertically) {
                     Column {HelpText("Ports & connections",fontSize=25.sp,fontWeight=FontWeight.Bold)
@@ -64,14 +64,14 @@ private val DigiColor=Color(0xFFD3A7FF)
                 }
                 Row(Modifier.fillMaxWidth().padding(horizontal=24.dp),verticalAlignment=Alignment.CenterVertically) {
                     listOf("Wiring","Object routes","Radio limits").forEach {tab->
-                        HelpTextButton(UiHelp.action(tab),onClick={page=tab;wiring=false}) {HelpText(tab,color=if(page==tab) ReceiveColor else WorkspaceMuted,fontWeight=if(page==tab) FontWeight.Bold else FontWeight.Normal)}
+                        HelpTextButton(UiHelp.action(tab),onClick={page=tab;wiring=false}) {HelpText(tab,color=if(page==tab) wireColors.receive else WorkspaceMuted,fontWeight=if(page==tab) FontWeight.Bold else FontWeight.Normal)}
                     }
                     Spacer(Modifier.weight(1f))
                     if(page=="Wiring") {HelpCheckbox(UiHelp.action("Show all wires"),showAll,{showAll=it});HelpText("Show all wires",fontSize=12.sp)}
                 }
                 Divider()
-                if(failure.isNotBlank()) HelpText(failure,Modifier.fillMaxWidth().background(Color(0xFF633E32)).padding(12.dp))
-                if(issues.isNotEmpty()) HelpText(issues.take(3).joinToString("\n"),Modifier.fillMaxWidth().background(Color(0xFF4B3D24)).padding(12.dp),fontSize=13.sp)
+                if(failure.isNotBlank()) HelpText(failure,Modifier.fillMaxWidth().background(MaterialTheme.colors.error.copy(alpha=0.18f)).padding(12.dp))
+                if(issues.isNotEmpty()) HelpText(issues.take(3).joinToString("\n"),Modifier.fillMaxWidth().background(wireColors.send.copy(alpha=0.15f)).padding(12.dp),fontSize=13.sp)
                 if(draft.values["position.source"] in listOf("gps_serial","gps_tcp","gpsd")) Row(Modifier.padding(horizontal=24.dp),verticalAlignment=Alignment.CenterVertically) {
                     HelpText("Your GPS currently uses the earlier connection settings.",fontSize=12.sp,color=WorkspaceMuted)
                     HelpTextButton(UiHelp.action("Show it as a port"),onClick={selected=draft.importLegacyGps();page="Wiring"},enabled=draft.devices.size<32) {HelpText("Show it as a port")}
@@ -92,7 +92,7 @@ private val DigiColor=Color(0xFFD3A7FF)
                                 else if(!wiring) selected=target.id
                             }
                             Row(Modifier.fillMaxWidth().padding(16.dp),horizontalArrangement=Arrangement.spacedBy(18.dp)) {
-                                Legend("Receive",ReceiveColor);Legend("Transmit",SendColor);Legend("GPS",GpsColor);Legend("Digipeat",DigiColor)
+                                Legend("Receive",wireColors.receive);Legend("Transmit",wireColors.send);Legend("GPS",wireColors.gps);Legend("Digipeat",wireColors.digipeat)
                             }
                         }
                         Divider(Modifier.fillMaxHeight().width(1.dp))
@@ -127,7 +127,7 @@ private val DigiColor=Color(0xFFD3A7FF)
                     },enabled=draft.dirty && issues.isEmpty()) {HelpText("Apply changes")}
                 }
             } }
-            if(wizard) AddPortWizard(draft,model.portPresets,{wizard=false}) {props,useGps->
+            if(wizard) AddPortWizard(draft,model.portPresets,MaterialTheme.colors,{wizard=false}) {props,useGps->
                 selected=draft.add(props);if(useGps) draft.useGps(draft.devices.first {it.id==selected})
                 wizard=false;page="Wiring"
             }
@@ -142,27 +142,28 @@ private val DigiColor=Color(0xFFD3A7FF)
 @Composable private fun Legend(text: String,color: Color) {Row(verticalAlignment=Alignment.CenterVertically) {Box(Modifier.size(9.dp).background(color,RoundedCornerShape(5.dp)));Spacer(Modifier.width(6.dp));HelpText(text,fontSize=11.sp,color=WorkspaceMuted)}}
 
 private data class DiagramWire(val service: Int,val key: String,val label: String,val configured: Boolean,val effective: Boolean,val reverse: Boolean,val color: Color)
-private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = buildList {
+private fun wires(draft: PortWorkspaceDraft,p: PortDraft,palette: WireColors): List<DiagramWire> = buildList {
     val tx=p.enabled && p.canTransmit && p.values["transmit"]=="true"
     val gate=p.values["passall"]!="true"
     if(p.protocol=="NMEA" || p.values["provides_nmea"]=="true") {
         val selected=draft.values["position.source"]=="port" && draft.values["position.port_name"]==p.name
-        add(DiagramWire(0,"gps","GPS source",selected,selected && p.enabled,false,GpsColor))
+        add(DiagramWire(0,"gps","GPS source",selected,selected && p.enabled,false,palette.gps))
     }
     if(p.radio) {
-        add(DiagramWire(1,"rf_to_is","RF → Internet",p.values["rf_to_is"]=="true",p.enabled && gate && p.values["rf_to_is"]=="true",false,ReceiveColor))
-        if(p.canTransmit) add(DiagramWire(1,"is_to_rf","Internet → RF",p.values["is_to_rf"]=="true",tx && gate && p.values["is_to_rf"]=="true",true,SendColor))
-        add(DiagramWire(2,"receive","Stations → map",true,p.enabled,false,ReceiveColor))
+        add(DiagramWire(1,"rf_to_is","RF → Internet",p.values["rf_to_is"]=="true",p.enabled && gate && p.values["rf_to_is"]=="true",false,palette.receive))
+        if(p.canTransmit) add(DiagramWire(1,"is_to_rf","Internet → RF",p.values["is_to_rf"]=="true",tx && gate && p.values["is_to_rf"]=="true",true,palette.send))
+        add(DiagramWire(2,"receive","Stations → map",true,p.enabled,false,palette.receive))
         if(p.canTransmit) {
-            add(DiagramWire(2,"messages","Chat → radio",p.values["messages"]=="true",tx && p.values["messages"]=="true",true,SendColor))
+            add(DiagramWire(2,"messages","Chat → radio",p.values["messages"]=="true",tx && p.values["messages"]=="true",true,palette.send))
             val beacon=draft.values["beacon.enabled"]=="true" && draft.values["beacon.radio"]=="true"
-            add(DiagramWire(3,"beacon","Beacon → radio",p.values["beacon"]=="true",tx && beacon && p.values["beacon"]=="true",true,SendColor))
-            add(DiagramWire(4,"objects","Objects → radio",p.values["objects"]=="true",tx && draft.values["beacon.enabled"]=="true" && p.values["objects"]=="true",true,SendColor))
+            add(DiagramWire(3,"beacon","Beacon → radio",p.values["beacon"]=="true",tx && beacon && p.values["beacon"]=="true",true,palette.send))
+            add(DiagramWire(4,"objects","Objects → radio",p.values["objects"]=="true",tx && draft.values["beacon.enabled"]=="true" && p.values["objects"]=="true",true,palette.send))
         }
     }
 }
 
 @Composable private fun WiringDiagram(draft: PortWorkspaceDraft,selected: PortDraft?,statuses: List<PortStatus>,isState: String,all: Boolean,wiring: Boolean,modifier: Modifier,objects: ()->Unit,select: (PortDraft)->Unit) {
+    val palette = wireColors
     val selectedIndex=draft.devices.indexOfFirst {it.id==selected?.id}.coerceAtLeast(0)
     val serviceTop=maxOf(26,26+selectedIndex*116-244)
     val height=maxOf(720,60+draft.devices.size*116,serviceTop+700)
@@ -181,7 +182,7 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
                 }
                 draft.devices.forEachIndexed {index,p->
                     if(all || p.id==selected?.id) {
-                        wires(draft,p).filter {it.configured}.forEach {wire->
+                        wires(draft,p,palette).filter {it.configured}.forEach {wire->
                             val offset=if(wire.reverse) 9 else -9
                             curve(Offset(270.dp.toPx(),(76+index*116+offset).dp.toPx()),Offset(490.dp.toPx(),(serviceTop+50+wire.service*122+offset).dp.toPx()),
                                 wire.color.copy(alpha=if(p.id==selected?.id) 1f else .25f),wire.effective,wire.reverse)
@@ -189,29 +190,29 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
                         if(p.values["digipeater"]=="true") names(p.values["digi_outputs"]).ifEmpty {listOf(p.name)}.forEach {target->
                             val targetIndex=draft.devices.indexOfFirst {it.name==target}
                             if(targetIndex>=0) curve(Offset(270.dp.toPx(),(94+index*116).dp.toPx()),Offset(270.dp.toPx(),(58+targetIndex*116).dp.toPx()),
-                                DigiColor.copy(alpha=if(p.id==selected?.id) 1f else .25f),p.enabled && p.values["passall"]!="true" && names(p.values["digi_transforms"]).isNotEmpty() && draft.devices[targetIndex].enabled && draft.devices[targetIndex].values["transmit"]=="true",bend=400.dp.toPx(),endLeft=true)
+                                palette.digipeat.copy(alpha=if(p.id==selected?.id) 1f else .25f),p.enabled && p.values["passall"]!="true" && names(p.values["digi_transforms"]).isNotEmpty() && draft.devices[targetIndex].enabled && draft.devices[targetIndex].values["transmit"]=="true",bend=400.dp.toPx(),endLeft=true)
                         }
                     }
                 }
                 // Internal application routes are visible too, even with no selected RF output.
                 fun servicePoint(index: Int,offset: Int=0)=Offset(770.dp.toPx(),(serviceTop+50+index*122+offset).dp.toPx())
                 val beaconOn=draft.values["beacon.enabled"]=="true"
-                curve(servicePoint(0),servicePoint(3,-8),GpsColor,beaconOn,bend=820.dp.toPx(),endLeft=true)
-                if(draft.values["beacon.internet"]=="true") curve(servicePoint(3,8),servicePoint(1,-8),SendColor,beaconOn,bend=855.dp.toPx(),endLeft=true)
-                if(draft.objects.any {it["internet"]=="true" && it["enabled"]=="true"}) curve(servicePoint(4),servicePoint(1,8),SendColor,beaconOn,bend=890.dp.toPx(),endLeft=true)
-                curve(servicePoint(1,18),servicePoint(2,-8),ReceiveColor,true,bend=810.dp.toPx(),endLeft=true)
-                curve(servicePoint(2,8),servicePoint(1,28),SendColor,true,bend=835.dp.toPx(),endLeft=true)
+                curve(servicePoint(0),servicePoint(3,-8),palette.gps,beaconOn,bend=820.dp.toPx(),endLeft=true)
+                if(draft.values["beacon.internet"]=="true") curve(servicePoint(3,8),servicePoint(1,-8),palette.send,beaconOn,bend=855.dp.toPx(),endLeft=true)
+                if(draft.objects.any {it["internet"]=="true" && it["enabled"]=="true"}) curve(servicePoint(4),servicePoint(1,8),palette.send,beaconOn,bend=890.dp.toPx(),endLeft=true)
+                curve(servicePoint(1,18),servicePoint(2,-8),palette.receive,true,bend=810.dp.toPx(),endLeft=true)
+                curve(servicePoint(2,8),servicePoint(1,28),palette.send,true,bend=835.dp.toPx(),endLeft=true)
             }
             draft.devices.forEachIndexed {index,p->
                 val status=statuses.firstOrNull {it.name==draft.savedName(p.id)}
                 val target=wiring && p.canTransmit && p.protocol in rawRadioProtocols
                 Surface(Modifier.offset(20.dp,(26+index*116).dp).size(250.dp,100.dp).clickable(enabled=!wiring || target) {select(p)},
-                    shape=RoundedCornerShape(12.dp),color=if(p.id==selected?.id) Color(0xFF24444D) else WorkspacePanel,
-                    border=BorderStroke(if(p.id==selected?.id || target) 2.dp else 1.dp,if(target) DigiColor else if(p.id==selected?.id) ReceiveColor else Color(0xFF314650))) {
+                    shape=RoundedCornerShape(12.dp),color=if(p.id==selected?.id) wireColors.receive.copy(alpha=0.16f) else WorkspacePanel,
+                    border=BorderStroke(if(p.id==selected?.id || target) 2.dp else 1.dp,if(target) palette.digipeat else if(p.id==selected?.id) palette.receive else Color(0xFF314650))) {
                     Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                         HelpText(p.name,fontWeight=FontWeight.Bold,maxLines=1)
                         HelpText("${p.protocol} · ${if(p.values["transport"]!="tcp") p.values["device"].orEmpty().ifBlank {"Choose device"} else p.values["endpoint"].orEmpty().ifBlank {"Enter address"}}",fontSize=11.sp,color=WorkspaceMuted,maxLines=1)
-                        HelpText(if(draft.portChanged(p.id)) "Pending Apply · live: ${status?.detail ?: "not running"}" else if(!p.enabled) "Disabled" else status?.detail ?: "Not running",fontSize=11.sp,color=if(p.enabled && status?.detail=="Connected") ReceiveColor else WorkspaceMuted,maxLines=1)
+                        HelpText(if(draft.portChanged(p.id)) "Pending Apply · live: ${status?.detail ?: "not running"}" else if(!p.enabled) "Disabled" else status?.detail ?: "Not running",fontSize=11.sp,color=if(p.enabled && status?.detail=="Connected") palette.receive else WorkspaceMuted,maxLines=1)
                         if(status!=null) HelpText("RX ${status.received} · TX ${status.transmitted}",fontSize=10.sp,color=WorkspaceMuted)
                     }
                 }
@@ -228,14 +229,14 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
                             else->"${draft.objects.size} configured · individual routes in Object routes"
                         }
                         HelpText(detail,fontSize=10.sp,color=WorkspaceMuted,maxLines=2)
-                        val links=selected?.let {wires(draft,it).filter {w->w.service==index && w.key!="receive"}}.orEmpty()
+                        val links=selected?.let {wires(draft,it,palette).filter {w->w.service==index && w.key!="receive"}}.orEmpty()
                         Row(horizontalArrangement=Arrangement.spacedBy(4.dp)) {links.forEach {link->
                             HelpTextButton(UiHelp.action(if(link.key=="gps") (if(selected?.enabled!=true) "Enable GPS" else if(link.configured) "Selected GPS" else "Use this GPS") else (if(link.configured) "● " else "○ ")+link.label),onClick={if(link.key=="gps") draft.useGps(selected!!,enable=true) else draft.set(selected!!.id,link.key,(!link.configured).toString())},enabled=link.key!="gps" || !link.configured || selected?.enabled!=true,contentPadding=PaddingValues(4.dp)) {
                                 HelpText(if(link.key=="gps") (if(selected?.enabled!=true) "Enable GPS" else if(link.configured) "Selected GPS" else "Use this GPS") else (if(link.configured) "● " else "○ ")+link.label,fontSize=10.sp,color=if(link.configured) link.color else WorkspaceMuted)
                             }
                         }
                             if(index==3) HelpTextButton(UiHelp.action((if(draft.values["beacon.internet"]=="true") "● " else "○ ")+"Internet"),onClick={draft.change {draft.values["beacon.internet"]=(draft.values["beacon.internet"]!="true").toString()}},contentPadding=PaddingValues(4.dp)) {
-                                HelpText((if(draft.values["beacon.internet"]=="true") "● " else "○ ")+"Internet",fontSize=10.sp,color=SendColor)
+                                HelpText((if(draft.values["beacon.internet"]=="true") "● " else "○ ")+"Internet",fontSize=10.sp,color=palette.send)
                             }
                             if(index==4) HelpTextButton(UiHelp.action("Routes"),onClick=objects,contentPadding=PaddingValues(4.dp)) {HelpText("Routes",fontSize=10.sp)}
                         }
@@ -306,6 +307,9 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
         }
         HelpField(UiHelp.field("Serial device"),values["device"].orEmpty(),{set("device",it.trim())},label={HelpText("Serial device")},placeholder={HelpText("COM3")},modifier=Modifier.fillMaxWidth(),singleLine=true,fill=true)
         if(scanError) HelpText("Device discovery unavailable. Enter the COM name manually.",fontSize=11.sp,color=WorkspaceMuted)
+        ChoiceField("Data bits",values["serial_data_bits"] ?: "8",listOf("5","6","7","8")) {set("serial_data_bits",it)}
+        ChoiceField("Parity",values["serial_parity"] ?: "none",listOf("none","odd","even","mark","space")) {set("serial_parity",it)}
+        ChoiceField("Stop bits",values["serial_stop_bits"] ?: "1",listOf("1","1.5","2")) {set("serial_stop_bits",it)}
         HelpField(UiHelp.field("Serial baud"),values["baud"].orEmpty(),{set("baud",it)},label={HelpText("Serial baud")},modifier=Modifier.fillMaxWidth(),singleLine=true,fill=true)
     } else if(transport=="ble") {
         HelpField(UiHelp.field("Bluetooth LE address"),values["device"].orEmpty(),{set("device",it.trim())},
@@ -354,6 +358,13 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
     HelpText(status.connection,fontSize=12.sp,color=WorkspaceMuted)
     HelpText("${status.detail} · RX packets ${status.received} · TX writes ${status.transmitted}"+
         (if(status.dropped>0) " · Dropped ${status.dropped}" else ""),fontSize=12.sp,color=WorkspaceMuted)
+    if(status.startupTrace.isNotEmpty()) {
+        HelpTextButton("Copy the connection and startup diagnostics",onClick={
+            val report=(listOf(status.connection,status.detail+" · RX "+status.received+" · TX writes "+status.transmitted)+status.startupTrace).joinToString("\n")
+            java.awt.Toolkit.getDefaultToolkit().systemClipboard.setContents(java.awt.datatransfer.StringSelection(report),null)
+        }) {HelpText("Copy port diagnostics")}
+        HelpText(status.startupTrace.takeLast(12).joinToString("\n"),fontSize=11.sp,color=WorkspaceMuted)
+    }
     if(status.canQueryModem) {
         HelpOutlinedButton(UiHelp.action("Read Mobilinkd audio and PTT settings"),onClick={scope.launch {
             queryState=if(queryModem(status.name)) "Query written to modem · waiting for a setting report" else "Query could not be written"
@@ -370,11 +381,26 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
     var delete by remember(port.id) {mutableStateOf(false)}
     var advanced by remember(port.id) {mutableStateOf(false)}
     var rules by remember(port.id) {mutableStateOf(false)}
+    var previewPk88 by remember(port.id) {mutableStateOf(false)}
     var profileChange by remember(port.id) {mutableStateOf<String?>(null)}
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {HelpText(port.name,Modifier.weight(1f),fontSize=21.sp,fontWeight=FontWeight.Bold);HelpTextButton(UiHelp.action("Rename"),onClick={name=port.name;rename=true}) {HelpText("Rename")}}
         ChoiceField("Profile",port.protocol,PortPreferences.protocols) {if(it!=port.protocol) profileChange=it}
         if(status!=null) PortDiagnostics(status,queryModem)
+        if(port.values["transport"] in PortPreferences.comTransports && port.protocol in PortPreferences.kissProtocols) {
+            val preset=PortPreferences.defaults(PortPreferences.PK88)
+            val keys=listOf("open_commands","close_commands")
+            val matches=keys.all {port.values[it]==preset.getProperty(it)}
+            HelpText(if(matches) "Bundled PK-88 startup commands configured" else "Startup commands differ from the bundled PK-88 preset",fontSize=12.sp)
+            HelpTextButton("Preview bundled AEA PK-88 startup commands",onClick={previewPk88=true}) {HelpText("Preview PK-88 startup commands")}
+            if(previewPk88) AlertDialog(onDismissRequest={previewPk88=false},title={HelpText("AEA PK-88 startup commands")},
+                text={HelpText("Open: "+preset.getProperty("open_commands")+"\nClose: "+preset.getProperty("close_commands")+"\nApply in Ports to use this command sequence.")},
+                confirmButton={HelpTextButton("Use these startup commands",onClick={
+                    draft.change {keys.forEach {port.values[it]=preset.getProperty(it)}}
+                    previewPk88=false
+                }) {HelpText("Use commands")}},
+                dismissButton={HelpTextButton("Close the preview",onClick={previewPk88=false}) {HelpText("Cancel")}})
+        }
         if(!draft.dirty && (port.enabled || port.values["device"].orEmpty().isNotBlank() || port.values["endpoint"].orEmpty().isNotBlank())) {
             val action=if(port.enabled) "Disconnect port" else "Connect port"
             HelpOutlinedButton(UiHelp.action(action),onClick=toggleConnection) {HelpText(action)}
@@ -385,7 +411,7 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
         HelpText("Connections",fontWeight=FontWeight.Bold,fontSize=17.sp)
         if(port.protocol=="NMEA" || port.values["provides_nmea"]=="true") {
             val active=draft.values["position.source"]=="port" && draft.values["position.port_name"]==port.name
-            HelpText(if(active) "This port supplies your position." else "GPS is available on this port.",color=GpsColor,fontSize=12.sp)
+            HelpText(if(active) "This port supplies your position." else "GPS is available on this port.",color=wireColors.gps,fontSize=12.sp)
             if(!active || !port.enabled) HelpButton(UiHelp.action(if(port.enabled) "Use this GPS" else "Select & enable GPS"),onClick={draft.useGps(port,enable=true)}) {HelpText(if(port.enabled) "Use this GPS" else "Select & enable GPS")}
             else HelpOutlinedButton(UiHelp.action("Use fixed position instead"),onClick={draft.fixedPosition()}) {HelpText("Use fixed position instead")}
         }
@@ -414,14 +440,14 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
                 Divider(Modifier.padding(vertical=6.dp))
                 RouteSwitch("Digipeater","Repeat packets matching the rules below.",port.values["digipeater"]=="true") {draft.set(port.id,"digipeater",it.toString())}
                 val targets=names(port.values["digi_outputs"]).ifEmpty {listOf(port.name)}
-                HelpText("Outputs: ${targets.joinToString()} · ${names(port.values["digi_transforms"]).size} rules",fontSize=12.sp,color=DigiColor)
+                HelpText("Outputs: ${targets.joinToString()} · ${names(port.values["digi_transforms"]).size} rules",fontSize=12.sp,color=wireColors.digipeat)
                 HelpOutlinedButton(UiHelp.action("Wire digipeater outputs on diagram"),onClick=wire,modifier=Modifier.fillMaxWidth(),fill=true) {HelpText("Wire digipeater outputs on diagram")}
                 HelpTextButton(UiHelp.action(if(rules) "Hide digipeater rules" else "Edit digipeater rules"),onClick={rules=!rules}) {HelpText(if(rules) "Hide digipeater rules" else "Edit digipeater rules")}
                 if(rules) DigiRules(port) {draft.set(port.id,"digi_transforms",encodedNames(it))}
-                if(port.values["digipeater"]=="true" && names(port.values["digi_transforms"]).isEmpty()) HelpText("Add a rule to activate repeating.",color=SendColor,fontSize=12.sp)
+                if(port.values["digipeater"]=="true" && names(port.values["digi_transforms"]).isEmpty()) HelpText("Add a rule to activate repeating.",color=wireColors.send,fontSize=12.sp)
             }
         }
-        if(port.values["passall"]=="true") HelpText("PASSALL is selected: IGating and digipeating are blocked on this port.",color=SendColor,fontSize=12.sp)
+        if(port.values["passall"]=="true") HelpText("PASSALL is selected: IGating and digipeating are blocked on this port.",color=wireColors.send,fontSize=12.sp)
         Divider(Modifier.padding(vertical=6.dp))
         HelpTextButton(UiHelp.action(if(advanced) "Hide advanced settings" else "Advanced device settings"),onClick={advanced=!advanced}) {HelpText(if(advanced) "Hide advanced settings" else "Advanced device settings")}
         if(advanced) {
@@ -472,7 +498,7 @@ private fun wires(draft: PortWorkspaceDraft,p: PortDraft): List<DiagramWire> = b
             Row(verticalAlignment=Alignment.CenterVertically) {
                 HelpText("Object",Modifier.width(220.dp),fontWeight=FontWeight.Bold)
                 HelpText("Internet",Modifier.width(100.dp));HelpText("All RF ports",Modifier.width(120.dp))
-                radios.forEach {p->Column(Modifier.width(140.dp)) {HelpText(p.name,fontWeight=FontWeight.Bold);HelpText(if(!p.enabled) "Port disabled" else if(p.values["objects"]!="true") "Object output off" else "",fontSize=10.sp,color=SendColor)}}
+                radios.forEach {p->Column(Modifier.width(140.dp)) {HelpText(p.name,fontWeight=FontWeight.Bold);HelpText(if(!p.enabled) "Port disabled" else if(p.values["objects"]!="true") "Object output off" else "",fontSize=10.sp,color=wireColors.send)}}
             }
             Divider(Modifier.padding(vertical=12.dp))
             draft.objects.forEachIndexed {index,obj->
@@ -505,7 +531,7 @@ private fun profileDescription(protocol: String)=when(protocol) {
     else->"A device or network service exchanging TNC2 text packets."
 }
 
-@Composable private fun AddPortWizard(draft: PortWorkspaceDraft,presets: List<Properties>,dismiss: ()->Unit,add: (Properties,Boolean)->Unit) {
+@Composable private fun AddPortWizard(draft: PortWorkspaceDraft,presets: List<Properties>,colors: Colors,dismiss: ()->Unit,add: (Properties,Boolean)->Unit) {
     var step by remember {mutableStateOf(0)}
     val values=remember {mutableStateMapOf<String,String>().apply {putAll(PortPreferences.defaults().entriesMap());put("name",draft.uniqueName("VHF"))}}
     var useGps by remember {mutableStateOf(false)}
@@ -513,7 +539,7 @@ private fun profileDescription(protocol: String)=when(protocol) {
     val validName=values["name"].orEmpty().let {it.isNotBlank() && it==it.trim() && it.length<=64 && draft.devices.none {p->p.name==it}}
     val valid=validName && runCatching {PortConfig(values.properties())}.isSuccess
     DialogWindow(icon=AppIcon.window,onCloseRequest=dismiss,title="Add a port",state=rememberDialogState(width=650.dp,height=820.dp)) {
-        MaterialTheme(colors=darkColors(primary=ReceiveColor,surface=WorkspacePanel,background=WorkspaceBackground)) {Surface {Column(Modifier.fillMaxSize().padding(24.dp)) {
+        MaterialTheme(colors=colors) {Surface {Column(Modifier.fillMaxSize().padding(24.dp)) {
             HelpText(listOf("1 · Choose your device","2 · Connect your device","3 · Review its connections")[step],fontSize=23.sp,fontWeight=FontWeight.Bold)
             LinearProgressIndicator((step+1)/3f,Modifier.fillMaxWidth().padding(vertical=16.dp))
             Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
@@ -526,16 +552,16 @@ private fun profileDescription(protocol: String)=when(protocol) {
                     HelpText("Other device protocols",fontWeight=FontWeight.Bold)
                     PortPreferences.protocols.forEach {type->Surface(Modifier.fillMaxWidth().clickable {if(type!=protocol) {
                         values.clear();values.putAll(PortPreferences.defaults(type).entriesMap());values["name"]=draft.uniqueName(if(type=="NMEA") "GPS" else if(type=="AGW") "AGW" else "VHF");useGps=type=="NMEA"
-                    }},shape=RoundedCornerShape(10.dp),border=BorderStroke(if(protocol==type) 2.dp else 1.dp,if(protocol==type) ReceiveColor else Color(0xFF38505D))) {
+                    }},shape=RoundedCornerShape(10.dp),border=BorderStroke(if(protocol==type) 2.dp else 1.dp,if(protocol==type) wireColors.receive else Color(0xFF38505D))) {
                         Column(Modifier.padding(14.dp)) {HelpText(type,fontWeight=FontWeight.Bold);HelpText(profileDescription(type),fontSize=12.sp,color=WorkspaceMuted)}
                     }}
                     }
                     1->{
                         if(!values["notes"].isNullOrBlank()) HelpText(values["notes"].orEmpty(),color=WorkspaceMuted)
-                        if(!values["frequency_mhz"].isNullOrBlank()) HelpText("Radio: ${values["frequency_mhz"]} MHz",color=SendColor)
+                        if(!values["frequency_mhz"].isNullOrBlank()) HelpText("Radio: ${values["frequency_mhz"]} MHz",color=wireColors.send)
                         HelpText(protocol,fontWeight=FontWeight.Bold)
                         HelpField(UiHelp.field("A name you'll recognize"),values["name"].orEmpty(),{values["name"]=it},label={HelpText("A name you'll recognize")},isError=!validName,modifier=Modifier.fillMaxWidth(),singleLine=true,fill=true)
-                        if(!validName) HelpText("Choose a unique port name.",color=SendColor,fontSize=12.sp)
+                        if(!validName) HelpText("Choose a unique port name.",color=wireColors.send,fontSize=12.sp)
                         DeviceConnectionFields(values) {key,value->values[key]=value}
                     }
                     else->{
@@ -553,7 +579,7 @@ private fun profileDescription(protocol: String)=when(protocol) {
                                 if(protocol in rawRadioProtocols) RouteSwitch("WIDE1 fill-in digipeater","Repeat matching WIDE1-1 packets on this radio.",values["digipeater"]=="true") {values["digipeater"]=it.toString()}
                             }
                         }
-                        if(!valid) HelpText("Go back and finish the name and connection, or leave this port disabled for later setup.",color=SendColor)
+                        if(!valid) HelpText("Go back and finish the name and connection, or leave this port disabled for later setup.",color=wireColors.send)
                     }
                 }
             }

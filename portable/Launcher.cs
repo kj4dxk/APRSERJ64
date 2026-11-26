@@ -50,6 +50,7 @@ internal static class Launcher {
                     info.RedirectStandardOutput = true;
                     info.RedirectStandardError = true;
                     info.EnvironmentVariables["APRSERJ64_HOME"] = root;
+                    info.EnvironmentVariables["APRSERJ64_LAUNCHER"] = Assembly.GetExecutingAssembly().Location;
                     string temp = Path.Combine(root, "cache", "tmp");
                     info.EnvironmentVariables["TEMP"] = temp;
                     info.EnvironmentVariables["TMP"] = temp;

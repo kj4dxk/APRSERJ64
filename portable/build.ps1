@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: AGPL-3.0-only
+param([string]$OutputDirectory)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 $image = Join-Path $repo 'build/compose/binaries/main/app/APRSERJ64'
-$out = Join-Path $repo 'build/portable'
+$out = if ($OutputDirectory) { $OutputDirectory } else { Join-Path $repo 'build/portable' }
 if (!(Test-Path (Join-Path $image 'APRSERJ64.exe'))) { throw 'Run createDistributable first.' }
 New-Item -ItemType Directory -Force $out | Out-Null
 Add-Type -AssemblyName System.IO.Compression.FileSystem

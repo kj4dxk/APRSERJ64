@@ -20,6 +20,32 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
     val connectionSetupIssue=MutableStateFlow<String?>(null)
     val demo = MutableStateFlow(demoMode)
     private var client: AprsIsClient? = null
+    private var baseFilter=""
+    private var trackedCalls=emptySet<String>()
+    private var followedCall:String?=null
+    private val recentAreas=ViewportSubscriptions()
+    @Synchronized internal fun viewAreas(window:Any,areas:List<ReceiveArea>) {
+        recentAreas.update(window,areas)
+        refreshReceiveFilter()
+    }
+    @Synchronized fun followCall(call:String?) {
+        followedCall=call
+        refreshReceiveFilter()
+    }
+    @Synchronized fun trackCalls(calls:Set<String>) {
+        trackedCalls=calls
+        refreshReceiveFilter()
+    }
+    @Synchronized private fun refreshReceiveFilter() {
+        val connection=client ?: return
+        val contacts=names(settings.getProperty("display.messaged_calls")).filter(AprsProtocol::validCallsign).map {it.substringBefore('-')}.distinct()
+        val calls=contacts.flatMap {listOf(it,it+"-*")}+(trackedCalls+listOfNotNull(followedCall)).filter(AprsProtocol::validCallsign)
+        val desired=if(calls.isEmpty()) baseFilter else baseFilter+" b/"+calls.distinct().joinToString("/")
+        if(desired.length<=AprsFilters.MAX_FILTER_LENGTH) {
+            connection.receiveFilter.value=recentAreas.compose(desired,AprsFilters.MAX_FILTER_LENGTH)
+        }
+        else error.value="Receive filter is full. Remove saved calls or shorten the custom filter."
+    }
     private var chat: ChatSession? = null
     private var observing: Job? = null
     private var server: DemoServer? = null
@@ -37,7 +63,10 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
     val servers get() = store.servers
     val entities get() = store.entities
     val ports get() = store.ports
-    val portPresets get() = store.portPresets
+    val portPresets get() = store.portPresets.let { saved ->
+        if(saved.any {it.getProperty("protocol")==PortPreferences.PK88}) saved
+        else saved + PortPresets.defaults().first {it.getProperty("protocol")==PortPreferences.PK88}
+    }
     val settingsRevision=MutableStateFlow(0L)
     val beaconState=MutableStateFlow(BeaconState(settings.getProperty("beacon.enabled").toBoolean()))
     val offline=OfflineMaps(directory,scope,network) {settings.getProperty(it)}
@@ -55,7 +84,17 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
     val satellites=SatelliteTracking(this,scope)
     val legacyWeather=LegacyWeather(directory,scope) {settings.getProperty(it)}
     private val automation=OperatingAutomation(this,scope) {radio}
-    init { account.value = settings.getProperty("callsign","");groups.activate(account.value);startPorts();imports.reload();satellites.reload() }
+    internal val peerGroup=MutableStateFlow<PeerGroup?>(null)
+    private fun openPeerGroup() {
+        peerGroup.value?.close()
+        peerGroup.value=null
+        if(demo.value || !settings.getProperty("groups.peer_enabled").toBoolean()) return
+        try {
+            val config=PeerGroupConfig.parse(settings,account.value)
+            peerGroup.value=PeerGroup(config,directory.resolve("data/peer-"+config.name+"-"+config.call+".sqlite"))
+        } catch(e:Exception){error.value="Unable to open independent group: "+e.javaClass.simpleName}
+    }
+    init { account.value = settings.getProperty("callsign","");groups.activate(account.value);startPorts();imports.reload();satellites.reload();openPeerGroup() }
     private fun startPorts() {
         chat?.close();chat=null
         beaconObserver?.cancel();broadcaster?.close();broadcaster=null
@@ -107,8 +146,12 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
     }
     private fun start(config: AprsIsConfig) {
         connectionSetupIssue.value=null
+        val groupIdentityChanged=account.value!=config.callsign || demo.value
         account.value = config.callsign;groups.activate(account.value); error.value = ""
+        if(groupIdentityChanged)openPeerGroup()
         val connection = network.aprsClient(); client = connection
+        baseFilter=AprsFilters.compose(config.callsign,config.latitude,config.longitude,config.radiusKm,config.filterMode,config.customFilter)
+        refreshReceiveFilter()
         if(radio?.call==config.callsign && !demo.value) radio?.attach(connection) else startPorts()
         observing = scope.launch {
             launch {connection.serverMessages.collect {messages->
@@ -170,7 +213,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
             BeaconConfiguration(values,entities); ServicePreferences.validate(values); OperatingPreferences.validate(values); FeaturePreferences.validate(values)
             PortPreferences.validateAll(values,ports,entities)
             settings.clear(); settings.putAll(values); store.entities=entities;store.ports=ports
-            store.save(); settingsRevision.value++;imports.reload();satellites.reload()
+            store.save(); settingsRevision.value++;refreshReceiveFilter();imports.reload();satellites.reload()
             val changed=(previous.stringPropertyNames()+values.stringPropertyNames()).filter {previous.getProperty(it)!=values.getProperty(it)}
             val radioChanged=changed.any {it.startsWith("radio.") || it==NetworkResource.TCP_DEVICES.key}
             val beaconChanged=previousEntities!=entities || changed.any {key->
@@ -195,7 +238,9 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
                 disconnect();start(config)
             }
             beaconState.value=beaconState.value.copy(enabled=settings.getProperty("beacon.enabled").toBoolean())
-            error.value=""; return true
+            error.value=""
+            if(changed.any {it.startsWith("groups.peer_") || it=="groups.relay_eligible"})openPeerGroup()
+            return true
         } catch(_: Exception) {settings.clear();settings.putAll(previous);store.entities=previousEntities;store.ports=previousPorts;error.value="Check the settings values and folder write access.";return false}
     }
     private fun recordTraffic(port:String,direction:String,line:String) {
@@ -229,7 +274,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
     }
     private val notificationClock=scope.launch {
         val warned=mutableSetOf<String>()
-        while(isActive){delay(10000);activity.tick()
+        while(isActive){delay(10000);activity.tick();refreshReceiveFilter()
             (weatherAlerts.alerts.value+legacyWeather.alerts.value).filter {it.severity in listOf("Severe","Extreme")}.forEach {alert->
                 if(warned.add(alert.id))activity.event("weather",alert.id,"${alert.severity}: ${alert.event}")
             }
@@ -240,7 +285,7 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
         while(isActive) {
             delay(settings.getProperty("groups.keepalive_minutes").toLong()*60000)
             if(!demo.value && state.value==AprsConnectionState.VERIFIED && settings.getProperty("groups.keepalive").toBoolean())
-                names(settings.getProperty("groups.names")).forEach {group->runCatching {send(settings.getProperty("groups.server"),AprsServices.group("K",group))}}
+                names(settings.getProperty("groups.names")).forEach {group->runCatching {database.enqueueParts(account.value,settings.getProperty("groups.server"),listOf(AprsServices.group("K",group)),internetOnly=true)}}
         }
     }
     suspend fun sendBulletin(slot:String,group:String,text:String):Boolean =
@@ -269,8 +314,25 @@ class AppModel(val directory: Path, demoMode: Boolean = false) : AutoCloseable {
                 -81.242932+(i%100-50)*0.0005,'/','>',"Synthetic render test",System.currentTimeMillis())
         }
     }
-    suspend fun send(peer: String, text: String) { database.enqueue(account.value,peer,text) }
+    suspend fun send(peer: String, text: String) {
+        database.enqueue(account.value,peer,text)
+        if(!demo.value && AprsProtocol.validCallsign(peer)) synchronized(this) {
+            val contacts=names(settings.getProperty("display.messaged_calls"))
+            val base=peer.substringBefore('-')
+            if(base !in contacts) {
+                settings.setProperty("display.messaged_calls",encodedNames(contacts+base))
+                try {store.save()} catch(_:Exception) {
+                    settings.setProperty("display.messaged_calls",encodedNames(contacts))
+                    error.value="Message queued. Unable to save its receive subscription."
+                    return
+                }
+                settingsRevision.value++
+                refreshReceiveFilter()
+            }
+        }
+    }
     override fun close() {
+        peerGroup.value?.close();peerGroup.value=null
         runBlocking {withTimeoutOrNull(3000) {runCatching {broadcaster?.beforeExit()}}}
         disconnect()
         broadcaster?.close();radioObserver?.cancel()

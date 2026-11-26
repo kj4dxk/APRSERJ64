@@ -36,7 +36,7 @@ private val LocalHelpControl=staticCompositionLocalOf {false}
  style:TextStyle=LocalTextStyle.current,help:String=UiHelp.indicator(text)) {
  val render:@Composable ()->Unit={Text(text,color=color,fontSize=fontSize,fontWeight=fontWeight,fontFamily=fontFamily,textAlign=textAlign,maxLines=maxLines,overflow=overflow,style=style)}
  if(LocalHelpControl.current) Text(text,modifier,color=color,fontSize=fontSize,fontWeight=fontWeight,fontFamily=fontFamily,textAlign=textAlign,maxLines=maxLines,overflow=overflow,style=style)
- else HelpArea(help,modifier,render)
+ else HelpArea(help,modifier) {androidx.compose.foundation.text.selection.SelectionContainer {render()}}
 }
 
 @Composable internal fun HelpButton(help:String,onClick:()->Unit,modifier:Modifier=Modifier,enabled:Boolean=true,

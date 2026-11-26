@@ -63,6 +63,7 @@ class ActivityAlerts(private val home:java.nio.file.Path=java.nio.file.Path.of("
   val now=System.currentTimeMillis();val key=if(message!=null) "${message.sender}/${message.id}/${message.text}" else packet.source
   if(now-(seen[key] ?: 0)<if(message!=null) 86400000 else setting("alerts.minimum_seconds").toLong()*1000)return
   seen[key]=now;while(seen.size>1000)seen.remove(seen.keys.first())
+  if(message!=null && message.recipient==account && message.acknowledgement==null){sound("message");return}
   notices.value=(notices.value+AppNotice(now,text)).takeLast(100)
   if(setting("alerts.desktop").toBoolean()) runCatching {tray?.displayMessage("APRSERJ64",text,java.awt.TrayIcon.MessageType.INFO)}
   sound(if(message!=null)"message" else "station")

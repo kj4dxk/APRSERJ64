@@ -28,7 +28,7 @@ internal fun mapSettings(model:AppModel,values:Properties=model.settings)=Proper
   }
  }
 }
-internal fun mapConfigurationKey(model:AppModel)=mapSettings(model).let {p->
+internal fun mapConfigurationKey(model:AppModel,values:Properties=model.settings)=mapSettings(model,values).let {p->
  p.stringPropertyNames().filter {
   (it.startsWith("map.") && it!=ServicePreferences.TILE_RESOLUTION_KEY) || it in setOf("latitude","longitude",NetworkResource.MAP_TILES.key)
  }.associateWith {p.getProperty(it)}
@@ -48,10 +48,10 @@ internal fun navigationSummary(model:AppModel,station:AprsStation):String {
  val distance=DisplayUnits.from(model.settings).distance(AdaptiveBeaconPolicy.distance(own,destination))
  return "%s · %s · %.0f° from your position".format(station.callsign,distance,bearing)
 }
-@Composable fun TrackingWindow(model:AppModel,call:String,dismiss:()->Unit) {
+@Composable fun TrackingWindow(model:AppModel,call:String,stationMenu:(String)->List<androidx.compose.foundation.ContextMenuItem> = {emptyList()},dismiss:()->Unit) {
  val stations by model.stations.collectAsState();val revision by model.settingsRevision.collectAsState()
  var editing by remember {mutableStateOf(false)}
- var preferences by remember {mutableStateOf(ViewOverrides.settings(model,call))}
+ val preferences=remember(call,revision) {ViewOverrides.settings(model,call)}
  var source by remember {mutableStateOf(preferences.getProperty("map.tile_url"))}
  var zoom by remember {mutableStateOf(preferences.getProperty("map.initial_zoom"))}
  var search by remember {mutableStateOf(preferences.getProperty("display.search"))}
@@ -59,8 +59,9 @@ internal fun navigationSummary(model:AppModel,station:AprsStation):String {
  var prediction by remember {mutableStateOf(preferences.getProperty("tactical.dead_reckoning").toBoolean())}
  var error by remember {mutableStateOf("")}
  Window(icon=AppIcon.window,onCloseRequest=dismiss,title=call,state=rememberWindowState(width=900.dp,height=700.dp)) {
-  MaterialTheme(colors=darkColors()) {androidx.compose.material.Surface {Column(Modifier.fillMaxSize()) {
+  MaterialTheme(colors=applicationColors(model)) {androidx.compose.material.Surface {Column(Modifier.fillMaxSize()) {
    Row {HelpTextButton(UiHelp.action("View settings"),onClick={editing=!editing}){HelpText("View settings")};HelpText(call,Modifier.padding(12.dp))}
+   if(stations.none {it.callsign==call}) HelpText("Waiting for a position from "+call)
    if(editing) {
     HelpField(UiHelp.field("Map tile URL"),source,{source=it},label={HelpText("Map tile URL")},modifier=Modifier.fillMaxWidth(),fill=true)
     Row {HelpField(UiHelp.field("Initial zoom"),zoom,{zoom=it},Modifier.weight(1f),label={HelpText("Initial zoom")},fill=true);HelpField(UiHelp.field("Station search"),search,{search=it},Modifier.weight(1f),label={HelpText("Station search")},fill=true)}
@@ -70,13 +71,13 @@ internal fun navigationSummary(model:AppModel,station:AprsStation):String {
      ServicePreferences.validate(next)
      val encoded=call+"|"+ViewOverrides.keys.joinToString("|"){"$it=${next.getProperty(it)}"};ViewOverrides.parse(encoded)
      val entries=names(model.settings.getProperty("multitrack.views")).filterNot {it.substringBefore('|')==call}+encoded
-     check(model.updateFeature("multitrack.views",encodedNames(entries)));preferences=next;editing=false;error=""
+     check(model.updateFeature("multitrack.views",encodedNames(entries)));editing=false;error=""
     }.onFailure {error=it.message?:"Check view settings"}}){HelpText("Save this view")}
     if(error.isNotEmpty())HelpText(error,color=MaterialTheme.colors.error)
    }
    ProvideMapPresentationHost(host=rememberAwtComposeMapPresentationHost(window)) {
     val visible=stations.filter {it.callsign==call || it.callsign.contains(preferences.getProperty("display.search"),true) && System.currentTimeMillis()-it.heardAtMillis<=preferences.getProperty("display.maximum_age_minutes").toLong()*60000 && stationKind(it,preferences.getProperty("display.kind"),model.views.stations.value,model.archive.objects.value)}
-    key(preferences) {MapPanel(visible,call,model,null,Modifier.weight(1f).fillMaxWidth(),forceFollow=true,viewSettings=preferences) {}}
+    key(mapConfigurationKey(model,preferences)) {MapPanel(visible,call,model,null,Modifier.weight(1f).fillMaxWidth(),forceFollow=true,viewSettings=preferences,stationMenu=stationMenu) {}}
    }
   }}}
  }

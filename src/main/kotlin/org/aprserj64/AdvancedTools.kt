@@ -73,12 +73,12 @@ import kotlin.math.*
    }
   }
   "Local sensors"->{
-   HelpText("Weather: ${model.settings.getProperty("weatherstation.file")}")
+   HelpText("Weather: ${LocalSensors.weatherInputLocation(model)}")
    HelpText("Telemetry: ${model.settings.getProperty("telemetry.input_file")}")
    HelpText("Weather JSON uses temperature_c, wind_degrees, wind_kph, gust_kph, humidity, pressure_hpa, rain_hour_mm and rain_day_mm. Missing readings are omitted.")
    HelpText("Telemetry JSON contains named raw values from 0 to 255. Select input:name as a telemetry channel source. Files must be refreshed by your sensor collector.")
    HelpText("Enable transmission and choose timing, file freshness and routes in Settings → Weatherstation / Telemetry.")
-   HelpButton(UiHelp.action("Read weather input"),onClick={work{withContext(Dispatchers.IO){LocalSensors.weather(model,System.currentTimeMillis())};"Weather input is valid and fresh"}},enabled=!busy){HelpText("Read weather input")}
+   HelpButton(UiHelp.action("Read weather input"),onClick={work{withContext(Dispatchers.IO){LocalSensors.checkWeatherInput(model,System.currentTimeMillis())};"Weather input is valid and fresh"}},enabled=!busy){HelpText("Read weather input")}
   }
  }
  if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
