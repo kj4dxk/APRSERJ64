@@ -212,6 +212,8 @@ internal object UiHelp {
    "tactical.dead_reckoning"->"Estimate a moving station's present position from its last speed/course. The estimate is not a new received fix."
    "offline.enabled"->actions.getValue("Use downloaded base map only")
    "map.tile_url"->"Raster tile template for the base map. Retain {z}, {x}, {y}; attribution and zoom bounds should match this provider."
+   ServicePreferences.TILE_RESOLUTION_KEY->"Choose tile detail for the pdeffenb base map. Follow Windows uses high-resolution tiles above 100% display scaling."
+   "map.project_preset_hidpi_url"->"Higher-resolution tile template for the pdeffenb preset on scaled displays. Leave blank to use standard tiles at every display scale."
    "map.attribution"->"Visible credit for map data and the tile provider. Retain the attribution required by your provider's license."
    "map.attribution_url"->"Page opened when the map attribution is clicked."
    "digital.enabled"->"Read supported FT8, JS8Call or JT65 receive logs and display located stations. APRSERJ64 does not decode audio."

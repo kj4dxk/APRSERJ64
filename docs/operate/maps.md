@@ -2,6 +2,10 @@
 
 Open **Settings → Station display → Display units** to choose **Imperial** (the default) or **Metric**, then select **Save**. Weather follows this choice when **Weather units** is set to **Follow display units** in Settings → Weather alerts or in the Weather reports tool. Existing saved weather preferences are kept. Configuration fields and APRS filter expressions use the units shown in their labels and syntax.
 
+Open **Settings → Map appearance → Tile resolution** to choose **Follow Windows** (the default), **Standard (1×)**, or **High resolution (2×)**, then select **Save**. Follow Windows requests standard pdeffenb tiles at 100% display scaling and 512-pixel tiles above 100%, including at 150% and 200%. The manual choices apply regardless of Windows display scaling. All choices show the same map extent.
+
+The main renderer keeps cached pdeffenb tiles visible while it fetches the selected resolution. When replacement tiles arrive, they appear automatically. The app reuses matching tiles from older map caches and keeps both resolutions available for later sessions. With no internet, it can continue showing either cached resolution wherever you have coverage. **Use downloaded base map only** also allows matching cached pdeffenb tiles without contacting the server.
+
 ## Navigate without changing your beacon position
 
 Pan and zoom the map. Use **+**, **−**, **Home**, or open the magnifying-glass **Go to coordinates** control. Paste a location in the single **Location** field, check the interpreted latitude/longitude shown below it, then select **Go**. The field stays collapsed until needed. **Follow station** is available when the selected station has a map position. North is always up; rotation has no preference. Moving the map does not move your station's configured fixed position.

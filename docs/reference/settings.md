@@ -37,9 +37,11 @@ Each `[[aprs.servers]]` entry is a separate record. The example contains 12 entr
 | Key | Example default | Meaning / UI label |
 | --- | --- | --- |
 | `map.compatibility_mode` | `false` | compatibility mode |
+| `map.tile_resolution` | `"windows"` | tile resolution |
 | `map.latitude` | `28.536725` | latitude |
 | `map.longitude` | `-81.242932` | longitude |
 | `map.source_name` | `"pdeffenb"` | source name |
+| `map.project_preset_hidpi_url` | `"http://pdeffenb.homeip.net:82/raster/light/{z}/{x}/{y}@2x.png"` | project preset hidpi url |
 | `map.tile_url` | `"http://pdeffenb.homeip.net:82/raster/light/{z}/{x}/{y}.png"` | tile url |
 | `map.attribution` | `"© OpenStreetMap contributors"` | attribution |
 | `map.attribution_url` | `"https://www.openstreetmap.org/copyright"` | attribution url |

@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package org.aprserj64
 import com.sun.net.httpserver.HttpServer
+import com.sun.net.httpserver.Headers
+import java.io.IOException
 import java.net.*
 import java.net.http.*
 import java.nio.file.*
-import java.security.MessageDigest
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.Executors
 import kotlin.math.*
 import kotlinx.coroutines.*
@@ -35,22 +39,40 @@ class OfflineMaps(private val home:Path,private val scope:CoroutineScope,private
  private val pool=Executors.newFixedThreadPool(6) {r->Thread(r,"map-tiles").apply {isDaemon=true}}
  private val server=HttpServer.create(InetSocketAddress("127.0.0.1",0),0)
  private val onlineTemplates=java.util.concurrent.ConcurrentHashMap<String,String>()
+ private val adaptiveTemplates=java.util.concurrent.ConcurrentHashMap<String,AdaptiveTileSource>()
  private val onlinePrefix=java.util.UUID.randomUUID().toString()
- private fun key(url:String)=MessageDigest.getInstance("SHA-256").digest(url.toByteArray()).take(12).joinToString("") {"%02x".format(it)}
+ private val adaptiveTiles=AdaptiveRasterTiles(home.resolve("cache"),
+  { (setting("map.cache_megabytes").toLongOrNull() ?: 512) * 1024 * 1024 },::tileRequest,network::getTile,
+  { source,tile -> path(source,tile).takeIf(Files::isRegularFile)?.let(Files::readAllBytes) })
  private val rasterCache=object:LinkedHashMap<Pair<String,Tile>,ByteArray>(64,0.75f,true) {
   override fun removeEldestEntry(eldest:MutableMap.MutableEntry<Pair<String,Tile>,ByteArray>?)=size>64
  }
- private fun path(url:String,t:Tile)=home.resolve("cache/offline/${key(url)}/${t.z}/${t.x}/${t.y}.tile")
- fun template()="http://127.0.0.1:${server.address.port}/${key(setting("map.tile_url"))}/{z}/{x}/{y}"
+ private fun path(url:String,t:Tile)=home.resolve("cache/offline/${tileSourceKey(url)}/${t.z}/${t.x}/${t.y}.tile")
+ fun template()="http://127.0.0.1:${server.address.port}/${tileSourceKey(setting("map.tile_url"))}/{z}/{x}/{y}"
  internal fun onlineTemplate(source:String):String {
-  val id=key(source)
+  val id=tileSourceKey(source)
   onlineTemplates[id]=source
   return "http://127.0.0.1:${server.address.port}/$onlinePrefix/$id/{z}/{x}/{y}"
+ }
+ internal fun adaptiveTemplate(variants:TileVariants,detailed:Boolean,offline:Boolean):AdaptiveTileSource {
+  val id=java.util.UUID.randomUUID().toString()
+  val url="http://127.0.0.1:${server.address.port}/$onlinePrefix/adaptive-$id/{z}/{x}/{y}"
+  return AdaptiveTileSource(url,variants,detailed,offline).also {adaptiveTemplates["adaptive-$id"]=it}
+ }
+ internal fun removeAdaptiveTemplate(source:AdaptiveTileSource) {
+  adaptiveTemplates.entries.removeIf {it.value===source}
  }
  internal fun tileRequest(template:String,t:Tile):HttpRequest {
   val url=template.replace("{z}",t.z.toString()).replace("{x}",t.x.toString()).replace("{y}",t.y.toString())
   return HttpRequest.newBuilder(URI(url)).timeout(java.time.Duration.ofSeconds(5))
    .header("User-Agent","APRSERJ64/${AppVersion.value} (+${setting("services.source_url")})").build()
+ }
+ private fun onlineTile(source:String,tile:Tile,headers:Headers):MapTile {
+  val builder=HttpRequest.newBuilder(tileRequest(source,tile),{_,_->true})
+  listOf("If-None-Match","If-Modified-Since").forEach {name->
+   headers.getFirst(name)?.let {builder.header(name,it)}
+  }
+  return network.getTile(builder.build())
  }
  init {
   server.executor=pool
@@ -58,14 +80,28 @@ class OfflineMaps(private val home:Path,private val scope:CoroutineScope,private
    val parts=exchange.requestURI.path.trim('/').split('/')
    if(parts.size==5 && parts[0]==onlinePrefix) {
     require(exchange.requestMethod=="GET")
-    val source=onlineTemplates.getValue(parts[1])
     val tile=Tile(parts[2].toInt(),parts[3].toInt(),parts[4].toInt())
-    require(tile.z in 0..22 && tile.x in 0 until (1 shl tile.z) && tile.y in 0 until (1 shl tile.z))
-    val builder=HttpRequest.newBuilder(tileRequest(source,tile),{_,_->true})
-    listOf("If-None-Match","If-Modified-Since").forEach {name->
-     exchange.requestHeaders.getFirst(name)?.let {builder.header(name,it)}
+    require(tile.z in 0..24 && tile.x in 0 until (1 shl tile.z) && tile.y in 0 until (1 shl tile.z))
+    val adaptive=adaptiveTemplates[parts[1]]
+    if(adaptive!=null) {
+     val raster=adaptiveTiles.get(adaptive,tile)
+     if(raster==null) {
+      exchange.sendResponseHeaders(if(adaptive.selection.offline) 404 else 503,-1)
+     } else {
+      exchange.responseHeaders.set("Cache-Control","max-age=2")
+      exchange.responseHeaders.set("Expires",ZonedDateTime.now(ZoneOffset.UTC).plusSeconds(2).format(DateTimeFormatter.RFC_1123_DATE_TIME))
+      exchange.responseHeaders.set("ETag",raster.tag)
+      if(exchange.requestHeaders.getFirst("If-None-Match")==raster.tag) exchange.sendResponseHeaders(304,-1)
+      else {
+       exchange.responseHeaders.set("Content-Type",raster.type)
+       exchange.sendResponseHeaders(200,raster.bytes.size.toLong())
+       exchange.responseBody.use {it.write(raster.bytes)}
+      }
+     }
+     return@createContext
     }
-    val response=network.getTile(builder.build())
+    val source=onlineTemplates.getValue(parts[1])
+    val response=onlineTile(source,tile,exchange.requestHeaders)
     response.headers.forEach { (name,value)->exchange.responseHeaders.set(name,value) }
     if(response.valid) {
      exchange.responseHeaders.set("Content-Type",response.type)
@@ -74,12 +110,12 @@ class OfflineMaps(private val home:Path,private val scope:CoroutineScope,private
     } else exchange.sendResponseHeaders(if(response.status==200) 502 else response.status,-1)
     return@createContext
    }
-   require(parts.size==4 && parts[0]==key(setting("map.tile_url")))
+   require(parts.size==4 && parts[0]==tileSourceKey(setting("map.tile_url")))
    val t=Tile(parts[1].toInt(),parts[2].toInt(),parts[3].toInt());require(t.z in 0..18 && t.x in 0 until (1 shl t.z) && t.y in 0 until (1 shl t.z))
    val file=path(setting("map.tile_url"),t)
    if(!Files.exists(file)) exchange.sendResponseHeaders(404,-1)
    else {val bytes=Files.readAllBytes(file);exchange.responseHeaders.set("Content-Type","image/png");exchange.sendResponseHeaders(200,bytes.size.toLong());exchange.responseBody.use {it.write(bytes)}}
-  }catch(_:java.io.IOException){runCatching {exchange.sendResponseHeaders(502,-1)}}
+  }catch(_:IOException){runCatching {exchange.sendResponseHeaders(502,-1)}}
    catch(_:Exception){runCatching {exchange.sendResponseHeaders(404,-1)}}finally{exchange.close()}}
   server.start()
  }
@@ -128,5 +164,5 @@ class OfflineMaps(private val home:Path,private val scope:CoroutineScope,private
   }
  }
  fun cancel(){job?.cancel()}
- override fun close(){cancel();server.stop(0);pool.shutdownNow()}
+ override fun close(){cancel();server.stop(0);pool.shutdownNow();adaptiveTiles.close()}
 }

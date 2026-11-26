@@ -1,8 +1,10 @@
 # First-run defaults copied from APRSERJa. Runtime values live in settings.toml.
 [map]
 compatibility_mode = false
+tile_resolution = "windows"
 source_name = "pdeffenb"
 project_preset_url = "http://pdeffenb.homeip.net:82/raster/light/{z}/{x}/{y}.png"
+project_preset_hidpi_url = "http://pdeffenb.homeip.net:82/raster/light/{z}/{x}/{y}@2x.png"
 osm_preset_url = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 tile_url = "http://pdeffenb.homeip.net:82/raster/light/{z}/{x}/{y}.png"
 attribution = "© OpenStreetMap contributors"

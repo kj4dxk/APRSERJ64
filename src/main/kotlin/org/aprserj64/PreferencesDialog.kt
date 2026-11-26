@@ -149,6 +149,7 @@ import kotlinx.serialization.json.*
                 "position.source"->positionSourceLabel(it)
                 "display.units"->it.replaceFirstChar(Char::uppercaseChar)
                 "weather.units"->weatherUnitLabel(it)
+                ServicePreferences.TILE_RESOLUTION_KEY->ServicePreferences.tileResolutionOptions.getValue(it)
                 else->it.ifBlank {"None"}
             }},help=UiHelp.setting(field)) {values[field.key]=it}
             if(field.key=="beacon.status_tag") HelpField(UiHelp.field("Custom status tag"),value,{values[field.key]=it},label={HelpText("Custom status tag")},modifier=Modifier.fillMaxWidth(),fill=true)

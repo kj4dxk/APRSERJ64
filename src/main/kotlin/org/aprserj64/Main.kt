@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,6 +28,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.serialization.json.*
 import org.aprsfoundation.core.*
 import org.maplibre.compose.camera.CameraPosition
@@ -39,11 +41,14 @@ import org.maplibre.compose.interaction.MapInteractions
 import org.maplibre.compose.layers.CircleLayer
 import org.maplibre.compose.layers.SymbolLayer
 import org.maplibre.compose.layers.LineLayer
+import org.maplibre.compose.layers.RasterLayer
 import org.maplibre.compose.expressions.dsl.image
 import org.maplibre.compose.map.*
 import org.maplibre.compose.sources.GeoJsonData
+import org.maplibre.compose.sources.rememberRasterTileSource
 import org.maplibre.compose.sources.rememberGeoJsonSource
 import org.maplibre.compose.style.BaseStyle
+import org.maplibre.compose.util.MaplibreComposable
 import org.maplibre.spatialk.geojson.Position
 
 private val Accent = Color(0xFF72E4C3)
@@ -319,6 +324,16 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     } } }
 }.toString()
 
+@Composable @MaplibreComposable
+private fun MapRasterLayer(id:String,url:String,settings:java.util.Properties,kind:String) {
+    val source=rememberRasterTileSource(listOf(url),tileSize=settings.getProperty("map.tile_size").toInt()) {
+        minZoom=settings.getProperty("map.minimum_zoom").toDouble().toInt()
+        maxZoom=settings.getProperty("map.maximum_zoom").toDouble().toInt()
+        attributionHtml=settings.getProperty("map.attribution")
+    }
+    RasterLayer(id=id,source=source,opacity=const(settings.getProperty("map.${kind}_opacity").toFloat()))
+}
+
 @Composable internal fun MapPanel(stations: List<AprsStation>, selected: String?, model: AppModel, beaconCenter: AprsFix?, modifier: Modifier, forceFollow:Boolean=false, viewSettings:java.util.Properties=model.settings, select: (String)->Unit) {
     val compatibilityPreference=viewSettings.getProperty("map.compatibility_mode").toBoolean()
     var compatibility by remember(compatibilityPreference) {mutableStateOf(compatibilityPreference)}
@@ -332,9 +347,32 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     var chosenPoint by remember {mutableStateOf<AprsStation?>(null)}
     fun selectPoint(call:String){if(stations.any {it.callsign==call})select(call) else chosenPoint=extraPoints.firstOrNull {it.callsign==call}}
     val data = remember(stations,extraPoints) { GeoJsonData.JsonString(stationJson(stations+extraPoints)) }
-    val style = remember { BaseStyle.Json(ServicePreferences.style(mapSettings(model,viewSettings))) }
-    val historyRevision by model.archive.revision.collectAsState()
     val preferencesRevision by model.settingsRevision.collectAsState()
+    val density = LocalDensity.current.density
+    val variants = remember(viewSettings,preferencesRevision) { ServicePreferences.projectTileVariants(viewSettings) }
+    val detailed = ServicePreferences.preferDetailedTiles(model.settings.getProperty(ServicePreferences.TILE_RESOLUTION_KEY),density)
+    val offline = viewSettings.getProperty("offline.enabled").toBoolean()
+    val adaptiveBase = remember(variants) {
+        variants?.let { model.offline.adaptiveTemplate(it,detailed,offline) }
+    }
+    DisposableEffect(adaptiveBase) { onDispose { adaptiveBase?.let(model.offline::removeAdaptiveTemplate) } }
+    SideEffect { adaptiveBase?.selection=AdaptiveTileSource.Selection(detailed,offline) }
+    val mapSettings = remember(adaptiveBase) { mapSettings(model,viewSettings) }
+    val style = remember(mapSettings) { BaseStyle.Json(ServicePreferences.style(mapSettings,includeBaseAndOverlay=adaptiveBase==null)) }
+    var renderedRaster by remember(adaptiveBase) { mutableStateOf(0L) }
+    var requestedRaster by remember(adaptiveBase) { mutableStateOf(0L) }
+    LaunchedEffect(adaptiveBase) {
+        adaptiveBase?.changes?.collectLatest { revision ->
+            if(revision!=0L) {
+                delay(250)
+                requestedRaster=revision
+            }
+        }
+    }
+    LaunchedEffect(adaptiveBase) {
+        if(adaptiveBase!=null) while(true) {delay(11_000); adaptiveBase.retry()}
+    }
+    val historyRevision by model.archive.revision.collectAsState()
     val selectedPath by remember(selected) {model.tactical.paths.map {it[selected]}.distinctUntilChanged()}.collectAsState(initial=null)
     val webWarnings by model.weatherAlerts.alerts.collectAsState()
     val legacyWarnings by model.legacyWeather.alerts.collectAsState()
@@ -360,6 +398,13 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
 
     val initial=remember {Position(viewSettings.getProperty("longitude").toDouble(),viewSettings.getProperty("latitude").toDouble())}
     val state=rememberMapState(baseStyle=style,initialCameraPosition=CameraPosition(center=if(forceFollow) stations.firstOrNull {it.callsign==selected}?.let {Position(it.longitude,it.latitude)} ?: initial else initial,zoom=viewSettings.getProperty("map.initial_zoom").toDouble())) {
+        if(adaptiveBase!=null) {
+            listOf(renderedRaster,requestedRaster).distinct().forEach { revision -> key(revision) {
+                MapRasterLayer("base-raster-$revision",adaptiveBase.url(revision),mapSettings,"base")
+            } }
+            if(mapSettings.getProperty("map.overlay_enabled").toBoolean())
+                MapRasterLayer("adaptive-overlay",mapSettings.getProperty("map.overlay_url"),mapSettings,"overlay")
+        }
         localMap?.let {local->
             val localSource=rememberGeoJsonSource(GeoJsonData.JsonString(local.lines))
             LineLayer(id="local-osm",source=localSource,color=const(Color(0xFF476976)),width=const(1.6.dp))
@@ -402,10 +447,13 @@ private fun stationJson(stations: List<AprsStation>) = buildJsonObject {
     }
     LaunchedEffect(state) {state.events.collect { event -> when(event) {
         MapEvent.StyleLoaded -> {mapError=""; println("MAP style loaded")}
-        MapEvent.Idle -> println("MAP idle")
+        MapEvent.Idle -> {
+            if(adaptiveBase!=null && state.style.layers["base-raster-$requestedRaster"]!=null) renderedRaster=requestedRaster
+            println("MAP idle")
+        }
         is MapEvent.StyleLoadFailed -> {compatibility=true; System.err.println("MAP style failed: ${event.reason}")}
         is MapEvent.SourceDataFailed -> {
-            if(event.sourceId=="base" && !viewSettings.getProperty("offline.enabled").toBoolean()) compatibility=true
+            if(event.sourceId=="base" && adaptiveBase==null && !offline) compatibility=true
             else mapError="Unable to load map data"
             System.err.println("MAP source failed: ${event.sourceId}")
         }

@@ -10,9 +10,11 @@ radius_km = 100
 
 [map]
 compatibility_mode = false
+tile_resolution = "windows"
 latitude = 28.536725
 longitude = -81.242932
 source_name = "pdeffenb"
+project_preset_hidpi_url = "http://pdeffenb.homeip.net:82/raster/light/{z}/{x}/{y}@2x.png"
 tile_url = "http://pdeffenb.homeip.net:82/raster/light/{z}/{x}/{y}.png"
 attribution = "© OpenStreetMap contributors"
 attribution_url = "https://www.openstreetmap.org/copyright"
